@@ -27,6 +27,7 @@ This project demonstrates full-stack integration between:
 Open terminal:
 
 cd server
+
 .\mvnw.cmd spring-boot:run
 
 http://localhost:8081
@@ -36,7 +37,9 @@ http://localhost:8081
 ## ▶️ How To Run Backend
 
 cd client
+
 npm install
+
 npm run dev
 
 http://localhost:5173
