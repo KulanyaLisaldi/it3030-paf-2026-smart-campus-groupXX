@@ -7,3 +7,4 @@ client/node_modules/
 # Server (Spring Boot / Maven)
 # ===============================
 server/target/
+.env
