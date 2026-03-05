@@ -245,6 +245,7 @@ const Navbar = () => {
           style={signUpButtonStyle}
           onMouseEnter={(e) => handleSignUpHover(e, true)}
           onMouseLeave={(e) => handleSignUpHover(e, false)}
+          onClick={() => navigate('/signup')}
         >
           Sign Up
         </button>
