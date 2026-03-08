@@ -59,7 +59,7 @@ const Hero = () => {
               onMouseEnter={(e) => handleGetStartedHover(e, true)}
               onMouseLeave={(e) => handleGetStartedHover(e, false)}
             >
-              Get Started test 
+              Get Started
             </button>
             <button 
               style={viewResourcesButtonStyle}
