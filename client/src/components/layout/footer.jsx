@@ -115,7 +115,7 @@ const Footer = () => {
                   onMouseEnter={(e) => handleLinkHover(e, true)}
                   onMouseLeave={(e) => handleLinkHover(e, false)}
                 >
-                  Contact Support test
+                  Contact Support
                 </a>
               </li>
             </ul>
