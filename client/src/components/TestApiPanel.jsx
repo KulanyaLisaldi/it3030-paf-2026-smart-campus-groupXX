@@ -31,7 +31,10 @@ export default function TestApiPanel() {
   }
 
   useEffect(() => {
-    loadItems();
+    const initialize = async () => {
+      await loadItems();
+    };
+    initialize();
   }, []);
 
   return (

@@ -8,10 +8,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "#2563eb",      // Blue
-        secondary: "#0f172a",    // Dark background
-        accent: "#22c55e",       // Green
-        danger: "#ef4444",       // Red
+        // Custom palette - 60% Background, 30% Secondary, 10% Accent
+        "bg-primary": "#FAF3E1",      // 60% - Page background (Cream/White)
+        "bg-secondary": "#F5E7C6",    // 30% - Section highlights (Beige)
+        "accent": "#FA8112",           // 10% - Buttons/highlights (Orange)
+        "dark-text": "#222222",        // Text color
       },
 
       fontFamily: {
