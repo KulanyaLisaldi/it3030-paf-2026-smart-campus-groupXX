@@ -40,6 +40,8 @@ public class TicketDetailsService {
             return Optional.empty();
         }
 
+        validateCommentContent(request.getContent());
+
         TicketComment comment = new TicketComment();
         comment.setTicketId(ticketId);
         comment.setContent(request.getContent().trim());
@@ -65,6 +67,7 @@ public class TicketDetailsService {
             return Optional.empty();
         }
 
+        validateCommentContent(request.getContent());
         comment.setContent(request.getContent().trim());
         return Optional.of(commentRepo.save(comment));
     }
@@ -98,6 +101,19 @@ public class TicketDetailsService {
         commentRepo.deleteByTicketId(ticketId);
         ticketRepo.deleteById(ticketId);
         return true;
+    }
+
+    private void validateCommentContent(String content) {
+        String trimmed = content == null ? "" : content.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("Comment content is required");
+        }
+        if (!trimmed.matches("^[a-zA-Z0-9\\s]+$")) {
+            throw new IllegalArgumentException("Comment cannot contain special characters");
+        }
+        if (trimmed.matches(".*(.)\\1{3,}.*")) {
+            throw new IllegalArgumentException("Comment cannot repeat the same character many times");
+        }
     }
 }
 

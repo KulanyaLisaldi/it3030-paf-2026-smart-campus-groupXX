@@ -36,7 +36,7 @@ const headerStripStyle = {
 const titleStyle = {
   margin: 0,
   fontSize: "24px",
-  fontWeight: 800,
+  fontWeight: 700,
   letterSpacing: "-0.2px",
   color: "#222222",
 };
@@ -134,9 +134,10 @@ export default function MyTickets() {
               backgroundColor: "#FA8112",
               color: "#FFFFFF",
               border: "none",
-              borderRadius: "10px",
-              padding: "10px 14px",
-              fontWeight: 800,
+              borderRadius: "8px",
+              padding: "12px 18px",
+              fontSize: "14px",
+              fontWeight: 600,
               cursor: "pointer",
               boxShadow: "0 10px 20px rgba(250, 129, 18, 0.22)",
             }}
@@ -166,10 +167,6 @@ export default function MyTickets() {
                 style={{ ...ticketCardStyle, cursor: "pointer" }}
                 onClick={() => navigate(`/tickets/${ticket.id}`)}
               >
-                <h3 style={{ margin: "0 0 6px 0", color: "#14213D", fontSize: "16px", fontWeight: 900 }}>
-                  {ticket.issueTitle}
-                </h3>
-
                 <div style={metaRowStyle}>
                   <span
                     style={{
@@ -207,11 +204,15 @@ export default function MyTickets() {
                   </span>
                 </div>
 
-                <p style={{ margin: "10px 0 0 0", color: "#374151", fontWeight: 700 }}>
-                  Location: <span style={{ fontWeight: 600 }}>{ticket.resourceLocation}</span>
+                <h3 style={{ margin: "0 0 6px 0", color: "#222222", fontSize: "16px", fontWeight: 700 }}>
+                  {ticket.issueTitle}
+                </h3>
+
+                <p style={{ margin: "10px 0 0 0", color: "#374151", fontSize: "14px", fontWeight: 600 }}>
+                  Location: <span style={{ fontWeight: 500 }}>{ticket.resourceLocation}</span>
                 </p>
 
-                <div style={descriptionBoxStyle}>{ticket.description}</div>
+                <div style={{ ...descriptionBoxStyle, fontSize: "14px", fontWeight: 400 }}>{ticket.description}</div>
               </article>
             ))}
           </div>

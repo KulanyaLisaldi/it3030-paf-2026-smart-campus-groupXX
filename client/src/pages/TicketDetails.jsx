@@ -42,8 +42,8 @@ const headerStyle = {
 const titleStyle = {
   margin: 0,
   fontSize: "22px",
-  fontWeight: 900,
-  color: "#14213D",
+  fontWeight: 700,
+  color: "#222222",
 };
 
 const buttonStyle = {
@@ -51,8 +51,9 @@ const buttonStyle = {
   color: "#FFFFFF",
   border: "none",
   borderRadius: "8px",
-  padding: "10px 14px",
-  fontWeight: 800,
+  padding: "12px 18px",
+  fontSize: "14px",
+  fontWeight: 600,
   cursor: "pointer",
 };
 
@@ -76,8 +77,8 @@ const metaRowStyle = {
 
 const sectionTitleStyle = {
   fontSize: "16px",
-  fontWeight: 900,
-  color: "#14213D",
+  fontWeight: 700,
+  color: "#222222",
   marginBottom: "8px",
 };
 
@@ -140,6 +141,9 @@ const RESOURCE_OPTIONS = [
   "Parking Area",
   "Other",
 ];
+
+const hasOnlyAllowedTextChars = (value) => /^[a-zA-Z0-9\s]+$/.test(value);
+const hasTooManyRepeatedChars = (value) => /(.)\1{3,}/.test(value);
 
 const getCurrentUser = () => {
   try {
@@ -250,6 +254,14 @@ export default function TicketDetails() {
       setCommentError("Comment cannot be empty.");
       return;
     }
+    if (!hasOnlyAllowedTextChars(content)) {
+      setCommentError("Comment cannot contain special characters.");
+      return;
+    }
+    if (hasTooManyRepeatedChars(content)) {
+      setCommentError("Comment cannot repeat the same character many times.");
+      return;
+    }
 
     const createdBy = getFullName(user) || user?.email || "Unknown";
 
@@ -323,6 +335,14 @@ export default function TicketDetails() {
       setActionError("Comment cannot be empty.");
       return;
     }
+    if (!hasOnlyAllowedTextChars(content)) {
+      setActionError("Comment cannot contain special characters.");
+      return;
+    }
+    if (hasTooManyRepeatedChars(content)) {
+      setActionError("Comment cannot repeat the same character many times.");
+      return;
+    }
 
     setActionError("");
     try {
@@ -380,7 +400,7 @@ export default function TicketDetails() {
                 <div style={{ display: "flex", gap: "8px" }}>
                   <button
                     type="button"
-                    style={{ ...buttonStyle, padding: "8px 12px" }}
+                    style={buttonStyle}
                     onClick={() => setEditingTicket((prev) => !prev)}
                     onMouseEnter={(event) => handleButtonHover(event, true)}
                     onMouseLeave={(event) => handleButtonHover(event, false)}
@@ -389,7 +409,7 @@ export default function TicketDetails() {
                   </button>
                   <button
                     type="button"
-                    style={{ ...buttonStyle, padding: "8px 12px", backgroundColor: "#d32f2f" }}
+                    style={{ ...buttonStyle, backgroundColor: "#d32f2f" }}
                     onClick={handleDeleteTicket}
                   >
                     Delete Ticket
@@ -411,7 +431,7 @@ export default function TicketDetails() {
               <p style={{ margin: "10px 0 0 0", color: "#374151", fontWeight: 700 }}>
                 Location: <span style={{ fontWeight: 600 }}>{ticketDetails.ticket.resourceLocation}</span>
               </p>
-              <div style={{ marginTop: "10px", color: "#374151", lineHeight: 1.5 }}>
+              <div style={{ marginTop: "10px", color: "#374151", fontSize: "14px", fontWeight: 400, lineHeight: 1.5 }}>
                 {ticketDetails.ticket.description}
               </div>
 
@@ -548,22 +568,22 @@ export default function TicketDetails() {
                             onChange={(e) => setEditingCommentText(e.target.value)}
                           />
                           <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                            <button type="button" style={{ ...buttonStyle, padding: "8px 12px" }} onClick={() => handleSaveCommentEdit(c.id)}>
+                            <button type="button" style={buttonStyle} onClick={() => handleSaveCommentEdit(c.id)}>
                               Save
                             </button>
-                            <button type="button" style={{ ...buttonStyle, padding: "8px 12px", backgroundColor: "#6b7280" }} onClick={() => setCommentEditingId("")}>
+                            <button type="button" style={{ ...buttonStyle, backgroundColor: "#6b7280" }} onClick={() => setCommentEditingId("")}>
                               Cancel
                             </button>
                           </div>
                         </>
                       ) : (
                         <>
-                          <p style={{ margin: "6px 0 0 0", color: "#374151", lineHeight: 1.45 }}>{c.content}</p>
+                          <p style={{ margin: "6px 0 0 0", color: "#374151", fontSize: "14px", fontWeight: 400, lineHeight: 1.45 }}>{c.content}</p>
                           <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                            <button type="button" style={{ ...buttonStyle, padding: "6px 10px" }} onClick={() => handleStartEditComment(c)}>
+                            <button type="button" style={buttonStyle} onClick={() => handleStartEditComment(c)}>
                               Edit
                             </button>
-                            <button type="button" style={{ ...buttonStyle, padding: "6px 10px", backgroundColor: "#d32f2f" }} onClick={() => handleDeleteComment(c.id)}>
+                            <button type="button" style={{ ...buttonStyle, backgroundColor: "#d32f2f" }} onClick={() => handleDeleteComment(c.id)}>
                               Delete
                             </button>
                           </div>
