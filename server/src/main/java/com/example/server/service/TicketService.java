@@ -1,6 +1,7 @@
 package com.example.server.service;
 
 import com.example.server.dto.ticket.CreateTicketRequest;
+import com.example.server.dto.ticket.UpdateTicketRequest;
 import com.example.server.model.Ticket;
 import com.example.server.repository.TicketRepo;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -62,11 +64,35 @@ public class TicketService {
         return ticketRepo.findByCreatedByOrderByCreatedAtDesc(createdBy);
     }
 
+    public Optional<Ticket> updateTicket(String ticketId, UpdateTicketRequest request) {
+        validateFields(request.getCategory(), request.getPriority());
+        Optional<Ticket> maybeTicket = ticketRepo.findById(ticketId);
+        if (maybeTicket.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Ticket ticket = maybeTicket.get();
+        ticket.setFullName(request.getFullName().trim());
+        ticket.setEmail(request.getEmail().trim().toLowerCase());
+        ticket.setPhoneNumber(request.getPhoneNumber().trim());
+        ticket.setResourceLocation(request.getResourceLocation().trim());
+        ticket.setCategory(request.getCategory().trim());
+        ticket.setIssueTitle(request.getIssueTitle().trim());
+        ticket.setDescription(request.getDescription().trim());
+        ticket.setPriority(request.getPriority().trim());
+
+        return Optional.of(ticketRepo.save(ticket));
+    }
+
     private void validateRequest(CreateTicketRequest request) {
-        if (!ALLOWED_CATEGORIES.contains(request.getCategory())) {
+        validateFields(request.getCategory(), request.getPriority());
+    }
+
+    private void validateFields(String category, String priority) {
+        if (!ALLOWED_CATEGORIES.contains(category)) {
             throw new IllegalArgumentException("Invalid category selected");
         }
-        if (!ALLOWED_PRIORITIES.contains(request.getPriority())) {
+        if (!ALLOWED_PRIORITIES.contains(priority)) {
             throw new IllegalArgumentException("Invalid priority selected");
         }
     }

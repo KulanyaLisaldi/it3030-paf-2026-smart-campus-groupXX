@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface TicketCommentRepo extends MongoRepository<TicketComment, String> {
     List<TicketComment> findByTicketIdOrderByCreatedAtDesc(String ticketId);
+    void deleteByTicketId(String ticketId);
 }
 

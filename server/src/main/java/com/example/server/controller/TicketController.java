@@ -2,6 +2,8 @@ package com.example.server.controller;
 
 import com.example.server.dto.ticket.CreateTicketRequest;
 import com.example.server.dto.ticket.CreateTicketCommentRequest;
+import com.example.server.dto.ticket.UpdateTicketCommentRequest;
+import com.example.server.dto.ticket.UpdateTicketRequest;
 import com.example.server.model.Ticket;
 import com.example.server.service.TicketService;
 import com.example.server.service.TicketDetailsService;
@@ -15,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -56,6 +60,28 @@ public class TicketController {
         return ticketService.getMyTickets(createdBy);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateTicket(
+        @PathVariable("id") String id,
+        @Valid @RequestBody UpdateTicketRequest request
+    ) {
+        return ticketService.updateTicket(id, request)
+            .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Ticket updated successfully", "ticket", updated)))
+            .orElseGet(() -> ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", "Ticket not found"))
+            );
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteTicket(@PathVariable("id") String id) {
+        boolean deleted = ticketDetailsService.deleteTicket(id);
+        if (!deleted) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Ticket not found"));
+        }
+        return ResponseEntity.ok(Map.of("message", "Ticket deleted successfully"));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> getTicketDetails(@PathVariable("id") String id) {
         return ticketDetailsService.getTicketDetails(id)
@@ -80,5 +106,31 @@ public class TicketController {
                 .status(HttpStatus.NOT_FOUND)
                 .body(Map.of("message", "Ticket not found"))
             );
+    }
+
+    @PutMapping("/{id}/comments/{commentId}")
+    public ResponseEntity<?> updateTicketComment(
+        @PathVariable("id") String id,
+        @PathVariable("commentId") String commentId,
+        @Valid @RequestBody UpdateTicketCommentRequest request
+    ) {
+        return ticketDetailsService.updateComment(id, commentId, request)
+            .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Comment updated successfully", "comment", updated)))
+            .orElseGet(() -> ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", "Ticket or comment not found"))
+            );
+    }
+
+    @DeleteMapping("/{id}/comments/{commentId}")
+    public ResponseEntity<?> deleteTicketComment(
+        @PathVariable("id") String id,
+        @PathVariable("commentId") String commentId
+    ) {
+        boolean deleted = ticketDetailsService.deleteComment(id, commentId);
+        if (!deleted) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Ticket or comment not found"));
+        }
+        return ResponseEntity.ok(Map.of("message", "Comment deleted successfully"));
     }
 }

@@ -1,6 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { addTicketComment, getTicketDetails } from "../api/tickets";
+import {
+  addTicketComment,
+  deleteTicket,
+  deleteTicketComment,
+  getTicketDetails,
+  updateTicket,
+  updateTicketComment,
+} from "../api/tickets";
 
 const pageStyle = {
   minHeight: "100vh",
@@ -111,6 +118,29 @@ const commentItemStyle = {
   backgroundColor: "#FAF3E1",
 };
 
+const CATEGORY_OPTIONS = [
+  "Electrical Issue",
+  "Network Issue",
+  "Equipment Issue",
+  "Software Issue",
+  "Facility Issue",
+  "Maintenance Issue",
+  "Other",
+];
+
+const PRIORITY_OPTIONS = ["High", "Medium", "Low"];
+
+const RESOURCE_OPTIONS = [
+  "Library",
+  "Computer Lab",
+  "Lecture Hall",
+  "Hostel",
+  "Cafeteria",
+  "Administration Office",
+  "Parking Area",
+  "Other",
+];
+
 const getCurrentUser = () => {
   try {
     const raw = localStorage.getItem("smartCampusUser");
@@ -140,6 +170,22 @@ export default function TicketDetails() {
   const [commentContent, setCommentContent] = useState("");
   const [commentError, setCommentError] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [actionError, setActionError] = useState("");
+
+  const [editingTicket, setEditingTicket] = useState(false);
+  const [ticketSubmitting, setTicketSubmitting] = useState(false);
+  const [ticketForm, setTicketForm] = useState({
+    fullName: "",
+    email: "",
+    phoneNumber: "",
+    resourceLocation: "",
+    category: "",
+    issueTitle: "",
+    description: "",
+    priority: "",
+  });
+  const [commentEditingId, setCommentEditingId] = useState("");
+  const [editingCommentText, setEditingCommentText] = useState("");
 
   const handleButtonHover = (event, isHover) => {
     event.target.style.backgroundColor = isHover ? "#E66A0A" : "#FA8112";
@@ -153,6 +199,16 @@ export default function TicketDetails() {
       try {
         const data = await getTicketDetails(id);
         setTicketDetails(data);
+        setTicketForm({
+          fullName: data?.ticket?.fullName || "",
+          email: data?.ticket?.email || "",
+          phoneNumber: data?.ticket?.phoneNumber || "",
+          resourceLocation: data?.ticket?.resourceLocation || "",
+          category: data?.ticket?.category || "",
+          issueTitle: data?.ticket?.issueTitle || "",
+          description: data?.ticket?.description || "",
+          priority: data?.ticket?.priority || "",
+        });
       } catch (err) {
         setError(err.message || "Failed to load ticket details.");
       } finally {
@@ -187,6 +243,7 @@ export default function TicketDetails() {
   const handleAddComment = async (e) => {
     e.preventDefault();
     setCommentError("");
+    setActionError("");
 
     const content = commentContent.trim();
     if (!content) {
@@ -210,6 +267,91 @@ export default function TicketDetails() {
     }
   };
 
+  const refreshDetails = async () => {
+    const data = await getTicketDetails(id);
+    setTicketDetails(data);
+    return data;
+  };
+
+  const handleTicketUpdate = async (e) => {
+    e.preventDefault();
+    setActionError("");
+    try {
+      setTicketSubmitting(true);
+      await updateTicket(id, ticketForm);
+      const data = await refreshDetails();
+      setTicketForm({
+        fullName: data?.ticket?.fullName || "",
+        email: data?.ticket?.email || "",
+        phoneNumber: data?.ticket?.phoneNumber || "",
+        resourceLocation: data?.ticket?.resourceLocation || "",
+        category: data?.ticket?.category || "",
+        issueTitle: data?.ticket?.issueTitle || "",
+        description: data?.ticket?.description || "",
+        priority: data?.ticket?.priority || "",
+      });
+      setEditingTicket(false);
+    } catch (err) {
+      setActionError(err.message || "Failed to update ticket.");
+    } finally {
+      setTicketSubmitting(false);
+    }
+  };
+
+  const handleDeleteTicket = async () => {
+    const confirmed = window.confirm("Are you sure you want to delete this ticket?");
+    if (!confirmed) return;
+
+    setActionError("");
+    try {
+      await deleteTicket(id);
+      navigate("/my-tickets");
+    } catch (err) {
+      setActionError(err.message || "Failed to delete ticket.");
+    }
+  };
+
+  const handleStartEditComment = (comment) => {
+    setCommentEditingId(comment.id);
+    setEditingCommentText(comment.content || "");
+    setActionError("");
+  };
+
+  const handleSaveCommentEdit = async (commentId) => {
+    const content = editingCommentText.trim();
+    if (!content) {
+      setActionError("Comment cannot be empty.");
+      return;
+    }
+
+    setActionError("");
+    try {
+      await updateTicketComment(id, commentId, { content });
+      await refreshDetails();
+      setCommentEditingId("");
+      setEditingCommentText("");
+    } catch (err) {
+      setActionError(err.message || "Failed to update comment.");
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    const confirmed = window.confirm("Delete this comment?");
+    if (!confirmed) return;
+
+    setActionError("");
+    try {
+      await deleteTicketComment(id, commentId);
+      await refreshDetails();
+      if (commentEditingId === commentId) {
+        setCommentEditingId("");
+        setEditingCommentText("");
+      }
+    } catch (err) {
+      setActionError(err.message || "Failed to delete comment.");
+    }
+  };
+
   return (
     <div style={pageStyle}>
       <section style={containerStyle}>
@@ -228,11 +370,32 @@ export default function TicketDetails() {
 
         {loading && <p>Loading ticket...</p>}
         {!loading && error && <p style={{ color: "#d32f2f" }}>{error}</p>}
+        {!loading && !error && actionError && <p style={{ color: "#d32f2f" }}>{actionError}</p>}
 
         {!loading && !error && ticketDetails?.ticket && (
           <>
             <div style={cardStyle}>
-              <div style={sectionTitleStyle}>{ticketDetails.ticket.issueTitle}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                <div style={sectionTitleStyle}>{ticketDetails.ticket.issueTitle}</div>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    type="button"
+                    style={{ ...buttonStyle, padding: "8px 12px" }}
+                    onClick={() => setEditingTicket((prev) => !prev)}
+                    onMouseEnter={(event) => handleButtonHover(event, true)}
+                    onMouseLeave={(event) => handleButtonHover(event, false)}
+                  >
+                    {editingTicket ? "Cancel Edit" : "Edit Ticket"}
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...buttonStyle, padding: "8px 12px", backgroundColor: "#d32f2f" }}
+                    onClick={handleDeleteTicket}
+                  >
+                    Delete Ticket
+                  </button>
+                </div>
+              </div>
               <div style={metaRowStyle}>
                 <span style={{ ...chipBaseStyle, backgroundColor: "#14213D", color: "#FFFFFF" }}>
                   Status: {ticketDetails.ticket.status}
@@ -251,6 +414,80 @@ export default function TicketDetails() {
               <div style={{ marginTop: "10px", color: "#374151", lineHeight: 1.5 }}>
                 {ticketDetails.ticket.description}
               </div>
+
+              {editingTicket && (
+                <form onSubmit={handleTicketUpdate} style={{ marginTop: "12px", display: "grid", gap: "8px" }}>
+                  <input
+                    style={inputStyle}
+                    value={ticketForm.fullName}
+                    onChange={(e) => setTicketForm((prev) => ({ ...prev, fullName: e.target.value }))}
+                    placeholder="Full Name"
+                  />
+                  <input
+                    style={inputStyle}
+                    value={ticketForm.email}
+                    onChange={(e) => setTicketForm((prev) => ({ ...prev, email: e.target.value }))}
+                    placeholder="Email"
+                  />
+                  <input
+                    style={inputStyle}
+                    value={ticketForm.phoneNumber}
+                    onChange={(e) => setTicketForm((prev) => ({ ...prev, phoneNumber: e.target.value }))}
+                    placeholder="Phone Number"
+                  />
+                  <select
+                    style={inputStyle}
+                    value={ticketForm.resourceLocation}
+                    onChange={(e) => setTicketForm((prev) => ({ ...prev, resourceLocation: e.target.value }))}
+                  >
+                    <option value="">Select resource/location</option>
+                    {RESOURCE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    style={inputStyle}
+                    value={ticketForm.category}
+                    onChange={(e) => setTicketForm((prev) => ({ ...prev, category: e.target.value }))}
+                  >
+                    <option value="">Select category</option>
+                    {CATEGORY_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    style={inputStyle}
+                    value={ticketForm.priority}
+                    onChange={(e) => setTicketForm((prev) => ({ ...prev, priority: e.target.value }))}
+                  >
+                    <option value="">Select priority</option>
+                    {PRIORITY_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    style={inputStyle}
+                    value={ticketForm.issueTitle}
+                    onChange={(e) => setTicketForm((prev) => ({ ...prev, issueTitle: e.target.value }))}
+                    placeholder="Issue Title"
+                  />
+                  <textarea
+                    style={textareaStyle}
+                    value={ticketForm.description}
+                    onChange={(e) => setTicketForm((prev) => ({ ...prev, description: e.target.value }))}
+                    placeholder="Description"
+                  />
+                  <button type="submit" style={{ ...buttonStyle, width: "fit-content", opacity: ticketSubmitting ? 0.8 : 1 }} disabled={ticketSubmitting}>
+                    {ticketSubmitting ? "Saving..." : "Save Ticket Changes"}
+                  </button>
+                </form>
+              )}
             </div>
 
             <div style={cardStyle}>
@@ -303,7 +540,35 @@ export default function TicketDetails() {
                   {comments.map((c) => (
                     <div key={c.id} style={commentItemStyle}>
                       <p style={{ margin: 0, fontWeight: 800, color: "#14213D" }}>{c.createdBy}</p>
-                      <p style={{ margin: "6px 0 0 0", color: "#374151", lineHeight: 1.45 }}>{c.content}</p>
+                      {commentEditingId === c.id ? (
+                        <>
+                          <textarea
+                            style={{ ...textareaStyle, marginTop: "6px" }}
+                            value={editingCommentText}
+                            onChange={(e) => setEditingCommentText(e.target.value)}
+                          />
+                          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                            <button type="button" style={{ ...buttonStyle, padding: "8px 12px" }} onClick={() => handleSaveCommentEdit(c.id)}>
+                              Save
+                            </button>
+                            <button type="button" style={{ ...buttonStyle, padding: "8px 12px", backgroundColor: "#6b7280" }} onClick={() => setCommentEditingId("")}>
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p style={{ margin: "6px 0 0 0", color: "#374151", lineHeight: 1.45 }}>{c.content}</p>
+                          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                            <button type="button" style={{ ...buttonStyle, padding: "6px 10px" }} onClick={() => handleStartEditComment(c)}>
+                              Edit
+                            </button>
+                            <button type="button" style={{ ...buttonStyle, padding: "6px 10px", backgroundColor: "#d32f2f" }} onClick={() => handleDeleteComment(c.id)}>
+                              Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>

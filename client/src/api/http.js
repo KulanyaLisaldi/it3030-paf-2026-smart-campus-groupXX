@@ -32,6 +32,18 @@ export async function apiPost(path, body) {
   });
 }
 
+export async function apiPut(path, body) {
+  return request(path, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiDelete(path) {
+  return request(path, { method: "DELETE" });
+}
+
 export async function apiPostFormData(path, formData) {
   return request(path, {
     method: "POST",

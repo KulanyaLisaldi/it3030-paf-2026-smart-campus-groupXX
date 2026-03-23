@@ -2,6 +2,7 @@ package com.example.server.service;
 
 import com.example.server.dto.ticket.CreateTicketCommentRequest;
 import com.example.server.dto.ticket.TicketDetailsResponse;
+import com.example.server.dto.ticket.UpdateTicketCommentRequest;
 import com.example.server.model.Ticket;
 import com.example.server.model.TicketComment;
 import com.example.server.repository.TicketCommentRepo;
@@ -46,6 +47,57 @@ public class TicketDetailsService {
         comment.setCreatedAt(Instant.now());
 
         return Optional.of(commentRepo.save(comment));
+    }
+
+    public Optional<TicketComment> updateComment(String ticketId, String commentId, UpdateTicketCommentRequest request) {
+        Optional<Ticket> ticket = ticketRepo.findById(ticketId);
+        if (ticket.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Optional<TicketComment> maybeComment = commentRepo.findById(commentId);
+        if (maybeComment.isEmpty()) {
+            return Optional.empty();
+        }
+
+        TicketComment comment = maybeComment.get();
+        if (!ticketId.equals(comment.getTicketId())) {
+            return Optional.empty();
+        }
+
+        comment.setContent(request.getContent().trim());
+        return Optional.of(commentRepo.save(comment));
+    }
+
+    public boolean deleteComment(String ticketId, String commentId) {
+        Optional<Ticket> ticket = ticketRepo.findById(ticketId);
+        if (ticket.isEmpty()) {
+            return false;
+        }
+
+        Optional<TicketComment> maybeComment = commentRepo.findById(commentId);
+        if (maybeComment.isEmpty()) {
+            return false;
+        }
+
+        TicketComment comment = maybeComment.get();
+        if (!ticketId.equals(comment.getTicketId())) {
+            return false;
+        }
+
+        commentRepo.deleteById(commentId);
+        return true;
+    }
+
+    public boolean deleteTicket(String ticketId) {
+        Optional<Ticket> maybeTicket = ticketRepo.findById(ticketId);
+        if (maybeTicket.isEmpty()) {
+            return false;
+        }
+
+        commentRepo.deleteByTicketId(ticketId);
+        ticketRepo.deleteById(ticketId);
+        return true;
     }
 }
 
