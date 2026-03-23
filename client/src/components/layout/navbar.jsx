@@ -235,6 +235,12 @@ const Navbar = () => {
         <a href="#resources" style={centerLinkStyle}>
           Resources
         </a>
+        <span style={centerLinkStyle} onClick={() => navigate('/tickets/create')}>
+          Create Ticket
+        </span>
+        <span style={centerLinkStyle} onClick={() => navigate('/my-tickets')}>
+          My Tickets
+        </span>
         <a href="#about" style={centerLinkStyle}>
           About
         </a>

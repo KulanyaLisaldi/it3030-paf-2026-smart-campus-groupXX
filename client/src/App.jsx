@@ -5,6 +5,8 @@ import Home from "./pages/Home.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import TestApiPanel from "./components/TestApiPanel.jsx";
+import CreateTicket from "./pages/CreateTicket.jsx";
+import MyTickets from "./pages/MyTickets.jsx";
 
 function AppContent() {
   const location = useLocation();
@@ -17,6 +19,8 @@ function AppContent() {
         <Route path="/" element={<Home />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/tickets/create" element={<CreateTicket />} />
+        <Route path="/my-tickets" element={<MyTickets />} />
         <Route path="/test" element={
           <main className="grow">
             <TestApiPanel />

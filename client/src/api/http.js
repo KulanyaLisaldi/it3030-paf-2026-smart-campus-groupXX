@@ -31,3 +31,10 @@ export async function apiPost(path, body) {
     body: JSON.stringify(body),
   });
 }
+
+export async function apiPostFormData(path, formData) {
+  return request(path, {
+    method: "POST",
+    body: formData,
+  });
+}
