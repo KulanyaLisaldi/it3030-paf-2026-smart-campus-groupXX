@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signIn } from '../api/auth';
 
 const SignIn = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const pageStyle = {
     minHeight: '100vh',
@@ -135,6 +138,13 @@ const SignIn = () => {
     fontSize: '14px',
   };
 
+  const errorTextStyle = {
+    color: '#d32f2f',
+    fontSize: '14px',
+    marginBottom: '16px',
+    textAlign: 'left',
+  };
+
   const signUpLinkStyle = {
     color: '#FA8112',
     textDecoration: 'none',
@@ -168,15 +178,26 @@ const SignIn = () => {
     }
   };
 
-  const handleSignIn = (e) => {
+  const handleSignIn = async (e) => {
     e.preventDefault();
-    // Handle sign in logic here
-    console.log('Sign in with:', email, password);
+
+    setError('');
+    setLoading(true);
+    try {
+      const response = await signIn({ email, password });
+      if (response?.user) {
+        localStorage.setItem('smartCampusUser', JSON.stringify(response.user));
+      }
+      navigate('/');
+    } catch (err) {
+      setError(err.message || 'Sign in failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleSignIn = () => {
-    // Handle Google sign in logic here
-    console.log('Sign in with Google');
+    setError('Google sign in is not configured yet.');
   };
 
   return (
@@ -191,6 +212,8 @@ const SignIn = () => {
 
         {/* Sign In Form */}
         <form onSubmit={handleSignIn}>
+          {error && <p style={errorTextStyle}>{error}</p>}
+
           {/* Email Input */}
           <div style={inputContainerStyle}>
             <label style={labelStyle}>Email</label>
@@ -224,11 +247,12 @@ const SignIn = () => {
           {/* Sign In Button */}
           <button
             type="submit"
-            style={buttonStyle}
+            style={{ ...buttonStyle, opacity: loading ? 0.8 : 1 }}
             onMouseEnter={(e) => handleButtonHover(e, true)}
             onMouseLeave={(e) => handleButtonHover(e, false)}
+            disabled={loading}
           >
-            Sign In
+            {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
 

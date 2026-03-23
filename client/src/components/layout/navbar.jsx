@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 const Navbar = () => {
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(localStorage.getItem("smartCampusUser")));
 
   const navStyle = {
     width: "100%",
@@ -132,6 +133,18 @@ const Navbar = () => {
     transition: "all 0.2s ease",
   };
 
+  const logoutButtonStyle = {
+    padding: "8px 20px",
+    borderRadius: "6px",
+    border: "none",
+    backgroundColor: "#222222",
+    color: "#FFFFFF",
+    fontSize: "14px",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "opacity 0.2s ease",
+  };
+
   const handleLoginHover = (e, isHover) => {
     e.target.style.opacity = isHover ? "0.9" : "1";
   };
@@ -152,6 +165,12 @@ const Navbar = () => {
     } else {
       e.target.style.backgroundColor = "transparent";
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("smartCampusUser");
+    setIsLoggedIn(false);
+    navigate("/");
   };
 
   return (
@@ -224,7 +243,7 @@ const Navbar = () => {
         </a>
       </div>
 
-      {/* Right - Test button + Login + Sign Up */}
+      {/* Right - Auth actions */}
       <div style={rightContainerStyle}>
         <button
           type="button"
@@ -233,22 +252,36 @@ const Navbar = () => {
         >
           Test
         </button>
-        <button
-          style={signInButtonStyle}
-          onMouseEnter={(e) => handleLoginHover(e, true)}
-          onMouseLeave={(e) => handleLoginHover(e, false)}
-          onClick={() => navigate('/signin')}
-        >
-          Sign In
-        </button>
-        <button
-          style={signUpButtonStyle}
-          onMouseEnter={(e) => handleSignUpHover(e, true)}
-          onMouseLeave={(e) => handleSignUpHover(e, false)}
-          onClick={() => navigate('/signup')}
-        >
-          Sign Up
-        </button>
+
+        {isLoggedIn ? (
+          <button
+            style={logoutButtonStyle}
+            onMouseEnter={(e) => handleLoginHover(e, true)}
+            onMouseLeave={(e) => handleLoginHover(e, false)}
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        ) : (
+          <>
+            <button
+              style={signInButtonStyle}
+              onMouseEnter={(e) => handleLoginHover(e, true)}
+              onMouseLeave={(e) => handleLoginHover(e, false)}
+              onClick={() => navigate('/signin')}
+            >
+              Sign In
+            </button>
+            <button
+              style={signUpButtonStyle}
+              onMouseEnter={(e) => handleSignUpHover(e, true)}
+              onMouseLeave={(e) => handleSignUpHover(e, false)}
+              onClick={() => navigate('/signup')}
+            >
+              Sign Up
+            </button>
+          </>
+        )}
       </div>
     </nav>
   );
