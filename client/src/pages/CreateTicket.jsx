@@ -18,10 +18,7 @@ const RESOURCE_OPTIONS = [
   "Library",
   "Computer Lab",
   "Lecture Hall",
-  "Hostel",
   "Cafeteria",
-  "Administration Office",
-  "Parking Area",
   "Other",
 ];
 
