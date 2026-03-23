@@ -54,6 +54,10 @@ const buttonStyle = {
   padding: "12px 18px",
   fontSize: "14px",
   fontWeight: 600,
+  lineHeight: 1,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
   cursor: "pointer",
 };
 
@@ -580,10 +584,10 @@ export default function TicketDetails() {
                         <>
                           <p style={{ margin: "6px 0 0 0", color: "#374151", fontSize: "14px", fontWeight: 400, lineHeight: 1.45 }}>{c.content}</p>
                           <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                            <button type="button" style={buttonStyle} onClick={() => handleStartEditComment(c)}>
+                            <button type="button" style={{ ...buttonStyle, minWidth: "96px" }} onClick={() => handleStartEditComment(c)}>
                               Edit
                             </button>
-                            <button type="button" style={{ ...buttonStyle, backgroundColor: "#d32f2f" }} onClick={() => handleDeleteComment(c.id)}>
+                            <button type="button" style={{ ...buttonStyle, minWidth: "96px", backgroundColor: "#d32f2f" }} onClick={() => handleDeleteComment(c.id)}>
                               Delete
                             </button>
                           </div>
