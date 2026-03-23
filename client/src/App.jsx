@@ -12,7 +12,10 @@ import AdminTicketDashboard from "./pages/adminticketdashboard.jsx";
 
 function AppContent() {
   const location = useLocation();
-  const hideNavAndFooter = location.pathname === '/signin' || location.pathname === '/signup';
+  const hideNavAndFooter =
+    location.pathname === "/signin" ||
+    location.pathname === "/signup" ||
+    location.pathname === "/adminticket";
 
   return (
     <div className="min-h-screen flex flex-col">
