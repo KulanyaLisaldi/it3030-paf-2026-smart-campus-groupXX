@@ -77,6 +77,26 @@ const descriptionBoxStyle = {
   lineHeight: 1.45,
 };
 
+function getProgressInfo(status) {
+  const normalizedStatus = (status || "").toUpperCase();
+  if (normalizedStatus === "RESOLVED") {
+    return { percent: 100, label: "Resolved", color: "#2e7d32" };
+  }
+  if (normalizedStatus === "REJECTED") {
+    return { percent: 100, label: "Rejected", color: "#d32f2f" };
+  }
+  if (normalizedStatus === "IN_PROGRESS") {
+    return { percent: 70, label: "Accepted and in progress", color: "#FCA311" };
+  }
+  if (normalizedStatus === "ACCEPTED") {
+    return { percent: 40, label: "Accepted", color: "#FCA311" };
+  }
+  if (normalizedStatus === "OPEN") {
+    return { percent: 20, label: "Submitted, waiting for admin action", color: "#14213D" };
+  }
+  return { percent: 10, label: normalizedStatus || "Pending", color: "#14213D" };
+}
+
 const getCurrentUser = () => {
   try {
     const raw = localStorage.getItem("smartCampusUser");
@@ -162,58 +182,81 @@ export default function MyTickets() {
         {!loading && !error && tickets.length > 0 && (
           <div style={{ display: "grid", gap: "12px", marginTop: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
             {tickets.map((ticket) => (
-              <article
-                key={ticket.id}
-                style={{ ...ticketCardStyle, cursor: "pointer" }}
-                onClick={() => navigate(`/tickets/${ticket.id}`)}
-              >
-                <div style={metaRowStyle}>
-                  <span
-                    style={{
-                      ...chipBaseStyle,
-                      backgroundColor: "#14213D",
-                      color: "#FFFFFF",
-                    }}
+              (() => {
+                const progress = getProgressInfo(ticket.status);
+                return (
+                  <article
+                    key={ticket.id}
+                    style={{ ...ticketCardStyle, cursor: "pointer" }}
+                    onClick={() => navigate(`/tickets/${ticket.id}`)}
                   >
-                    Status: {ticket.status}
-                  </span>
+                    <div style={metaRowStyle}>
+                      <span
+                        style={{
+                          ...chipBaseStyle,
+                          backgroundColor: "#14213D",
+                          color: "#FFFFFF",
+                        }}
+                      >
+                        Status: {ticket.status}
+                      </span>
 
-                  <span
-                    style={{
-                      ...chipBaseStyle,
-                      backgroundColor:
-                        ticket.priority === "High"
-                          ? "#d32f2f"
-                          : ticket.priority === "Medium"
-                            ? "#FCA311"
-                            : "#2e7d32",
-                      color: "#FFFFFF",
-                    }}
-                  >
-                    Priority: {ticket.priority}
-                  </span>
+                      <span
+                        style={{
+                          ...chipBaseStyle,
+                          backgroundColor:
+                            ticket.priority === "High"
+                              ? "#d32f2f"
+                              : ticket.priority === "Medium"
+                                ? "#FCA311"
+                                : "#2e7d32",
+                          color: "#FFFFFF",
+                        }}
+                      >
+                        Priority: {ticket.priority}
+                      </span>
 
-                  <span
-                    style={{
-                      ...chipBaseStyle,
-                      backgroundColor: "#E5E5E5",
-                      color: "#14213D",
-                    }}
-                  >
-                    Category: {ticket.category}
-                  </span>
-                </div>
+                      <span
+                        style={{
+                          ...chipBaseStyle,
+                          backgroundColor: "#E5E5E5",
+                          color: "#14213D",
+                        }}
+                      >
+                        Category: {ticket.category}
+                      </span>
+                    </div>
 
-                <h3 style={{ margin: "0 0 6px 0", color: "#222222", fontSize: "16px", fontWeight: 700 }}>
-                  {ticket.issueTitle}
-                </h3>
+                    <h3 style={{ margin: "0 0 6px 0", color: "#222222", fontSize: "16px", fontWeight: 700 }}>
+                      {ticket.issueTitle}
+                    </h3>
 
-                <p style={{ margin: "10px 0 0 0", color: "#374151", fontSize: "14px", fontWeight: 600 }}>
-                  Location: <span style={{ fontWeight: 500 }}>{ticket.resourceLocation}</span>
-                </p>
+                    <div style={{ marginTop: "10px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", marginBottom: "6px" }}>
+                        <div style={{ color: "#374151", fontWeight: 600, fontSize: "14px" }}>Progress: {progress.percent}%</div>
+                      </div>
+                      <div style={{ color: "#6b7280", fontSize: "13px", fontWeight: 600, marginBottom: "6px" }}>
+                        {progress.label}
+                      </div>
+                      <div style={{ height: "10px", backgroundColor: "#FAF3E1", border: "1px solid #F5E7C6", borderRadius: "999px", overflow: "hidden" }}>
+                        <div
+                          style={{
+                            width: `${progress.percent}%`,
+                            height: "100%",
+                            backgroundColor: progress.color,
+                          }}
+                        />
+                      </div>
+                    </div>
 
-                <div style={{ ...descriptionBoxStyle, fontSize: "14px", fontWeight: 400 }}>{ticket.description}</div>
-              </article>
+                    <p style={{ margin: "10px 0 0 0", color: "#374151", fontSize: "14px", fontWeight: 600 }}>
+                      Location: <span style={{ fontWeight: 500 }}>{ticket.resourceLocation}</span>
+                    </p>
+
+                    <div style={{ ...descriptionBoxStyle, fontSize: "14px", fontWeight: 400 }}>{ticket.description}</div>
+                  </article>
+                );
+              })()
             ))}
           </div>
         )}
