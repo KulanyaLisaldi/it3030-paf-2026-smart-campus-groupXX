@@ -8,6 +8,7 @@ import TestApiPanel from "./components/TestApiPanel.jsx";
 import CreateTicket from "./pages/CreateTicket.jsx";
 import MyTickets from "./pages/MyTickets.jsx";
 import TicketDetails from "./pages/TicketDetails.jsx";
+import AdminTicketDashboard from "./pages/adminticketdashboard.jsx";
 
 function AppContent() {
   const location = useLocation();
@@ -23,6 +24,7 @@ function AppContent() {
         <Route path="/tickets/create" element={<CreateTicket />} />
         <Route path="/my-tickets" element={<MyTickets />} />
         <Route path="/tickets/:id" element={<TicketDetails />} />
+        <Route path="/adminticket" element={<AdminTicketDashboard />} />
         <Route path="/test" element={
           <main className="grow">
             <TestApiPanel />
