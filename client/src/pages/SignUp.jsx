@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signUp } from '../api/auth';
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -11,6 +12,8 @@ const SignUp = () => {
     password: '',
     confirmPassword: ''
   });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const pageStyle = {
     minHeight: '100vh',
@@ -122,6 +125,13 @@ const SignUp = () => {
     cursor: 'pointer',
   };
 
+  const errorTextStyle = {
+    color: '#d32f2f',
+    fontSize: '14px',
+    marginBottom: '16px',
+    textAlign: 'left',
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -156,19 +166,37 @@ const SignUp = () => {
     }
   };
 
-  const handleSignUp = (e) => {
+  const handleSignUp = async (e) => {
     e.preventDefault();
+
+    setError('');
+
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match!');
+      setError('Passwords do not match.');
       return;
     }
-    // Handle sign up logic here
-    console.log('Sign up with:', formData);
+
+    setLoading(true);
+    try {
+      const payload = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phoneNumber: formData.phoneNumber,
+        password: formData.password,
+      };
+
+      await signUp(payload);
+      navigate('/signin');
+    } catch (err) {
+      setError(err.message || 'Sign up failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleSignUp = () => {
-    // Handle Google sign up logic here
-    console.log('Sign up with Google');
+    setError('Google sign up is not configured yet.');
   };
 
   return (
@@ -182,6 +210,8 @@ const SignUp = () => {
 
         {/* Sign Up Form */}
         <form onSubmit={handleSignUp}>
+          {error && <p style={errorTextStyle}>{error}</p>}
+
           {/* First Name Input */}
           <div style={inputContainerStyle}>
             <label style={labelStyle}>First Name</label>
@@ -281,11 +311,12 @@ const SignUp = () => {
           {/* Create Account Button */}
           <button
             type="submit"
-            style={buttonStyle}
+            style={{ ...buttonStyle, opacity: loading ? 0.8 : 1 }}
             onMouseEnter={(e) => handleButtonHover(e, true)}
             onMouseLeave={(e) => handleButtonHover(e, false)}
+            disabled={loading}
           >
-            Create Account
+            {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
