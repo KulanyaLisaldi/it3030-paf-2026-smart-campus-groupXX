@@ -5,6 +5,7 @@ import { getMyTickets } from "../api/tickets";
 const pageStyle = {
   minHeight: "100vh",
   backgroundColor: "#FAF3E1",
+  backgroundImage: "linear-gradient(180deg, #FAF3E1 0%, #FFFFFF 70%)",
   padding: "28px 16px",
   display: "flex",
   justifyContent: "center",
@@ -17,6 +18,63 @@ const cardStyle = {
   borderRadius: "12px",
   boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
   padding: "24px",
+};
+
+const headerStripStyle = {
+  backgroundColor: "#FAF3E1",
+  color: "#222222",
+  borderRadius: "12px",
+  padding: "16px 16px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "12px",
+  marginBottom: "18px",
+  border: "1px solid #F5E7C6",
+};
+
+const titleStyle = {
+  margin: 0,
+  fontSize: "24px",
+  fontWeight: 800,
+  letterSpacing: "-0.2px",
+  color: "#222222",
+};
+
+const chipBaseStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "6px",
+  padding: "6px 10px",
+  borderRadius: "999px",
+  fontSize: "12px",
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+};
+
+const metaRowStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "8px",
+  marginTop: "10px",
+};
+
+const ticketCardStyle = {
+  border: "1px solid #F5E7C6",
+  borderRadius: "12px",
+  padding: "16px",
+  backgroundColor: "#FFFFFF",
+  boxShadow: "0 10px 24px rgba(20, 33, 61, 0.06)",
+};
+
+const descriptionBoxStyle = {
+  marginTop: "12px",
+  padding: "12px 14px",
+  borderRadius: "12px",
+  border: "1px solid #F5E7C6",
+  backgroundColor: "#FAF3E1",
+  color: "#374151",
+  lineHeight: 1.45,
 };
 
 const getCurrentUser = () => {
@@ -67,18 +125,20 @@ export default function MyTickets() {
   return (
     <div style={pageStyle}>
       <section style={cardStyle}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-          <h1 style={{ margin: 0, fontSize: "24px", color: "#222222" }}>My Tickets</h1>
+        <div style={headerStripStyle}>
+          <h1 style={titleStyle}>My Tickets</h1>
+
           <button
             type="button"
             style={{
               backgroundColor: "#FA8112",
               color: "#FFFFFF",
               border: "none",
-              borderRadius: "8px",
+              borderRadius: "10px",
               padding: "10px 14px",
-              fontWeight: 600,
+              fontWeight: 800,
               cursor: "pointer",
+              boxShadow: "0 10px 20px rgba(250, 129, 18, 0.22)",
             }}
             onMouseEnter={(event) => handleButtonHover(event, true)}
             onMouseLeave={(event) => handleButtonHover(event, false)}
@@ -99,30 +159,59 @@ export default function MyTickets() {
         {!loading && !error && tickets.length === 0 && <p>No tickets found yet.</p>}
 
         {!loading && !error && tickets.length > 0 && (
-          <div style={{ display: "grid", gap: "12px", marginTop: "12px" }}>
+          <div style={{ display: "grid", gap: "12px", marginTop: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
             {tickets.map((ticket) => (
               <article
                 key={ticket.id}
-                style={{
-                  border: "1px solid #F5E7C6",
-                  borderRadius: "10px",
-                  padding: "14px",
-                }}
+                style={{ ...ticketCardStyle, cursor: "pointer" }}
+                onClick={() => navigate(`/tickets/${ticket.id}`)}
               >
-                <h3 style={{ margin: "0 0 8px 0", color: "#222222" }}>{ticket.issueTitle}</h3>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>Status:</strong> {ticket.status}
+                <h3 style={{ margin: "0 0 6px 0", color: "#14213D", fontSize: "16px", fontWeight: 900 }}>
+                  {ticket.issueTitle}
+                </h3>
+
+                <div style={metaRowStyle}>
+                  <span
+                    style={{
+                      ...chipBaseStyle,
+                      backgroundColor: "#14213D",
+                      color: "#FFFFFF",
+                    }}
+                  >
+                    Status: {ticket.status}
+                  </span>
+
+                  <span
+                    style={{
+                      ...chipBaseStyle,
+                      backgroundColor:
+                        ticket.priority === "High"
+                          ? "#d32f2f"
+                          : ticket.priority === "Medium"
+                            ? "#FCA311"
+                            : "#2e7d32",
+                      color: "#FFFFFF",
+                    }}
+                  >
+                    Priority: {ticket.priority}
+                  </span>
+
+                  <span
+                    style={{
+                      ...chipBaseStyle,
+                      backgroundColor: "#E5E5E5",
+                      color: "#14213D",
+                    }}
+                  >
+                    Category: {ticket.category}
+                  </span>
+                </div>
+
+                <p style={{ margin: "10px 0 0 0", color: "#374151", fontWeight: 700 }}>
+                  Location: <span style={{ fontWeight: 600 }}>{ticket.resourceLocation}</span>
                 </p>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>Category:</strong> {ticket.category}
-                </p>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>Priority:</strong> {ticket.priority}
-                </p>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>Location:</strong> {ticket.resourceLocation}
-                </p>
-                <p style={{ margin: "8px 0 0 0", color: "#444444" }}>{ticket.description}</p>
+
+                <div style={descriptionBoxStyle}>{ticket.description}</div>
               </article>
             ))}
           </div>
