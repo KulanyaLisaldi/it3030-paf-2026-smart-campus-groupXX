@@ -252,14 +252,6 @@ export default function AdminTicketDashboard() {
                     <div style={{ color: "#374151", fontSize: "13px", marginTop: "4px" }}>{ticket.email || "N/A"}</div>
                     <div style={{ color: "#374151", fontSize: "13px", marginTop: "2px" }}>{ticket.phoneNumber || "N/A"}</div>
                   </div>
-
-                  <div style={{ border: "1px solid #F5E7C6", borderRadius: "10px", padding: "10px", backgroundColor: "#FAF3E1" }}>
-                    <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700 }}>System User</div>
-                    <div style={{ color: "#222222", fontSize: "14px", fontWeight: 700 }}>{ticket.createdBy || "N/A"}</div>
-                    <div style={{ color: "#374151", fontSize: "13px", marginTop: "4px" }}>
-                      Ticket ID: {ticket.id || "N/A"}
-                    </div>
-                  </div>
                 </div>
 
                 <div style={{ marginTop: "10px", border: "1px solid #F5E7C6", borderRadius: "10px", padding: "10px", backgroundColor: "#FAF3E1" }}>
