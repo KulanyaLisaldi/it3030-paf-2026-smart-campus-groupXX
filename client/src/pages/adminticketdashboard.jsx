@@ -452,33 +452,6 @@ export default function AdminTicketDashboard() {
           </div>
         </div>
 
-        <div style={{ marginBottom: "14px", border: "1px solid #F5E7C6", borderRadius: "12px", backgroundColor: "#FAF3E1", padding: "8px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          <button
-            type="button"
-            style={{
-              ...buttonStyle,
-              backgroundColor: activeView === "dashboard" ? "#14213D" : "#FFFFFF",
-              color: activeView === "dashboard" ? "#FFFFFF" : "#14213D",
-              border: activeView === "dashboard" ? "none" : "1px solid #F5E7C6",
-            }}
-            onClick={() => handleViewChange("dashboard")}
-          >
-            Main Dashboard
-          </button>
-          <button
-            type="button"
-            style={{
-              ...buttonStyle,
-              backgroundColor: activeView === "tickets" ? "#14213D" : "#FFFFFF",
-              color: activeView === "tickets" ? "#FFFFFF" : "#14213D",
-              border: activeView === "tickets" ? "none" : "1px solid #F5E7C6",
-            }}
-            onClick={() => handleViewChange("tickets")}
-          >
-            Ticket Operations
-          </button>
-        </div>
-
         {activeView === "dashboard" && (
           <div
             style={{
@@ -486,7 +459,7 @@ export default function AdminTicketDashboard() {
               display: "grid",
               gridTemplateColumns: "250px minmax(0, 1fr)",
               gap: "12px",
-              alignItems: "start",
+              alignItems: "stretch",
             }}
           >
             <aside
@@ -496,7 +469,9 @@ export default function AdminTicketDashboard() {
                 borderRadius: "12px",
                 backgroundColor: "#FAF3E1",
                 padding: "12px",
-                minHeight: "760px",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
               }}
             >
               <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, marginBottom: "10px" }}>Admin Desk</div>
@@ -562,7 +537,7 @@ export default function AdminTicketDashboard() {
 
               <button
                 type="button"
-                style={{ ...logoutButtonStyle, marginTop: "12px", width: "100%" }}
+                style={{ ...logoutButtonStyle, marginTop: "auto", width: "100%" }}
                 onMouseEnter={(e) => handleLogoutHover(e, true)}
                 onMouseLeave={(e) => handleLogoutHover(e, false)}
                 onClick={handleLogout}
@@ -599,14 +574,6 @@ export default function AdminTicketDashboard() {
                   <div style={{ color: "#6b7280", fontSize: "13px", fontWeight: 600, marginTop: "4px" }}>
                     Ticket analytics dashboard with live operational metrics
                   </div>
-                </div>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  <button type="button" style={{ ...buttonStyle, padding: "10px 14px", backgroundColor: "#14213D" }}>
-                    Export
-                  </button>
-                  <button type="button" style={{ ...buttonStyle, padding: "10px 14px" }}>
-                    Refresh
-                  </button>
                 </div>
               </div>
 
@@ -773,7 +740,7 @@ export default function AdminTicketDashboard() {
               display: "grid",
               gridTemplateColumns: "250px minmax(0, 1fr)",
               gap: "12px",
-              alignItems: "start",
+              alignItems: "stretch",
             }}
           >
             <aside
@@ -782,7 +749,9 @@ export default function AdminTicketDashboard() {
                 borderRadius: "12px",
                 backgroundColor: "#FAF3E1",
                 padding: "12px",
-                minHeight: "760px",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
               }}
             >
               <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, marginBottom: "10px" }}>Admin Desk</div>
@@ -835,7 +804,7 @@ export default function AdminTicketDashboard() {
 
               <button
                 type="button"
-                style={{ ...logoutButtonStyle, marginTop: "12px", width: "100%" }}
+                style={{ ...logoutButtonStyle, marginTop: "auto", width: "100%" }}
                 onMouseEnter={(e) => handleLogoutHover(e, true)}
                 onMouseLeave={(e) => handleLogoutHover(e, false)}
                 onClick={handleLogout}
