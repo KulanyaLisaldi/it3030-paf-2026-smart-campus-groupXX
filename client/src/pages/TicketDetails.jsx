@@ -166,6 +166,31 @@ const getFullName = (user) => {
   return `${firstName} ${lastName}`.trim();
 };
 
+const getAdminDecisionMap = () => {
+  try {
+    const raw = localStorage.getItem("adminTicketDecisions");
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const applyAdminDecisionToDetails = (data) => {
+  const decisionMap = getAdminDecisionMap();
+  const ticketId = data?.ticket?.id;
+  const decision = ticketId ? decisionMap[ticketId] : null;
+  if (!decision?.status) return data;
+  return {
+    ...data,
+    ticket: {
+      ...data.ticket,
+      status: decision.status,
+      rejectionReason: decision.rejectionReason || "",
+    },
+  };
+};
+
 export default function TicketDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -206,16 +231,17 @@ export default function TicketDetails() {
 
       try {
         const data = await getTicketDetails(id);
-        setTicketDetails(data);
+        const mergedData = applyAdminDecisionToDetails(data);
+        setTicketDetails(mergedData);
         setTicketForm({
-          fullName: data?.ticket?.fullName || "",
-          email: data?.ticket?.email || "",
-          phoneNumber: data?.ticket?.phoneNumber || "",
-          resourceLocation: data?.ticket?.resourceLocation || "",
-          category: data?.ticket?.category || "",
-          issueTitle: data?.ticket?.issueTitle || "",
-          description: data?.ticket?.description || "",
-          priority: data?.ticket?.priority || "",
+          fullName: mergedData?.ticket?.fullName || "",
+          email: mergedData?.ticket?.email || "",
+          phoneNumber: mergedData?.ticket?.phoneNumber || "",
+          resourceLocation: mergedData?.ticket?.resourceLocation || "",
+          category: mergedData?.ticket?.category || "",
+          issueTitle: mergedData?.ticket?.issueTitle || "",
+          description: mergedData?.ticket?.description || "",
+          priority: mergedData?.ticket?.priority || "",
         });
       } catch (err) {
         setError(err.message || "Failed to load ticket details.");
@@ -285,8 +311,9 @@ export default function TicketDetails() {
 
   const refreshDetails = async () => {
     const data = await getTicketDetails(id);
-    setTicketDetails(data);
-    return data;
+    const mergedData = applyAdminDecisionToDetails(data);
+    setTicketDetails(mergedData);
+    return mergedData;
   };
 
   const handleTicketUpdate = async (e) => {
@@ -438,6 +465,22 @@ export default function TicketDetails() {
               <div style={{ marginTop: "10px", color: "#374151", fontSize: "14px", fontWeight: 400, lineHeight: 1.5 }}>
                 {ticketDetails.ticket.description}
               </div>
+              {(ticketDetails.ticket.status || "").toUpperCase() === "REJECTED" && ticketDetails.ticket.rejectionReason && (
+                <div
+                  style={{
+                    marginTop: "10px",
+                    border: "1px solid #F5E7C6",
+                    borderRadius: "10px",
+                    padding: "10px 12px",
+                    backgroundColor: "#FAF3E1",
+                  }}
+                >
+                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase" }}>Rejection Reason</div>
+                  <div style={{ marginTop: "4px", color: "#d32f2f", fontSize: "14px", fontWeight: 600 }}>
+                    {ticketDetails.ticket.rejectionReason}
+                  </div>
+                </div>
+              )}
 
               {editingTicket && (
                 <form onSubmit={handleTicketUpdate} style={{ marginTop: "12px", display: "grid", gap: "8px" }}>

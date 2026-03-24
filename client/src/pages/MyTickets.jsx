@@ -106,6 +106,16 @@ const getCurrentUser = () => {
   }
 };
 
+const getAdminDecisionMap = () => {
+  try {
+    const raw = localStorage.getItem("adminTicketDecisions");
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
 export default function MyTickets() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -131,7 +141,18 @@ export default function MyTickets() {
       try {
         setLoading(true);
         const data = await getMyTickets(createdBy);
-        setTickets(Array.isArray(data) ? data : []);
+        const decisions = getAdminDecisionMap();
+        const list = Array.isArray(data) ? data : [];
+        const merged = list.map((ticket) => {
+          const decision = decisions[ticket?.id];
+          if (!decision?.status) return ticket;
+          return {
+            ...ticket,
+            status: decision.status,
+            rejectionReason: decision.rejectionReason || "",
+          };
+        });
+        setTickets(merged);
       } catch (err) {
         setError(err.message || "Failed to load tickets.");
       } finally {
@@ -257,6 +278,11 @@ export default function MyTickets() {
                     </p>
 
                     <div style={{ ...descriptionBoxStyle, fontSize: "14px", fontWeight: 400 }}>{ticket.description}</div>
+                    {(ticket.status || "").toUpperCase() === "REJECTED" && ticket.rejectionReason && (
+                      <div style={{ ...descriptionBoxStyle, marginTop: "8px", color: "#d32f2f", fontSize: "13px", fontWeight: 600 }}>
+                        Rejection Reason: {ticket.rejectionReason}
+                      </div>
+                    )}
                   </article>
                 );
               })()

@@ -138,6 +138,70 @@ const chartCardStyle = {
   boxShadow: "0 6px 14px rgba(20, 33, 61, 0.05)",
 };
 
+const hasOnlyAllowedTextChars = (value) => /^[a-zA-Z0-9\s]+$/.test(value);
+const hasTooManyRepeatedChars = (value) => /(.)\1{3,}/.test(value);
+
+const DECISIONS_STORAGE_KEY = "adminTicketDecisions";
+const NOTIFICATIONS_STORAGE_KEY = "smartCampusNotifications";
+
+const getStoredDecisions = () => {
+  try {
+    const raw = localStorage.getItem(DECISIONS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const storeDecision = (ticketId, status, rejectionReason = "") => {
+  const current = getStoredDecisions();
+  current[ticketId] = {
+    status,
+    rejectionReason: rejectionReason || "",
+    updatedAt: new Date().toISOString(),
+  };
+  localStorage.setItem(DECISIONS_STORAGE_KEY, JSON.stringify(current));
+};
+
+const pushUserNotification = (ticket, status, rejectionReason = "") => {
+  try {
+    const current = JSON.parse(localStorage.getItem(NOTIFICATIONS_STORAGE_KEY) || "[]");
+    const list = Array.isArray(current) ? current : [];
+    const isRejected = (status || "").toUpperCase() === "REJECTED";
+    const message = isRejected
+      ? `Your ticket "${ticket?.issueTitle || "Untitled Ticket"}" was rejected. Reason: ${rejectionReason}`
+      : `Your ticket "${ticket?.issueTitle || "Untitled Ticket"}" was accepted by admin.`;
+
+    list.unshift({
+      id: `${ticket?.id || "ticket"}-${Date.now()}`,
+      ticketId: ticket?.id || "",
+      createdBy: ticket?.createdBy || ticket?.email || "",
+      status: (status || "").toUpperCase(),
+      message,
+      createdAt: new Date().toISOString(),
+    });
+    localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(list));
+  } catch {
+    // Ignore notification storage errors.
+  }
+};
+
+const applyStoredDecision = (item, decisions) => {
+  const ticketId = item?.ticket?.id;
+  if (!ticketId) return item;
+  const decision = decisions[ticketId];
+  if (!decision?.status) return item;
+  return {
+    ...item,
+    ticket: {
+      ...item.ticket,
+      status: decision.status,
+      rejectionReason: decision.rejectionReason || "",
+    },
+  };
+};
+
 function toProgressPercent(status) {
   if (status === "OPEN") return 20;
   if (status === "ACCEPTED") return 40;
@@ -192,6 +256,9 @@ export default function AdminTicketDashboard() {
   const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("DATE_DESC");
   const [activeMenuItem, setActiveMenuItem] = useState("Dashboard");
+  const [rejectingTicketId, setRejectingTicketId] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectionError, setRejectionError] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -199,7 +266,9 @@ export default function AdminTicketDashboard() {
       setError("");
       try {
         const data = await getAdminTicketList();
-        setTickets(Array.isArray(data) ? data : []);
+        const decisions = getStoredDecisions();
+        const list = Array.isArray(data) ? data : [];
+        setTickets(list.map((item) => applyStoredDecision(item, decisions)));
       } catch (err) {
         setError(err.message || "Failed to load tickets.");
       } finally {
@@ -263,19 +332,50 @@ export default function AdminTicketDashboard() {
     e.currentTarget.style.opacity = isHover ? "0.9" : "1";
   };
 
-  const handleTicketDecision = (ticketId, decision) => {
+  const handleTicketDecision = (ticketId, decision, reason = "") => {
     setTickets((prev) =>
       (Array.isArray(prev) ? prev : []).map((item) => {
         if (item?.ticket?.id !== ticketId) return item;
+        const nextTicket = {
+          ...item.ticket,
+          status: decision,
+          rejectionReason: decision === "REJECTED" ? reason : "",
+        };
+        storeDecision(ticketId, decision, decision === "REJECTED" ? reason : "");
+        pushUserNotification(nextTicket, decision, reason);
         return {
           ...item,
-          ticket: {
-            ...item.ticket,
-            status: decision,
-          },
+          ticket: nextTicket,
         };
       })
     );
+  };
+
+  const openRejectionForm = (ticketId) => {
+    setRejectingTicketId(ticketId);
+    setRejectionReason("");
+    setRejectionError("");
+  };
+
+  const submitRejection = (ticketId) => {
+    const reason = rejectionReason.trim();
+    if (!reason) {
+      setRejectionError("Rejection reason is required.");
+      return;
+    }
+    if (!hasOnlyAllowedTextChars(reason)) {
+      setRejectionError("Rejection reason cannot contain special characters.");
+      return;
+    }
+    if (hasTooManyRepeatedChars(reason)) {
+      setRejectionError("Rejection reason cannot repeat the same character many times.");
+      return;
+    }
+
+    handleTicketDecision(ticketId, "REJECTED", reason);
+    setRejectingTicketId("");
+    setRejectionReason("");
+    setRejectionError("");
   };
 
   const filteredAndSortedTickets = useMemo(() => {
@@ -958,20 +1058,33 @@ export default function AdminTicketDashboard() {
                   </div>
                 </div>
 
+                {(ticket.status || "").toUpperCase() === "REJECTED" && ticket.rejectionReason && (
+                  <div style={{ marginTop: "10px", border: "1px solid #F5E7C6", borderRadius: "10px", padding: "12px", backgroundColor: "#FAF3E1" }}>
+                    <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>
+                      Rejection Reason
+                    </div>
+                    <div style={{ color: "#d32f2f", fontSize: "14px", fontWeight: 600, lineHeight: 1.45, marginTop: "4px" }}>
+                      {ticket.rejectionReason}
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}>
                   <div style={{ display: "flex", gap: "8px", marginRight: "8px" }}>
-                    <button
-                      type="button"
-                      style={{ ...buttonStyle, backgroundColor: "#2e7d32", minWidth: "96px" }}
-                      onClick={() => handleTicketDecision(ticket.id, "ACCEPTED")}
-                      disabled={(ticket.status || "").toUpperCase() === "ACCEPTED"}
-                    >
-                      Accept
-                    </button>
+                    {(ticket.status || "").toUpperCase() !== "REJECTED" && rejectingTicketId !== ticket.id && (
+                      <button
+                        type="button"
+                        style={{ ...buttonStyle, backgroundColor: "#2e7d32", minWidth: "96px" }}
+                        onClick={() => handleTicketDecision(ticket.id, "ACCEPTED")}
+                        disabled={(ticket.status || "").toUpperCase() === "ACCEPTED"}
+                      >
+                        Accept
+                      </button>
+                    )}
                     <button
                       type="button"
                       style={{ ...buttonStyle, backgroundColor: "#d32f2f", minWidth: "96px" }}
-                      onClick={() => handleTicketDecision(ticket.id, "REJECTED")}
+                      onClick={() => openRejectionForm(ticket.id)}
                       disabled={(ticket.status || "").toUpperCase() === "REJECTED"}
                     >
                       Reject
@@ -981,6 +1094,46 @@ export default function AdminTicketDashboard() {
                     {openTicketIds[ticket.id] ? "Hide Comments" : "Show Comments"}
                   </button>
                 </div>
+
+                {rejectingTicketId === ticket.id && (
+                  <div style={{ marginTop: "10px", border: "1px solid #F5E7C6", borderRadius: "10px", padding: "12px", backgroundColor: "#FAF3E1" }}>
+                    <div style={{ color: "#222222", fontSize: "14px", fontWeight: 700, marginBottom: "8px" }}>Add Rejection Reason</div>
+                    <textarea
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                      placeholder="Enter rejection reason"
+                      style={{
+                        width: "100%",
+                        minHeight: "84px",
+                        resize: "vertical",
+                        border: "2px solid #F5E7C6",
+                        borderRadius: "8px",
+                        padding: "10px 12px",
+                        fontSize: "14px",
+                        outline: "none",
+                        boxSizing: "border-box",
+                        backgroundColor: "#FFFFFF",
+                      }}
+                    />
+                    {rejectionError && <div style={{ marginTop: "8px", color: "#d32f2f", fontSize: "13px", fontWeight: 600 }}>{rejectionError}</div>}
+                    <div style={{ marginTop: "10px", display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                      <button
+                        type="button"
+                        style={{ ...buttonStyle, backgroundColor: "#6b7280", minWidth: "96px" }}
+                        onClick={() => {
+                          setRejectingTicketId("");
+                          setRejectionReason("");
+                          setRejectionError("");
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button type="button" style={{ ...buttonStyle, backgroundColor: "#d32f2f", minWidth: "96px" }} onClick={() => submitRejection(ticket.id)}>
+                        Save Reject
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {openTicketIds[ticket.id] && (
                   <div style={commentBoxStyle}>
