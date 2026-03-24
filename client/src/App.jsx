@@ -5,7 +5,6 @@ import Home from "./pages/Home.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import OAuthCallback from "./pages/OAuthCallback.jsx";
 import TechnicianDashboard from "./pages/TechnicianDashboard.jsx";
-import TestApiPanel from "./components/TestApiPanel.jsx";
 import CreateTicket from "./pages/CreateTicket.jsx";
 import MyTickets from "./pages/MyTickets.jsx";
 import TicketDetails from "./pages/TicketDetails.jsx";
@@ -31,11 +30,6 @@ function AppContent() {
         <Route path="/my-tickets" element={<MyTickets />} />
         <Route path="/tickets/:id" element={<TicketDetails />} />
         <Route path="/adminticket" element={<AdminTicketDashboard />} />
-        <Route path="/test" element={
-          <main className="grow">
-            <TestApiPanel />
-          </main>
-        } />
       </Routes>
       {!hideNavAndFooter && <Footer />}
     </div>
