@@ -139,18 +139,6 @@ const Navbar = () => {
     transition: "opacity 0.2s ease",
   };
 
-  const signUpButtonStyle = {
-    padding: "6px 20px",
-    borderRadius: "6px",
-    border: "2px solid #FA8112",
-    backgroundColor: "transparent",
-    color: "#FA8112",
-    fontSize: "14px",
-    fontWeight: "600",
-    cursor: "pointer",
-    transition: "all 0.2s ease",
-  };
-
   const logoutButtonStyle = {
     padding: "8px 20px",
     borderRadius: "6px",
@@ -167,16 +155,6 @@ const Navbar = () => {
     e.target.style.opacity = isHover ? "0.9" : "1";
   };
 
-  const handleSignUpHover = (e, isHover) => {
-    if (isHover) {
-      e.target.style.backgroundColor = "#FA8112";
-      e.target.style.color = "#FFFFFF";
-    } else {
-      e.target.style.backgroundColor = "transparent";
-      e.target.style.color = "#FA8112";
-    }
-  };
-
   const handleDropdownItemHover = (e, isHover) => {
     if (isHover) {
       e.target.style.backgroundColor = "#FAF3E1";
@@ -187,6 +165,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("smartCampusUser");
+    localStorage.removeItem("smartCampusAuthToken");
     setIsLoggedIn(false);
     navigate("/");
   };
@@ -338,24 +317,14 @@ const Navbar = () => {
             Logout
           </button>
         ) : (
-          <>
-            <button
-              style={signInButtonStyle}
-              onMouseEnter={(e) => handleLoginHover(e, true)}
-              onMouseLeave={(e) => handleLoginHover(e, false)}
-              onClick={() => navigate('/signin')}
-            >
-              Sign In
-            </button>
-            <button
-              style={signUpButtonStyle}
-              onMouseEnter={(e) => handleSignUpHover(e, true)}
-              onMouseLeave={(e) => handleSignUpHover(e, false)}
-              onClick={() => navigate('/signup')}
-            >
-              Sign Up
-            </button>
-          </>
+          <button
+            style={signInButtonStyle}
+            onMouseEnter={(e) => handleLoginHover(e, true)}
+            onMouseLeave={(e) => handleLoginHover(e, false)}
+            onClick={() => navigate('/signin')}
+          >
+            Sign In
+          </button>
         )}
       </div>
     </nav>

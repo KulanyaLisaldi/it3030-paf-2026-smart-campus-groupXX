@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signIn } from '../api/auth';
+import { setAuthToken } from '../api/http';
+import { navigateAfterAuth } from '../utils/authRedirect';
 
 const SignIn = () => {
   const navigate = useNavigate();
@@ -53,7 +55,15 @@ const SignIn = () => {
     fontSize: '18px',
     fontWeight: '600',
     color: '#222222',
-    marginBottom: '32px',
+    marginBottom: '12px',
+  };
+
+  const hintStyle = {
+    fontSize: '13px',
+    color: '#6b7280',
+    marginBottom: '24px',
+    lineHeight: 1.45,
+    textAlign: 'left',
   };
 
   const inputContainerStyle = {
@@ -130,12 +140,7 @@ const SignIn = () => {
     alignItems: 'center',
     justifyContent: 'center',
     gap: '8px',
-    marginBottom: '24px',
-  };
-
-  const signUpTextStyle = {
-    color: '#222222',
-    fontSize: '14px',
+    marginBottom: '16px',
   };
 
   const errorTextStyle = {
@@ -143,13 +148,6 @@ const SignIn = () => {
     fontSize: '14px',
     marginBottom: '16px',
     textAlign: 'left',
-  };
-
-  const signUpLinkStyle = {
-    color: '#FA8112',
-    textDecoration: 'none',
-    fontWeight: '600',
-    cursor: 'pointer',
   };
 
   const handleInputFocus = (e) => {
@@ -162,7 +160,7 @@ const SignIn = () => {
 
   const handleButtonHover = (e, isHover) => {
     if (isHover) {
-      e.target.style.backgroundColor = '#E66A0A'; // darker orange
+      e.target.style.backgroundColor = '#E66A0A';
     } else {
       e.target.style.backgroundColor = '#FA8112';
     }
@@ -178,7 +176,7 @@ const SignIn = () => {
     }
   };
 
-  const handleSignIn = async (e) => {
+  const handleStaffSignIn = async (e) => {
     e.preventDefault();
 
     setError('');
@@ -188,7 +186,12 @@ const SignIn = () => {
       if (response?.user) {
         localStorage.setItem('smartCampusUser', JSON.stringify(response.user));
       }
-      navigate('/');
+      if (response?.token) {
+        setAuthToken(response.token);
+      } else {
+        setAuthToken(null);
+      }
+      navigateAfterAuth(response?.user, navigate);
     } catch (err) {
       setError(err.message || 'Sign in failed');
     } finally {
@@ -197,26 +200,30 @@ const SignIn = () => {
   };
 
   const handleGoogleSignIn = () => {
-    setError('Google sign in is not configured yet.');
+    setError('');
+    const apiOrigin = import.meta.env.VITE_API_ORIGIN || 'http://localhost:8081';
+    window.location.assign(`${apiOrigin.replace(/\/$/, '')}/oauth2/authorization/google`);
   };
 
   return (
     <div style={pageStyle}>
       <div style={cardStyle}>
-        {/* Logo */}
         <div style={logoBoxStyle}>SC</div>
 
-        {/* Title */}
         <h1 style={titleStyle}>Smart Operations Platform</h1>
         <h2 style={subtitleStyle}>Sign In</h2>
 
-        {/* Sign In Form */}
-        <form onSubmit={handleSignIn}>
+        <p style={hintStyle}>
+          <strong>Campus users</strong> sign in with Google (no separate registration).
+          <br />
+          <strong>Admin and technicians</strong> use email and password below.
+        </p>
+
+        <form onSubmit={handleStaffSignIn}>
           {error && <p style={errorTextStyle}>{error}</p>}
 
-          {/* Email Input */}
           <div style={inputContainerStyle}>
-            <label style={labelStyle}>Email</label>
+            <label style={labelStyle}>Email (staff)</label>
             <input
               type="email"
               value={email}
@@ -224,12 +231,12 @@ const SignIn = () => {
               onFocus={handleInputFocus}
               onBlur={handleInputBlur}
               style={inputStyle}
-              placeholder="Enter your email"
+              placeholder="Admin or technician email"
+              autoComplete="username"
               required
             />
           </div>
 
-          {/* Password Input */}
           <div style={inputContainerStyle}>
             <label style={labelStyle}>Password</label>
             <input
@@ -239,12 +246,12 @@ const SignIn = () => {
               onFocus={handleInputFocus}
               onBlur={handleInputBlur}
               style={inputStyle}
-              placeholder="Enter your password"
+              placeholder="Password"
+              autoComplete="current-password"
               required
             />
           </div>
 
-          {/* Sign In Button */}
           <button
             type="submit"
             style={{ ...buttonStyle, opacity: loading ? 0.8 : 1 }}
@@ -252,38 +259,26 @@ const SignIn = () => {
             onMouseLeave={(e) => handleButtonHover(e, false)}
             disabled={loading}
           >
-            {loading ? 'Signing In...' : 'Sign In'}
+            {loading ? 'Signing In…' : 'Staff sign in'}
           </button>
         </form>
 
-        {/* OR Divider */}
         <div style={orDividerStyle}>
-          <div style={dividerLineStyle}></div>
+          <div style={dividerLineStyle} />
           <span style={orTextStyle}>OR</span>
-          <div style={dividerLineStyle}></div>
+          <div style={dividerLineStyle} />
         </div>
 
-        {/* Google Sign In Button */}
         <button
+          type="button"
           style={googleButtonStyle}
           onMouseEnter={(e) => handleGoogleHover(e, true)}
           onMouseLeave={(e) => handleGoogleHover(e, false)}
           onClick={handleGoogleSignIn}
         >
-          <span>🌐</span>
+          <span aria-hidden>🌐</span>
           Sign in with Google
         </button>
-
-        {/* Sign Up Link */}
-        <p style={signUpTextStyle}>
-          Don't have an account?{' '}
-          <span
-            style={signUpLinkStyle}
-            onClick={() => navigate('/signup')}
-          >
-            Sign Up
-          </span>
-        </p>
       </div>
     </div>
   );

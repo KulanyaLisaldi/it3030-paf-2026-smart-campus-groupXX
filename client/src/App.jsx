@@ -3,7 +3,8 @@ import Navbar from "./components/layout/navbar.jsx";
 import Footer from "./components/layout/footer.jsx";
 import Home from "./pages/Home.jsx";
 import SignIn from "./pages/SignIn.jsx";
-import SignUp from "./pages/SignUp.jsx";
+import OAuthCallback from "./pages/OAuthCallback.jsx";
+import TechnicianDashboard from "./pages/TechnicianDashboard.jsx";
 import TestApiPanel from "./components/TestApiPanel.jsx";
 import CreateTicket from "./pages/CreateTicket.jsx";
 import MyTickets from "./pages/MyTickets.jsx";
@@ -14,8 +15,9 @@ function AppContent() {
   const location = useLocation();
   const hideNavAndFooter =
     location.pathname === "/signin" ||
-    location.pathname === "/signup" ||
-    location.pathname === "/adminticket";
+    location.pathname === "/oauth/callback" ||
+    location.pathname === "/adminticket" ||
+    location.pathname === "/technician";
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -23,7 +25,8 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/signin" element={<SignIn />} />
-        <Route path="/signup" element={<SignUp />} />
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
+        <Route path="/technician" element={<TechnicianDashboard />} />
         <Route path="/tickets/create" element={<CreateTicket />} />
         <Route path="/my-tickets" element={<MyTickets />} />
         <Route path="/tickets/:id" element={<TicketDetails />} />

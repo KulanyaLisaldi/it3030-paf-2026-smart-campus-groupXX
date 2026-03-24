@@ -1,11 +1,11 @@
-package com.example.server.dto.auth;
+package com.example.server.dto.admin;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-public class SignUpRequest {
+public class CreateTechnicianRequest {
 
     @NotBlank(message = "First name is required")
     private String firstName;
@@ -17,9 +17,9 @@ public class SignUpRequest {
     @Email(message = "Email format is invalid")
     private String email;
 
-    @NotBlank(message = "Phone number is required")
-    @Pattern(regexp = "^[0-9+\\-\\s()]{7,20}$", message = "Phone number format is invalid")
-    private String phoneNumber;
+    /** Optional; stored for contact. */
+    @Pattern(regexp = "^$|^[0-9+\\-\\s()]{7,20}$", message = "Phone number format is invalid")
+    private String phoneNumber = "";
 
     @NotBlank(message = "Password is required")
     @Size(min = 6, max = 128, message = "Password must be at least 6 characters")

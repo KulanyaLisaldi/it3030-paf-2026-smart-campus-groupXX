@@ -1,5 +1,25 @@
+const AUTH_TOKEN_KEY = "smartCampusAuthToken";
+
+export function getAuthToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function setAuthToken(token) {
+  if (token) {
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+  }
+}
+
 async function request(path, options) {
-  const res = await fetch(path, options);
+  const headers = { ...(options.headers || {}) };
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (token && !headers.Authorization) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const res = await fetch(path, { ...options, headers });
 
   const contentType = res.headers.get("content-type") || "";
   let payload = null;
@@ -20,8 +40,8 @@ async function request(path, options) {
   return payload;
 }
 
-export async function apiGet(path) {
-  return request(path, { method: "GET" });
+export async function apiGet(path, extraOptions = {}) {
+  return request(path, { method: "GET", ...extraOptions });
 }
 
 export async function apiPost(path, body) {
