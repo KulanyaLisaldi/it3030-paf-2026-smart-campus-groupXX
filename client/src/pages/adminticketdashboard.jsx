@@ -207,7 +207,7 @@ function toProgressPercent(status) {
   if (status === "ACCEPTED") return 40;
   if (status === "IN_PROGRESS") return 70;
   if (status === "RESOLVED") return 100;
-  if (status === "REJECTED") return 100;
+  if (status === "REJECTED") return 0;
   return 10;
 }
 
@@ -227,7 +227,7 @@ function getProgressInfo(status, commentsCount) {
     return { percent: 100, label: "Resolved", color: "#2e7d32" };
   }
   if (normalizedStatus === "REJECTED") {
-    return { percent: 100, label: "Rejected", color: "#d32f2f" };
+    return { percent: 0, label: "Rejected", color: "#d32f2f" };
   }
   if (normalizedStatus === "IN_PROGRESS") {
     return { percent: 70, label: "Accepted and in progress", color: "#FCA311" };

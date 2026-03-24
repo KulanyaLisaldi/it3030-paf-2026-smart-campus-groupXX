@@ -83,7 +83,7 @@ function getProgressInfo(status) {
     return { percent: 100, label: "Resolved", color: "#2e7d32" };
   }
   if (normalizedStatus === "REJECTED") {
-    return { percent: 100, label: "Rejected", color: "#d32f2f" };
+    return { percent: 0, label: "Rejected", color: "#d32f2f" };
   }
   if (normalizedStatus === "IN_PROGRESS") {
     return { percent: 70, label: "Accepted and in progress", color: "#FCA311" };
