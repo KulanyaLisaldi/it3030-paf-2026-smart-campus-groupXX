@@ -436,78 +436,163 @@ export default function AdminTicketDashboard() {
         </div>
 
         {activeView === "dashboard" && (
-          <>
-            <div
+          <div
+            style={{
+              marginBottom: "14px",
+              display: "grid",
+              gridTemplateColumns: "250px minmax(0, 1fr)",
+              gap: "12px",
+              alignItems: "start",
+            }}
+          >
+            <aside
               style={{
-                marginBottom: "14px",
-                padding: "14px",
                 border: "1px solid #F5E7C6",
                 borderRadius: "12px",
                 backgroundColor: "#FAF3E1",
-                boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
+                padding: "12px",
+                minHeight: "760px",
               }}
             >
-              <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
-                <div style={metricCardStyle}>
-                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Total Tickets</div>
-                  <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{dashboardStats.total}</div>
+              <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, marginBottom: "10px" }}>Admin Desk</div>
+              <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 600, marginBottom: "14px" }}>
+                Maintenance & Incident Analytics
+              </div>
+
+              <div style={{ display: "grid", gap: "6px", marginBottom: "14px" }}>
+                {["Dashboard", "Tickets", "Charts", "Reports"].map((item, index) => (
+                  <div
+                    key={item}
+                    style={{
+                      border: "1px solid #F5E7C6",
+                      borderRadius: "8px",
+                      padding: "8px 10px",
+                      backgroundColor: index === 0 ? "#14213D" : "#FFFFFF",
+                      color: index === 0 ? "#FFFFFF" : "#374151",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: "grid", gap: "8px" }}>
+                <div style={{ ...metricCardStyle, backgroundColor: "#14213D", color: "#FFFFFF", padding: "14px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", opacity: 0.9 }}>Open Tickets</div>
+                  <div style={{ fontSize: "28px", fontWeight: 800, lineHeight: 1.05 }}>{dashboardStats.statusCounts.OPEN}</div>
                 </div>
-                <div style={metricCardStyle}>
-                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Open / In Progress</div>
-                  <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{openInProgressCount}</div>
+                <div style={{ ...metricCardStyle, backgroundColor: "#FA8112", color: "#FFFFFF", padding: "14px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", opacity: 0.95 }}>High Priority</div>
+                  <div style={{ fontSize: "28px", fontWeight: 800, lineHeight: 1.05 }}>{dashboardStats.priorityCounts.HIGH}</div>
                 </div>
-                <div style={metricCardStyle}>
-                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Resolved</div>
-                  <div style={{ color: "#2e7d32", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{dashboardStats.statusCounts.RESOLVED}</div>
+                <div style={{ ...metricCardStyle, backgroundColor: "#FCA311", color: "#FFFFFF", padding: "14px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", opacity: 0.95 }}>Comments</div>
+                  <div style={{ fontSize: "28px", fontWeight: 800, lineHeight: 1.05 }}>{dashboardStats.totalComments}</div>
                 </div>
-                <div style={metricCardStyle}>
-                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Rejected</div>
-                  <div style={{ color: "#d32f2f", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{dashboardStats.statusCounts.REJECTED}</div>
-                </div>
-                <div style={metricCardStyle}>
-                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Total Comments</div>
-                  <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{dashboardStats.totalComments}</div>
-                </div>
-                <div style={metricCardStyle}>
-                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Avg Comments / Ticket</div>
-                  <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{dashboardStats.avgComments}</div>
+                <div style={{ ...metricCardStyle, backgroundColor: "#2e7d32", color: "#FFFFFF", padding: "14px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", opacity: 0.95 }}>Resolved</div>
+                  <div style={{ fontSize: "28px", fontWeight: 800, lineHeight: 1.05 }}>{dashboardStats.statusCounts.RESOLVED}</div>
                 </div>
               </div>
 
-              <div style={{ marginTop: "10px", display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-                <div style={metricCardStyle}>
-                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Resolution Rate</div>
-                  <div style={{ color: "#2e7d32", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{resolutionRate}%</div>
+              <div style={{ marginTop: "12px", border: "1px solid #F5E7C6", borderRadius: "10px", padding: "12px", backgroundColor: "#FFFFFF" }}>
+                <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" }}>Performance</div>
+                <div style={{ marginTop: "8px", color: "#374151", fontSize: "13px", fontWeight: 700 }}>
+                  Resolution Rate: <span style={{ color: "#2e7d32" }}>{resolutionRate}%</span>
                 </div>
-                <div style={metricCardStyle}>
-                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>High Priority Share</div>
-                  <div style={{ color: "#d32f2f", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{highPriorityShare}%</div>
+                <div style={{ marginTop: "4px", color: "#374151", fontSize: "13px", fontWeight: 700 }}>
+                  High Priority Share: <span style={{ color: "#d32f2f" }}>{highPriorityShare}%</span>
                 </div>
-                <div style={metricCardStyle}>
-                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Closed Tickets</div>
-                  <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{resolvedRejectedCount}</div>
+                <div style={{ marginTop: "4px", color: "#374151", fontSize: "13px", fontWeight: 700 }}>
+                  Closed Tickets: <span style={{ color: "#14213D" }}>{resolvedRejectedCount}</span>
                 </div>
               </div>
-            </div>
+            </aside>
 
             <div
               style={{
-                marginBottom: "14px",
-                padding: "14px",
                 border: "1px solid #F5E7C6",
                 borderRadius: "12px",
                 backgroundColor: "#FAF3E1",
+                padding: "14px",
                 boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
               }}
             >
-              <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", marginBottom: "10px" }}>
+              <div
+                style={{
+                  border: "1px solid #F5E7C6",
+                  borderRadius: "10px",
+                  padding: "12px",
+                  backgroundColor: "#FFFFFF",
+                  marginBottom: "10px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "10px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div>
+                  <div style={{ color: "#222222", fontSize: "28px", fontWeight: 800, lineHeight: 1.05 }}>Welcome back, Admin</div>
+                  <div style={{ color: "#6b7280", fontSize: "13px", fontWeight: 600, marginTop: "4px" }}>
+                    Ticket analytics dashboard with live operational metrics
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <button type="button" style={{ ...buttonStyle, padding: "10px 14px", backgroundColor: "#14213D" }}>
+                    Export
+                  </button>
+                  <button type="button" style={{ ...buttonStyle, padding: "10px 14px" }}>
+                    Refresh
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", marginBottom: "10px" }}>
+                <div style={{ ...metricCardStyle, borderLeft: "6px solid #14213D" }}>
+                  <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" }}>Total Tickets</div>
+                  <div style={{ color: "#14213D", fontSize: "26px", fontWeight: 800 }}>{dashboardStats.total}</div>
+                </div>
+                <div style={{ ...metricCardStyle, borderLeft: "6px solid #FA8112" }}>
+                  <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" }}>Open / In Progress</div>
+                  <div style={{ color: "#14213D", fontSize: "26px", fontWeight: 800 }}>{openInProgressCount}</div>
+                </div>
+                <div style={{ ...metricCardStyle, borderLeft: "6px solid #2e7d32" }}>
+                  <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" }}>Resolved</div>
+                  <div style={{ color: "#14213D", fontSize: "26px", fontWeight: 800 }}>{dashboardStats.statusCounts.RESOLVED}</div>
+                </div>
+                <div style={{ ...metricCardStyle, borderLeft: "6px solid #d32f2f" }}>
+                  <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" }}>Rejected</div>
+                  <div style={{ color: "#14213D", fontSize: "26px", fontWeight: 800 }}>{dashboardStats.statusCounts.REJECTED}</div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "1.1fr 1fr", marginBottom: "10px" }}>
+                <div style={chartCardStyle}>
+                  <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Status Distribution Summary</div>
+                  <div style={{ display: "grid", gap: "8px", gridTemplateColumns: "1fr 1fr" }}>
+                    {statusPieSegments.map((seg) => (
+                      <div key={seg.label} style={{ border: "1px solid #F5E7C6", borderRadius: "10px", padding: "10px", backgroundColor: "#FFFFFF" }}>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase" }}>
+                          <span style={{ width: "10px", height: "10px", borderRadius: "999px", backgroundColor: seg.color }} />
+                          {seg.label}
+                        </div>
+                        <div style={{ marginTop: "4px", color: "#222222", fontSize: "24px", fontWeight: 800 }}>{seg.percent.toFixed(0)}%</div>
+                        <div style={{ color: "#374151", fontSize: "12px", fontWeight: 600 }}>{seg.count} tickets</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div style={chartCardStyle}>
                   <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Status Pie Chart</div>
-                  <div style={{ display: "flex", gap: "14px", alignItems: "center", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "220px" }}>
                     <div
                       style={{
-                        width: "160px",
-                        height: "160px",
+                        width: "220px",
+                        height: "220px",
                         borderRadius: "50%",
                         background: statusPieGradient,
                         border: "1px solid #F5E7C6",
@@ -517,37 +602,74 @@ export default function AdminTicketDashboard() {
                       <div
                         style={{
                           position: "absolute",
-                          width: "72px",
-                          height: "72px",
+                          width: "96px",
+                          height: "96px",
                           borderRadius: "50%",
                           backgroundColor: "#FAF3E1",
                           top: "50%",
                           left: "50%",
                           transform: "translate(-50%, -50%)",
                           border: "1px solid #F5E7C6",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexDirection: "column",
                         }}
-                      />
-                    </div>
-
-                    <div style={{ display: "grid", gap: "6px", minWidth: "150px" }}>
-                      {statusPieSegments.map((seg) => (
-                        <div key={seg.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-                          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#374151", fontSize: "13px", fontWeight: 600 }}>
-                            <span style={{ width: "10px", height: "10px", borderRadius: "999px", backgroundColor: seg.color }} />
-                            {seg.label}
-                          </div>
-                          <span style={{ color: "#222222", fontSize: "13px", fontWeight: 700 }}>{seg.count}</span>
-                        </div>
-                      ))}
+                      >
+                        <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700 }}>TOTAL</div>
+                        <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, lineHeight: 1 }}>{dashboardStats.total}</div>
+                      </div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
+                <div style={chartCardStyle}>
+                  <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Status Bar Chart</div>
+                  {[
+                    ["OPEN", dashboardStats.statusCounts.OPEN, "#14213D"],
+                    ["ACCEPTED", dashboardStats.statusCounts.ACCEPTED, "#FCA311"],
+                    ["IN_PROGRESS", dashboardStats.statusCounts.IN_PROGRESS, "#FA8112"],
+                    ["RESOLVED", dashboardStats.statusCounts.RESOLVED, "#2e7d32"],
+                    ["REJECTED", dashboardStats.statusCounts.REJECTED, "#d32f2f"],
+                  ].map(([label, count, color]) => (
+                    <div key={label} style={{ marginBottom: "8px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: "#374151", fontSize: "13px", fontWeight: 700 }}>
+                        <span>{label}</span>
+                        <span>{count}</span>
+                      </div>
+                      <div style={{ height: "10px", borderRadius: "999px", border: "1px solid #F5E7C6", backgroundColor: "#FAF3E1", overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${(Number(count) / maxStatusCount) * 100}%`, backgroundColor: color }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={chartCardStyle}>
+                  <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Priority Bar Chart</div>
+                  {[
+                    ["HIGH", dashboardStats.priorityCounts.HIGH, "#d32f2f"],
+                    ["MEDIUM", dashboardStats.priorityCounts.MEDIUM, "#FCA311"],
+                    ["LOW", dashboardStats.priorityCounts.LOW, "#2e7d32"],
+                  ].map(([label, count, color]) => (
+                    <div key={label} style={{ marginBottom: "10px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: "#374151", fontSize: "13px", fontWeight: 700 }}>
+                        <span>{label}</span>
+                        <span>{count}</span>
+                      </div>
+                      <div style={{ height: "12px", borderRadius: "999px", border: "1px solid #F5E7C6", backgroundColor: "#FAF3E1", overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${(Number(count) / maxPriorityCount) * 100}%`, backgroundColor: color }} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 <div style={chartCardStyle}>
                   <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Growth Chart (Last 7 Days)</div>
                   <div style={{ display: "flex", alignItems: "end", gap: "10px", height: "180px", padding: "8px 4px 0 4px", borderBottom: "1px solid #F5E7C6" }}>
-                    {growthData.map((day) => (
-                      <div key={day.key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+                    {growthData.map((day, index) => (
+                      <div key={day.key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", position: "relative" }}>
                         <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700 }}>{day.count}</div>
                         <div
                           style={{
@@ -555,7 +677,7 @@ export default function AdminTicketDashboard() {
                             maxWidth: "24px",
                             height: `${Math.max(8, (day.count / maxGrowthCount) * 120)}px`,
                             borderRadius: "8px 8px 0 0",
-                            backgroundColor: "#14213D",
+                            backgroundColor: index === growthData.length - 1 ? "#FA8112" : "#14213D",
                           }}
                         />
                         <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 600 }}>{day.label}</div>
@@ -563,51 +685,25 @@ export default function AdminTicketDashboard() {
                     ))}
                   </div>
                 </div>
-              </div>
 
-              <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-              <div style={chartCardStyle}>
-                <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Status Chart</div>
-                {[
-                  ["OPEN", dashboardStats.statusCounts.OPEN, "#14213D"],
-                  ["ACCEPTED", dashboardStats.statusCounts.ACCEPTED, "#FCA311"],
-                  ["IN_PROGRESS", dashboardStats.statusCounts.IN_PROGRESS, "#FA8112"],
-                  ["RESOLVED", dashboardStats.statusCounts.RESOLVED, "#2e7d32"],
-                  ["REJECTED", dashboardStats.statusCounts.REJECTED, "#d32f2f"],
-                ].map(([label, count, color]) => (
-                  <div key={label} style={{ marginBottom: "8px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: "#374151", fontSize: "13px", fontWeight: 700 }}>
-                      <span>{label}</span>
-                      <span>{count}</span>
-                    </div>
-                    <div style={{ height: "10px", borderRadius: "999px", border: "1px solid #F5E7C6", backgroundColor: "#FAF3E1", overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${(Number(count) / maxStatusCount) * 100}%`, backgroundColor: color }} />
-                    </div>
+                <div style={chartCardStyle}>
+                  <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Workload Mix</div>
+                  <div style={{ border: "1px solid #F5E7C6", borderRadius: "10px", overflow: "hidden", height: "24px", display: "flex" }}>
+                    <div style={{ width: `${dashboardStats.total ? (dashboardStats.statusCounts.OPEN / dashboardStats.total) * 100 : 0}%`, backgroundColor: "#14213D" }} />
+                    <div style={{ width: `${dashboardStats.total ? (dashboardStats.statusCounts.IN_PROGRESS / dashboardStats.total) * 100 : 0}%`, backgroundColor: "#FA8112" }} />
+                    <div style={{ width: `${dashboardStats.total ? (dashboardStats.statusCounts.RESOLVED / dashboardStats.total) * 100 : 0}%`, backgroundColor: "#2e7d32" }} />
+                    <div style={{ width: `${dashboardStats.total ? (dashboardStats.statusCounts.REJECTED / dashboardStats.total) * 100 : 0}%`, backgroundColor: "#d32f2f" }} />
                   </div>
-                ))}
-              </div>
-
-              <div style={chartCardStyle}>
-                <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Priority Chart</div>
-                {[
-                  ["HIGH", dashboardStats.priorityCounts.HIGH, "#d32f2f"],
-                  ["MEDIUM", dashboardStats.priorityCounts.MEDIUM, "#FCA311"],
-                  ["LOW", dashboardStats.priorityCounts.LOW, "#2e7d32"],
-                ].map(([label, count, color]) => (
-                  <div key={label} style={{ marginBottom: "10px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: "#374151", fontSize: "13px", fontWeight: 700 }}>
-                      <span>{label}</span>
-                      <span>{count}</span>
-                    </div>
-                    <div style={{ height: "12px", borderRadius: "999px", border: "1px solid #F5E7C6", backgroundColor: "#FAF3E1", overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${(Number(count) / maxPriorityCount) * 100}%`, backgroundColor: color }} />
-                    </div>
+                  <div style={{ marginTop: "10px", display: "grid", gap: "6px", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                    <div style={{ color: "#374151", fontSize: "12px", fontWeight: 700 }}>Open: {dashboardStats.statusCounts.OPEN}</div>
+                    <div style={{ color: "#374151", fontSize: "12px", fontWeight: 700 }}>In Progress: {dashboardStats.statusCounts.IN_PROGRESS}</div>
+                    <div style={{ color: "#374151", fontSize: "12px", fontWeight: 700 }}>Resolved: {dashboardStats.statusCounts.RESOLVED}</div>
+                    <div style={{ color: "#374151", fontSize: "12px", fontWeight: 700 }}>Rejected: {dashboardStats.statusCounts.REJECTED}</div>
                   </div>
-                ))}
+                </div>
               </div>
             </div>
-            </div>
-          </>
+          </div>
         )}
 
         {activeView === "tickets" && (
