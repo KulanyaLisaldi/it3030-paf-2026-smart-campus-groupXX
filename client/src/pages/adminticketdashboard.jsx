@@ -58,19 +58,20 @@ const chipBaseStyle = {
   display: "inline-flex",
   alignItems: "center",
   gap: "6px",
-  padding: "6px 10px",
+  padding: "8px 14px",
   borderRadius: "999px",
-  fontSize: "12px",
+  fontSize: "14px",
   fontWeight: 700,
   whiteSpace: "nowrap",
+  minHeight: "40px",
 };
 
 const cardStyle = {
   border: "1px solid #F5E7C6",
   borderRadius: "12px",
-  padding: "14px",
+  padding: "16px",
   backgroundColor: "#FFFFFF",
-  marginBottom: "12px",
+  marginBottom: "14px",
 };
 
 const sectionTitleStyle = {

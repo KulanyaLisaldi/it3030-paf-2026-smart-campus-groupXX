@@ -158,8 +158,11 @@ export default function MyTickets() {
               padding: "12px 18px",
               fontSize: "14px",
               fontWeight: 600,
+              lineHeight: 1,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
               cursor: "pointer",
-              boxShadow: "0 10px 20px rgba(250, 129, 18, 0.22)",
             }}
             onMouseEnter={(event) => handleButtonHover(event, true)}
             onMouseLeave={(event) => handleButtonHover(event, false)}
