@@ -1,16 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuthToken } from "../../api/http";
-import { CREATE_TICKET_PATH, rememberPostLoginPath } from "../../utils/authRedirect";
-
-function readStoredUser() {
-  try {
-    const raw = localStorage.getItem("smartCampusUser");
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
+import { ACCOUNT_PATH, CREATE_TICKET_PATH, rememberPostLoginPath } from "../../utils/authRedirect";
+import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../../utils/campusUserStorage";
 
 function displayName(user) {
   if (!user) return "";
@@ -29,9 +21,34 @@ function profileInitial(user) {
   return "U";
 }
 
+function ProfileAvatarImage({ user, sizePx, fontSize }) {
+  const url = user?.profileImageUrl;
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt=""
+        width={sizePx}
+        height={sizePx}
+        style={{
+          width: sizePx,
+          height: sizePx,
+          borderRadius: "50%",
+          objectFit: "cover",
+          display: "block",
+        }}
+      />
+    );
+  }
+  return (
+    <span style={{ fontSize, fontWeight: 700, lineHeight: 1 }}>{profileInitial(user)}</span>
+  );
+}
+
 const Navbar = () => {
   const navigate = useNavigate();
-  const [, setLogoutTick] = useState(0);
+  const [logoutTick, setLogoutTick] = useState(0);
+  const [userRevision, setUserRevision] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [pinnedDropdown, setPinnedDropdown] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -39,7 +56,13 @@ const Navbar = () => {
   const profileMenuRef = useRef(null);
   const [showSupportDeskMenu, setShowSupportDeskMenu] = useState(false);
 
-  const user = readStoredUser();
+  useEffect(() => {
+    const onUserStorage = () => setUserRevision((n) => n + 1);
+    window.addEventListener(CAMPUS_USER_UPDATED, onUserStorage);
+    return () => window.removeEventListener(CAMPUS_USER_UPDATED, onUserStorage);
+  }, []);
+
+  const user = useMemo(() => readCampusUser(), [userRevision, logoutTick]);
   const isLoggedIn = Boolean(user);
 
   useEffect(() => {
@@ -175,7 +198,7 @@ const Navbar = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("smartCampusUser");
+    persistCampusUser(null);
     localStorage.removeItem("smartCampusAuthToken");
     setShowProfileMenu(false);
     setLogoutTick((n) => n + 1);
@@ -184,7 +207,7 @@ const Navbar = () => {
 
   const handleManageAccount = () => {
     setShowProfileMenu(false);
-    navigate("/");
+    navigate(ACCOUNT_PATH);
   };
 
   const profileTriggerStyle = {
@@ -192,7 +215,7 @@ const Navbar = () => {
     height: "40px",
     borderRadius: "50%",
     border: "none",
-    backgroundColor: "#4b5563",
+    backgroundColor: user?.profileImageUrl ? "#ffffff" : "#4b5563",
     color: "#FFFFFF",
     fontSize: "16px",
     fontWeight: 700,
@@ -201,8 +224,10 @@ const Navbar = () => {
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
-    transition: "background-color 0.2s ease, box-shadow 0.2s ease",
-    boxShadow: showProfileMenu ? "0 0 0 2px #FA8112" : "none",
+    transition: "background-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease",
+    boxShadow: showProfileMenu ? "0 0 0 2px #FA8112" : user?.profileImageUrl ? "inset 0 0 0 1px #e5e7eb" : "none",
+    padding: user?.profileImageUrl ? 0 : undefined,
+    overflow: "hidden",
   };
 
   const profilePanelStyle = {
@@ -358,16 +383,25 @@ const Navbar = () => {
               type="button"
               aria-expanded={showProfileMenu}
               aria-haspopup="menu"
+              aria-label="Account menu"
               style={profileTriggerStyle}
               onClick={() => setShowProfileMenu((p) => !p)}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#374151";
+                if (user?.profileImageUrl) {
+                  e.currentTarget.style.opacity = "0.9";
+                } else {
+                  e.currentTarget.style.backgroundColor = "#374151";
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "#4b5563";
+                if (user?.profileImageUrl) {
+                  e.currentTarget.style.opacity = "1";
+                } else {
+                  e.currentTarget.style.backgroundColor = "#4b5563";
+                }
               }}
             >
-              {profileInitial(user)}
+              <ProfileAvatarImage user={user} sizePx={40} fontSize={16} />
             </button>
             {showProfileMenu && (
               <div style={profilePanelStyle} role="menu">
@@ -377,7 +411,7 @@ const Navbar = () => {
                       width: "64px",
                       height: "64px",
                       borderRadius: "50%",
-                      backgroundColor: "#6b7280",
+                      backgroundColor: user?.profileImageUrl ? "#f3f4f6" : "#6b7280",
                       color: "#FFFFFF",
                       fontSize: "24px",
                       fontWeight: 700,
@@ -385,9 +419,11 @@ const Navbar = () => {
                       alignItems: "center",
                       justifyContent: "center",
                       margin: "0 auto 12px",
+                      overflow: "hidden",
+                      boxShadow: user?.profileImageUrl ? "inset 0 0 0 1px #e5e7eb" : "none",
                     }}
                   >
-                    {profileInitial(user)}
+                    <ProfileAvatarImage user={user} sizePx={64} fontSize={24} />
                   </div>
                   <div
                     style={{

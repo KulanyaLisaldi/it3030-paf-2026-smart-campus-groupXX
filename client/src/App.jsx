@@ -9,6 +9,7 @@ import CreateTicket from "./pages/CreateTicket.jsx";
 import MyTickets from "./pages/MyTickets.jsx";
 import TicketDetails from "./pages/TicketDetails.jsx";
 import AdminTicketDashboard from "./pages/adminticketdashboard.jsx";
+import ManageAccount from "./pages/ManageAccount.jsx";
 
 function AppContent() {
   const location = useLocation();
@@ -16,7 +17,8 @@ function AppContent() {
     location.pathname === "/signin" ||
     location.pathname === "/oauth/callback" ||
     location.pathname === "/adminticket" ||
-    location.pathname === "/technician";
+    location.pathname === "/technician" ||
+    location.pathname === "/account";
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -30,6 +32,7 @@ function AppContent() {
         <Route path="/my-tickets" element={<MyTickets />} />
         <Route path="/tickets/:id" element={<TicketDetails />} />
         <Route path="/adminticket" element={<AdminTicketDashboard />} />
+        <Route path="/account" element={<ManageAccount />} />
       </Routes>
       {!hideNavAndFooter && <Footer />}
     </div>
