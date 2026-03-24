@@ -4,9 +4,9 @@ export function createTicket(formData) {
   return apiPostFormData("/api/tickets", formData);
 }
 
-export function getMyTickets(createdBy) {
-  const query = encodeURIComponent(createdBy);
-  return apiGet(`/api/tickets/my?createdBy=${query}`);
+/** Lists tickets for the authenticated user (JWT). */
+export function getMyTickets() {
+  return apiGet("/api/tickets/my");
 }
 
 export function getTicketDetails(ticketId) {

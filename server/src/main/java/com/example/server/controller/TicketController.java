@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -43,10 +44,12 @@ public class TicketController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createTicket(
+        Authentication authentication,
         @Valid @ModelAttribute CreateTicketRequest request,
         @RequestParam(value = "attachments", required = false) MultipartFile[] attachments
     ) throws IOException {
-        Ticket createdTicket = ticketService.createTicket(request, attachments);
+        String userId = authentication.getName();
+        Ticket createdTicket = ticketService.createTicket(request, attachments, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(
             Map.of(
                 "message", "Ticket created successfully",
@@ -56,8 +59,8 @@ public class TicketController {
     }
 
     @GetMapping("/my")
-    public List<Ticket> getMyTickets(@RequestParam("createdBy") String createdBy) {
-        return ticketService.getMyTickets(createdBy);
+    public List<Ticket> getMyTickets(Authentication authentication) {
+        return ticketService.getMyTickets(authentication.getName());
     }
 
     @PutMapping("/{id}")

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { signIn } from '../api/auth';
 import { setAuthToken } from '../api/http';
-import { navigateAfterAuth } from '../utils/authRedirect';
+import { navigateAfterLogin } from '../utils/authRedirect';
 
 const SignIn = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -191,7 +192,7 @@ const SignIn = () => {
       } else {
         setAuthToken(null);
       }
-      navigateAfterAuth(response?.user, navigate);
+      navigateAfterLogin(response?.user, navigate, location.state);
     } catch (err) {
       setError(err.message || 'Sign in failed');
     } finally {

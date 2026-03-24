@@ -35,7 +35,7 @@ public class CreateTicketRequest {
     @NotBlank(message = "Priority is required")
     private String priority;
 
-    @NotBlank(message = "Created by is required")
+    /** Ignored when set; server fills from JWT subject. Optional for older clients. */
     private String createdBy;
 
     public String getFullName() {
