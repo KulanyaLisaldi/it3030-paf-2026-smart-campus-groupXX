@@ -179,6 +179,7 @@ export default function AdminTicketDashboard() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("DATE_DESC");
+  const [activeMenuItem, setActiveMenuItem] = useState("Dashboard");
 
   useEffect(() => {
     const load = async () => {
@@ -217,6 +218,28 @@ export default function AdminTicketDashboard() {
     params.set("view", view);
     const nextUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState({}, "", nextUrl);
+  };
+
+  const navigateFromSidebar = (item) => {
+    setActiveMenuItem(item);
+    if (item === "Tickets") {
+      handleViewChange("tickets");
+      return;
+    }
+
+    // Keep Dashboard view for dashboard sections.
+    handleViewChange("dashboard");
+
+    // Smooth jump to chart/report areas on this page.
+    setTimeout(() => {
+      if (item === "Charts") {
+        document.getElementById("admin-dashboard-charts")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (item === "Reports") {
+        document.getElementById("admin-dashboard-reports")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        document.getElementById("admin-dashboard-top")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 0);
   };
 
   const filteredAndSortedTickets = useMemo(() => {
@@ -446,6 +469,7 @@ export default function AdminTicketDashboard() {
             }}
           >
             <aside
+              id="admin-dashboard-top"
               style={{
                 border: "1px solid #F5E7C6",
                 borderRadius: "12px",
@@ -460,21 +484,26 @@ export default function AdminTicketDashboard() {
               </div>
 
               <div style={{ display: "grid", gap: "6px", marginBottom: "14px" }}>
-                {["Dashboard", "Tickets", "Charts", "Reports"].map((item, index) => (
-                  <div
+                {["Dashboard", "Tickets", "Charts", "Reports"].map((item) => (
+                  <button
+                    type="button"
                     key={item}
+                    onClick={() => navigateFromSidebar(item)}
                     style={{
+                      width: "100%",
+                      textAlign: "left",
                       border: "1px solid #F5E7C6",
                       borderRadius: "8px",
                       padding: "8px 10px",
-                      backgroundColor: index === 0 ? "#14213D" : "#FFFFFF",
-                      color: index === 0 ? "#FFFFFF" : "#374151",
+                      backgroundColor: activeMenuItem === item ? "#14213D" : "#FFFFFF",
+                      color: activeMenuItem === item ? "#FFFFFF" : "#374151",
                       fontSize: "13px",
                       fontWeight: 700,
+                      cursor: "pointer",
                     }}
                   >
                     {item}
-                  </div>
+                  </button>
                 ))}
               </div>
 
@@ -569,7 +598,7 @@ export default function AdminTicketDashboard() {
                 </div>
               </div>
 
-              <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "1.1fr 1fr", marginBottom: "10px" }}>
+              <div id="admin-dashboard-charts" style={{ display: "grid", gap: "10px", gridTemplateColumns: "1.1fr 1fr", marginBottom: "10px" }}>
                 <div style={chartCardStyle}>
                   <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Status Distribution Summary</div>
                   <div style={{ display: "grid", gap: "8px", gridTemplateColumns: "1fr 1fr" }}>
@@ -624,7 +653,7 @@ export default function AdminTicketDashboard() {
                 </div>
               </div>
 
-              <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
+              <div id="admin-dashboard-reports" style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
                 <div style={chartCardStyle}>
                   <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Status Bar Chart</div>
                   {[
