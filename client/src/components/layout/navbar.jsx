@@ -115,18 +115,6 @@ const Navbar = () => {
     gap: "12px",
   };
 
-  const testButtonStyle = {
-    padding: "6px 14px",
-    borderRadius: "6px",
-    border: "1px solid #FA8112",
-    backgroundColor: "#F5E7C6",
-    color: "#222222",
-    fontSize: "14px",
-    fontWeight: 500,
-    cursor: "pointer",
-    transition: "all 0.2s ease",
-  };
-
   const signInButtonStyle = {
     padding: "8px 20px",
     borderRadius: "6px",
@@ -299,14 +287,6 @@ const Navbar = () => {
 
       {/* Right - Auth actions */}
       <div style={rightContainerStyle}>
-        <button
-          type="button"
-          style={testButtonStyle}
-          onClick={() => navigate('/test')}
-        >
-          Test
-        </button>
-
         {isLoggedIn ? (
           <button
             style={logoutButtonStyle}
