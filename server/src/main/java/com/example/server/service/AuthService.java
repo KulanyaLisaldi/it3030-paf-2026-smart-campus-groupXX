@@ -4,27 +4,50 @@ import com.example.server.dto.admin.CreateTechnicianRequest;
 import com.example.server.dto.auth.AuthResponse;
 import com.example.server.dto.auth.AuthUserResponse;
 import com.example.server.dto.auth.SignInRequest;
+import com.example.server.dto.auth.UpdateProfileRequest;
+import com.example.server.model.Ticket;
 import com.example.server.model.User;
 import com.example.server.model.UserRole;
+import com.example.server.repository.TicketCommentRepo;
+import com.example.server.repository.TicketRepo;
 import com.example.server.repository.UserRepo;
 import com.example.server.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AuthService {
 
     private final UserRepo userRepo;
+    private final TicketRepo ticketRepo;
+    private final TicketCommentRepo ticketCommentRepo;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    public AuthService(UserRepo userRepo, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(
+        UserRepo userRepo,
+        TicketRepo ticketRepo,
+        TicketCommentRepo ticketCommentRepo,
+        PasswordEncoder passwordEncoder,
+        JwtService jwtService
+    ) {
         this.userRepo = userRepo;
+        this.ticketRepo = ticketRepo;
+        this.ticketCommentRepo = ticketCommentRepo;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
     }
@@ -190,6 +213,87 @@ public class AuthService {
         return userRepo.findById(userId).map(this::toUserResponse);
     }
 
+    public Optional<AuthUserResponse> updatePhone(String userId, UpdateProfileRequest request) {
+        return userRepo.findById(userId).map(user -> {
+            user.setPhoneNumber(request.getPhoneNumber().trim());
+            return toUserResponse(userRepo.save(user));
+        });
+    }
+
+    public Optional<AuthUserResponse> updateProfileAvatar(String userId, MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Image file is required");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("Only image files are allowed");
+        }
+        Optional<User> maybe = userRepo.findById(userId);
+        if (maybe.isEmpty()) {
+            return Optional.empty();
+        }
+        User user = maybe.get();
+
+        Path dir = Paths.get("uploads", "avatars").toAbsolutePath().normalize();
+        Files.createDirectories(dir);
+        String original = file.getOriginalFilename() == null ? "avatar" : file.getOriginalFilename();
+        String safe = UUID.randomUUID() + "-" + original.replaceAll("[^a-zA-Z0-9._-]", "_");
+        Path dest = dir.resolve(safe);
+        Files.copy(file.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);
+        String publicPath = "/uploads/avatars/" + safe;
+        user.setProfileImageUrl(publicPath);
+        return Optional.of(toUserResponse(userRepo.save(user)));
+    }
+
+    public Optional<AuthUserResponse> removeProfileAvatar(String userId) {
+        Optional<User> maybe = userRepo.findById(userId);
+        if (maybe.isEmpty()) {
+            return Optional.empty();
+        }
+        User user = maybe.get();
+        deleteAvatarFileIfSafe(user.getProfileImageUrl());
+        user.setProfileImageUrl(null);
+        return Optional.of(toUserResponse(userRepo.save(user)));
+    }
+
+    private void deleteAvatarFileIfSafe(String publicPath) {
+        if (publicPath == null || publicPath.isBlank()) {
+            return;
+        }
+        String prefix = "/uploads/avatars/";
+        if (!publicPath.startsWith(prefix)) {
+            return;
+        }
+        String name = publicPath.substring(prefix.length());
+        if (name.isBlank() || name.contains("..") || name.indexOf('/') >= 0 || name.indexOf('\\') >= 0) {
+            return;
+        }
+        Path base = Paths.get("uploads", "avatars").toAbsolutePath().normalize();
+        Path file = base.resolve(name).normalize();
+        if (!file.startsWith(base)) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException ignored) {
+            // file may be missing or locked; DB still clears the URL
+        }
+    }
+
+    public boolean deleteAccount(String userId) {
+        Optional<User> maybe = userRepo.findById(userId);
+        if (maybe.isEmpty()) {
+            return false;
+        }
+        List<Ticket> tickets = ticketRepo.findByCreatedByOrderByCreatedAtDesc(userId);
+        for (Ticket t : tickets) {
+            ticketCommentRepo.deleteByTicketId(t.getId());
+            ticketRepo.deleteById(t.getId());
+        }
+        userRepo.deleteById(userId);
+        return true;
+    }
+
     private AuthUserResponse toUserResponse(User user) {
         return new AuthUserResponse(
             user.getId(),
@@ -197,7 +301,8 @@ public class AuthService {
             user.getLastName(),
             user.getEmail(),
             user.getPhoneNumber(),
-            user.getEffectiveRole().name()
+            user.getEffectiveRole().name(),
+            user.getProfileImageUrl()
         );
     }
 }

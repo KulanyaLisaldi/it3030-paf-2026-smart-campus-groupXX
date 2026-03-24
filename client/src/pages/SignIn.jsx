@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { signIn } from '../api/auth';
 import { setAuthToken } from '../api/http';
+import { persistCampusUser } from '../utils/campusUserStorage';
 import { navigateAfterLogin } from '../utils/authRedirect';
 
 const SignIn = () => {
@@ -185,7 +186,7 @@ const SignIn = () => {
     try {
       const response = await signIn({ email, password });
       if (response?.user) {
-        localStorage.setItem('smartCampusUser', JSON.stringify(response.user));
+        persistCampusUser(response.user);
       }
       if (response?.token) {
         setAuthToken(response.token);

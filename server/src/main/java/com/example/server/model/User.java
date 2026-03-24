@@ -15,6 +15,8 @@ public class User {
     private String lastName;
     private String email;
     private String phoneNumber;
+    /** Optional campus-only profile photo URL (e.g. /uploads/avatars/...). Not synced with email provider. */
+    private String profileImageUrl;
     /** BCrypt hash for local sign-in; null when the account is Google-only until a password is set. */
     private String passwordHash;
     /** Google "sub" claim; links the campus user to the Google account. */
@@ -71,6 +73,14 @@ public class User {
 
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
+    public void setProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
     }
 
     public String getPasswordHash() {

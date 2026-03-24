@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchCurrentUser } from "../api/auth";
 import { setAuthToken } from "../api/http";
+import { persistCampusUser } from "../utils/campusUserStorage";
 import { navigateAfterLogin } from "../utils/authRedirect";
 
 const pageStyle = {
@@ -79,7 +80,7 @@ export default function OAuthCallback() {
         setAuthToken(token);
         const user = await fetchCurrentUser();
         if (cancelled) return;
-        localStorage.setItem("smartCampusUser", JSON.stringify(user));
+        persistCampusUser(user);
         navigateAfterLogin(user, navigate, null);
       } catch (e) {
         if (cancelled) return;

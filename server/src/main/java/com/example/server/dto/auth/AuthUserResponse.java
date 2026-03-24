@@ -8,17 +8,19 @@ public class AuthUserResponse {
     private String email;
     private String phoneNumber;
     private String role;
+    private String profileImageUrl;
 
     public AuthUserResponse() {
     }
 
-    public AuthUserResponse(String id, String firstName, String lastName, String email, String phoneNumber, String role) {
+    public AuthUserResponse(String id, String firstName, String lastName, String email, String phoneNumber, String role, String profileImageUrl) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
         this.phoneNumber = phoneNumber;
         this.role = role;
+        this.profileImageUrl = profileImageUrl;
     }
 
     public String getId() {
@@ -43,5 +45,9 @@ public class AuthUserResponse {
 
     public String getRole() {
         return role;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
     }
 }

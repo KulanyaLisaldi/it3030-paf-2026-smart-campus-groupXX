@@ -11,6 +11,8 @@ export function rememberPostLoginPath(path) {
 
 export const CREATE_TICKET_PATH = "/tickets/create";
 
+export const ACCOUNT_PATH = "/account";
+
 /**
  * @param {NavigateFunction} navigate
  */
