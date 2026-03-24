@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchCurrentUser } from "../api/auth";
 import { setAuthToken } from "../api/http";
-import { navigateAfterAuth } from "../utils/authRedirect";
+import { navigateAfterLogin } from "../utils/authRedirect";
 
 const pageStyle = {
   minHeight: "100vh",
@@ -80,7 +80,7 @@ export default function OAuthCallback() {
         const user = await fetchCurrentUser();
         if (cancelled) return;
         localStorage.setItem("smartCampusUser", JSON.stringify(user));
-        navigateAfterAuth(user, navigate);
+        navigateAfterLogin(user, navigate, null);
       } catch (e) {
         if (cancelled) return;
         setAuthToken(null);

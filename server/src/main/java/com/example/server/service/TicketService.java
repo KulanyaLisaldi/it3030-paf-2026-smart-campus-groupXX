@@ -39,8 +39,11 @@ public class TicketService {
         this.ticketRepo = ticketRepo;
     }
 
-    public Ticket createTicket(CreateTicketRequest request, MultipartFile[] attachments) throws IOException {
+    public Ticket createTicket(CreateTicketRequest request, MultipartFile[] attachments, String reporterUserId) throws IOException {
         validateRequest(request);
+        if (reporterUserId == null || reporterUserId.isBlank()) {
+            throw new IllegalArgumentException("Reporter user id is required");
+        }
         List<String> attachmentPaths = saveAttachments(attachments);
 
         Ticket ticket = new Ticket();
@@ -54,7 +57,7 @@ public class TicketService {
         ticket.setPriority(request.getPriority().trim());
         ticket.setAttachments(attachmentPaths);
         ticket.setStatus("OPEN");
-        ticket.setCreatedBy(request.getCreatedBy().trim());
+        ticket.setCreatedBy(reporterUserId.trim());
         ticket.setCreatedAt(Instant.now());
 
         return ticketRepo.save(ticket);

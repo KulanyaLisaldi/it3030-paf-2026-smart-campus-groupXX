@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getMyTickets } from "../api/tickets";
+import { getAuthToken } from "../api/http";
+import { CREATE_TICKET_PATH, rememberPostLoginPath } from "../utils/authRedirect";
 
 const pageStyle = {
   minHeight: "100vh",
@@ -97,15 +99,6 @@ function getProgressInfo(status) {
   return { percent: 10, label: normalizedStatus || "Pending", color: "#14213D" };
 }
 
-const getCurrentUser = () => {
-  try {
-    const raw = localStorage.getItem("smartCampusUser");
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-};
-
 const getAdminDecisionMap = () => {
   try {
     const raw = localStorage.getItem("adminTicketDecisions");
@@ -119,9 +112,6 @@ const getAdminDecisionMap = () => {
 export default function MyTickets() {
   const location = useLocation();
   const navigate = useNavigate();
-  const user = useMemo(() => getCurrentUser(), []);
-  const createdBy = user?.id || user?.email || "";
-
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -132,7 +122,7 @@ export default function MyTickets() {
 
   useEffect(() => {
     const load = async () => {
-      if (!createdBy) {
+      if (!getAuthToken()) {
         setLoading(false);
         setError("Please sign in to view your tickets.");
         return;
@@ -140,7 +130,7 @@ export default function MyTickets() {
 
       try {
         setLoading(true);
-        const data = await getMyTickets(createdBy);
+        const data = await getMyTickets();
         const decisions = getAdminDecisionMap();
         const list = Array.isArray(data) ? data : [];
         const merged = list.map((ticket) => {
@@ -161,7 +151,7 @@ export default function MyTickets() {
     };
 
     load();
-  }, [createdBy]);
+  }, []);
 
   return (
     <div style={pageStyle}>
@@ -187,7 +177,14 @@ export default function MyTickets() {
             }}
             onMouseEnter={(event) => handleButtonHover(event, true)}
             onMouseLeave={(event) => handleButtonHover(event, false)}
-            onClick={() => navigate("/tickets/create")}
+            onClick={() => {
+              if (!getAuthToken()) {
+                rememberPostLoginPath(CREATE_TICKET_PATH);
+                navigate("/signin", { state: { from: CREATE_TICKET_PATH } });
+              } else {
+                navigate(CREATE_TICKET_PATH);
+              }
+            }}
           >
             Create New Ticket
           </button>

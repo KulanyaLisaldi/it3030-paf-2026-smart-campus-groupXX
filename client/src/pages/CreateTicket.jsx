@@ -1,6 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createTicket } from "../api/tickets";
+import { getAuthToken } from "../api/http";
+import { CREATE_TICKET_PATH, rememberPostLoginPath } from "../utils/authRedirect";
 
 const CATEGORY_OPTIONS = [
   "Electrical Issue",
@@ -126,6 +128,16 @@ const hasTooManyRepeatedChars = (value) => /(.)\1{3,}/.test(value);
 export default function CreateTicket() {
   const navigate = useNavigate();
   const user = useMemo(() => getCurrentUser(), []);
+  const [allowForm, setAllowForm] = useState(false);
+
+  useEffect(() => {
+    if (!getAuthToken()) {
+      rememberPostLoginPath(CREATE_TICKET_PATH);
+      navigate("/signin", { replace: true, state: { from: CREATE_TICKET_PATH } });
+      return;
+    }
+    setAllowForm(true);
+  }, [navigate]);
 
   const [formData, setFormData] = useState({
     fullName: getFullName(user),
@@ -141,8 +153,6 @@ export default function CreateTicket() {
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  const createdBy = user?.id || user?.email || formData.email;
 
   const handleButtonHover = (event, isHover) => {
     event.target.style.backgroundColor = isHover ? "#E66A0A" : "#FA8112";
@@ -208,7 +218,7 @@ export default function CreateTicket() {
       next.description = "Description cannot repeat the same character many times.";
     }
     if (!formData.priority) next.priority = "Priority is required.";
-    if (!createdBy || !createdBy.trim()) next.createdBy = "Please sign in before creating a ticket.";
+    if (!getAuthToken()) next.auth = "Please sign in before creating a ticket.";
     if (attachments.length > 3) next.attachments = "You can upload up to 3 images only.";
 
     setErrors(next);
@@ -222,10 +232,7 @@ export default function CreateTicket() {
     if (!validate()) return;
 
     const payload = new FormData();
-    Object.entries({
-      ...formData,
-      createdBy: createdBy.trim(),
-    }).forEach(([key, value]) => payload.append(key, value.trim()));
+    Object.entries(formData).forEach(([key, value]) => payload.append(key, typeof value === "string" ? value.trim() : value));
 
     attachments.forEach((file) => payload.append("attachments", file));
 
@@ -244,6 +251,14 @@ export default function CreateTicket() {
       setSubmitting(false);
     }
   };
+
+  if (!allowForm) {
+    return (
+      <div style={pageStyle}>
+        <p style={{ color: "#6b7280", fontSize: "15px" }}>Redirecting to sign in…</p>
+      </div>
+    );
+  }
 
   return (
     <div style={pageStyle}>
@@ -381,7 +396,7 @@ export default function CreateTicket() {
           </div>
         </section>
 
-        {errors.createdBy && <p style={{ ...errorStyle, marginBottom: "8px" }}>{errors.createdBy}</p>}
+        {errors.auth && <p style={{ ...errorStyle, marginBottom: "8px" }}>{errors.auth}</p>}
         {submitError && <p style={{ ...errorStyle, marginBottom: "8px" }}>{submitError}</p>}
 
         <button

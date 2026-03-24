@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getAuthToken } from "../../api/http";
+import { CREATE_TICKET_PATH, rememberPostLoginPath } from "../../utils/authRedirect";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -251,7 +253,12 @@ const Navbar = () => {
                       setShowDropdown(false);
                       setPinnedDropdown(false);
                       setShowSupportDeskMenu(false);
-                      navigate("/tickets/create");
+                      if (!getAuthToken()) {
+                        rememberPostLoginPath(CREATE_TICKET_PATH);
+                        navigate("/signin", { state: { from: CREATE_TICKET_PATH } });
+                      } else {
+                        navigate(CREATE_TICKET_PATH);
+                      }
                     }}
                   >
                     Create Ticket
