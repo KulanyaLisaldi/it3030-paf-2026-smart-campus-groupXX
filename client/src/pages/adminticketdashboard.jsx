@@ -263,6 +263,21 @@ export default function AdminTicketDashboard() {
     e.currentTarget.style.opacity = isHover ? "0.9" : "1";
   };
 
+  const handleTicketDecision = (ticketId, decision) => {
+    setTickets((prev) =>
+      (Array.isArray(prev) ? prev : []).map((item) => {
+        if (item?.ticket?.id !== ticketId) return item;
+        return {
+          ...item,
+          ticket: {
+            ...item.ticket,
+            status: decision,
+          },
+        };
+      })
+    );
+  };
+
   const filteredAndSortedTickets = useMemo(() => {
     const list = Array.isArray(tickets) ? [...tickets] : [];
 
@@ -944,6 +959,24 @@ export default function AdminTicketDashboard() {
                 </div>
 
                 <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}>
+                  <div style={{ display: "flex", gap: "8px", marginRight: "8px" }}>
+                    <button
+                      type="button"
+                      style={{ ...buttonStyle, backgroundColor: "#2e7d32", minWidth: "96px" }}
+                      onClick={() => handleTicketDecision(ticket.id, "ACCEPTED")}
+                      disabled={(ticket.status || "").toUpperCase() === "ACCEPTED"}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      style={{ ...buttonStyle, backgroundColor: "#d32f2f", minWidth: "96px" }}
+                      onClick={() => handleTicketDecision(ticket.id, "REJECTED")}
+                      disabled={(ticket.status || "").toUpperCase() === "REJECTED"}
+                    >
+                      Reject
+                    </button>
+                  </div>
                   <button type="button" style={buttonStyle} onClick={() => toggleOpen(ticket.id)}>
                     {openTicketIds[ticket.id] ? "Hide Comments" : "Show Comments"}
                   </button>
