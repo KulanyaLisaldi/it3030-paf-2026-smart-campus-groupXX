@@ -9,12 +9,6 @@ export function rememberPostLoginPath(path) {
   }
 }
 
-function takePostLoginPath() {
-  const p = sessionStorage.getItem(POST_LOGIN_PATH_KEY);
-  if (p) sessionStorage.removeItem(POST_LOGIN_PATH_KEY);
-  return p && p.startsWith("/") ? p : null;
-}
-
 export const CREATE_TICKET_PATH = "/tickets/create";
 
 /**
@@ -34,22 +28,33 @@ export function navigateAfterAuth(user, navigate) {
 }
 
 /**
- * After successful login: `location.state.from`, then remembered path, then role-based default.
+ * After successful login: campus users may return to a stored path (e.g. Create Ticket).
+ * Admin and technician always go to their dashboards — never to Create Ticket from that flow.
  * @param {NavigateFunction} navigate
  * @param {unknown} locationState — `useLocation().state`
  */
 export function navigateAfterLogin(user, navigate, locationState) {
+  const role = user?.role;
+
+  if (role === "ADMIN" || role === "TECHNICIAN") {
+    sessionStorage.removeItem(POST_LOGIN_PATH_KEY);
+    navigateAfterAuth(user, navigate);
+    return;
+  }
+
   const fromState = locationState && typeof locationState === "object" ? locationState.from : undefined;
   const fromStateOk = typeof fromState === "string" && fromState.startsWith("/") ? fromState : null;
-  if (fromStateOk) {
-    sessionStorage.removeItem(POST_LOGIN_PATH_KEY);
-    navigate(fromStateOk, { replace: true });
-    return;
-  }
-  const remembered = takePostLoginPath();
+  const remembered = sessionStorage.getItem(POST_LOGIN_PATH_KEY);
   if (remembered) {
-    navigate(remembered, { replace: true });
+    sessionStorage.removeItem(POST_LOGIN_PATH_KEY);
+  }
+  const rememberedOk = remembered && remembered.startsWith("/") ? remembered : null;
+
+  const target = fromStateOk || rememberedOk;
+  if (target) {
+    navigate(target, { replace: true });
     return;
   }
+
   navigateAfterAuth(user, navigate);
 }
