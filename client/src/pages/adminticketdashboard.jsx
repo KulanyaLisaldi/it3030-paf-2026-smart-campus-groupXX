@@ -12,11 +12,12 @@ const pageStyle = {
 
 const containerStyle = {
   width: "100%",
-  maxWidth: "1100px",
+  maxWidth: "1180px",
   backgroundColor: "#FFFFFF",
-  borderRadius: "12px",
-  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
-  padding: "18px",
+  borderRadius: "14px",
+  border: "1px solid #F5E7C6",
+  boxShadow: "0 14px 32px rgba(0, 0, 0, 0.08)",
+  padding: "22px",
 };
 
 const headerStyle = {
@@ -33,10 +34,17 @@ const headerStyle = {
 
 const titleStyle = {
   margin: 0,
-  fontSize: "24px",
-  fontWeight: 700,
-  letterSpacing: "-0.2px",
+  fontSize: "26px",
+  fontWeight: 800,
+  letterSpacing: "-0.3px",
   color: "#222222",
+};
+
+const subtitleStyle = {
+  margin: "4px 0 0 0",
+  color: "#6b7280",
+  fontSize: "13px",
+  fontWeight: 500,
 };
 
 const buttonStyle = {
@@ -69,9 +77,10 @@ const chipBaseStyle = {
 const cardStyle = {
   border: "1px solid #F5E7C6",
   borderRadius: "12px",
-  padding: "16px",
+  padding: "18px",
   backgroundColor: "#FFFFFF",
   marginBottom: "14px",
+  boxShadow: "0 8px 18px rgba(20, 33, 61, 0.06)",
 };
 
 const sectionTitleStyle = {
@@ -98,7 +107,7 @@ const selectStyle = {
   color: "#222222",
   backgroundColor: "#FFFFFF",
   outline: "none",
-  minWidth: "180px",
+  minWidth: "210px",
 };
 
 function toProgressPercent(status) {
@@ -228,7 +237,10 @@ export default function AdminTicketDashboard() {
     <div style={pageStyle}>
       <section style={containerStyle}>
         <div style={headerStyle}>
-          <h1 style={titleStyle}>Admin Dashboard</h1>
+          <div>
+            <h1 style={titleStyle}>Admin Dashboard</h1>
+            <p style={subtitleStyle}>Ticket monitoring and support operations</p>
+          </div>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             <span style={{ ...chipBaseStyle, backgroundColor: "#14213D", color: "#FFFFFF" }}>
               Total Tickets: {filteredAndSortedTickets.length}
@@ -239,13 +251,14 @@ export default function AdminTicketDashboard() {
         <div
           style={{
             marginBottom: "12px",
-            padding: "12px",
+            padding: "14px",
             border: "1px solid #F5E7C6",
-            borderRadius: "10px",
+            borderRadius: "12px",
             backgroundColor: "#FAF3E1",
             display: "flex",
             gap: "10px",
             flexWrap: "wrap",
+            boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
           }}
         >
           <select style={selectStyle} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
@@ -349,16 +362,16 @@ export default function AdminTicketDashboard() {
                     alignItems: "start",
                   }}
                 >
-                  <div style={{ border: "1px solid #F5E7C6", borderRadius: "10px", padding: "10px", backgroundColor: "#FAF3E1" }}>
-                    <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700 }}>Reported By</div>
+                  <div style={{ border: "1px solid #F5E7C6", borderRadius: "10px", padding: "12px", backgroundColor: "#FAF3E1" }}>
+                    <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Reported By</div>
                     <div style={{ color: "#222222", fontSize: "14px", fontWeight: 700 }}>{ticket.fullName || "N/A"}</div>
                     <div style={{ color: "#374151", fontSize: "13px", marginTop: "4px" }}>{ticket.email || "N/A"}</div>
                     <div style={{ color: "#374151", fontSize: "13px", marginTop: "2px" }}>{ticket.phoneNumber || "N/A"}</div>
                   </div>
                 </div>
 
-                <div style={{ marginTop: "10px", border: "1px solid #F5E7C6", borderRadius: "10px", padding: "10px", backgroundColor: "#FAF3E1" }}>
-                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700 }}>Description</div>
+                <div style={{ marginTop: "10px", border: "1px solid #F5E7C6", borderRadius: "10px", padding: "12px", backgroundColor: "#FAF3E1" }}>
+                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Description</div>
                   <div style={{ color: "#374151", fontSize: "14px", fontWeight: 400, lineHeight: 1.45, marginTop: "4px" }}>
                     {ticket.description || "No description provided."}
                   </div>
