@@ -15,7 +15,14 @@ public class User {
     private String lastName;
     private String email;
     private String phoneNumber;
+    /** BCrypt hash for local sign-in; null when the account is Google-only until a password is set. */
     private String passwordHash;
+    /** Google "sub" claim; links the campus user to the Google account. */
+    private String googleSubject;
+
+    /** When null in the database, treated as {@link UserRole#USER} for legacy documents. */
+    private UserRole role;
+
     private Instant createdAt;
 
     public User() {
@@ -80,5 +87,26 @@ public class User {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getGoogleSubject() {
+        return googleSubject;
+    }
+
+    public void setGoogleSubject(String googleSubject) {
+        this.googleSubject = googleSubject;
+    }
+
+    public UserRole getRole() {
+        return role;
+    }
+
+    public void setRole(UserRole role) {
+        this.role = role;
+    }
+
+    /** Effective role for authorization (never null). */
+    public UserRole getEffectiveRole() {
+        return role != null ? role : UserRole.USER;
     }
 }
