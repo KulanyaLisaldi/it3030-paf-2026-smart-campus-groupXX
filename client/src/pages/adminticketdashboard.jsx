@@ -110,6 +110,22 @@ const selectStyle = {
   minWidth: "210px",
 };
 
+const metricCardStyle = {
+  border: "1px solid #F5E7C6",
+  borderRadius: "12px",
+  padding: "12px",
+  backgroundColor: "#FFFFFF",
+  boxShadow: "0 6px 14px rgba(20, 33, 61, 0.05)",
+};
+
+const chartCardStyle = {
+  border: "1px solid #F5E7C6",
+  borderRadius: "12px",
+  padding: "14px",
+  backgroundColor: "#FAF3E1",
+  boxShadow: "0 6px 14px rgba(20, 33, 61, 0.05)",
+};
+
 function toProgressPercent(status) {
   if (status === "OPEN") return 20;
   if (status === "ACCEPTED") return 40;
@@ -159,6 +175,7 @@ export default function AdminTicketDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [openTicketIds, setOpenTicketIds] = useState({});
+  const [activeView, setActiveView] = useState("dashboard");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("DATE_DESC");
@@ -180,8 +197,26 @@ export default function AdminTicketDashboard() {
     load();
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get("view");
+    if (view === "tickets") {
+      setActiveView("tickets");
+    } else {
+      setActiveView("dashboard");
+    }
+  }, []);
+
   const toggleOpen = (ticketId) => {
     setOpenTicketIds((prev) => ({ ...prev, [ticketId]: !prev[ticketId] }));
+  };
+
+  const handleViewChange = (view) => {
+    setActiveView(view);
+    const params = new URLSearchParams(window.location.search);
+    params.set("view", view);
+    const nextUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, "", nextUrl);
   };
 
   const filteredAndSortedTickets = useMemo(() => {
@@ -233,13 +268,138 @@ export default function AdminTicketDashboard() {
     return filtered;
   }, [tickets, statusFilter, priorityFilter, sortBy]);
 
+  const dashboardStats = useMemo(() => {
+    const data = filteredAndSortedTickets;
+    const total = data.length;
+    const statusCounts = {
+      OPEN: 0,
+      ACCEPTED: 0,
+      IN_PROGRESS: 0,
+      RESOLVED: 0,
+      REJECTED: 0,
+      OTHER: 0,
+    };
+    const priorityCounts = {
+      HIGH: 0,
+      MEDIUM: 0,
+      LOW: 0,
+      OTHER: 0,
+    };
+    let totalComments = 0;
+
+    data.forEach((item) => {
+      const ticket = item?.ticket || {};
+      const comments = Array.isArray(item?.comments) ? item.comments : [];
+      totalComments += comments.length;
+
+      const status = (ticket.status || "").toUpperCase();
+      const priority = (ticket.priority || "").toUpperCase();
+
+      if (statusCounts[status] !== undefined) statusCounts[status] += 1;
+      else statusCounts.OTHER += 1;
+
+      if (priorityCounts[priority] !== undefined) priorityCounts[priority] += 1;
+      else priorityCounts.OTHER += 1;
+    });
+
+    const avgComments = total === 0 ? 0 : (totalComments / total).toFixed(1);
+    return { total, statusCounts, priorityCounts, totalComments, avgComments };
+  }, [filteredAndSortedTickets]);
+
+  const maxStatusCount = Math.max(
+    1,
+    dashboardStats.statusCounts.OPEN,
+    dashboardStats.statusCounts.ACCEPTED,
+    dashboardStats.statusCounts.IN_PROGRESS,
+    dashboardStats.statusCounts.RESOLVED,
+    dashboardStats.statusCounts.REJECTED,
+    dashboardStats.statusCounts.OTHER
+  );
+
+  const maxPriorityCount = Math.max(
+    1,
+    dashboardStats.priorityCounts.HIGH,
+    dashboardStats.priorityCounts.MEDIUM,
+    dashboardStats.priorityCounts.LOW,
+    dashboardStats.priorityCounts.OTHER
+  );
+
+  const openInProgressCount = dashboardStats.statusCounts.OPEN + dashboardStats.statusCounts.IN_PROGRESS;
+  const resolvedRejectedCount = dashboardStats.statusCounts.RESOLVED + dashboardStats.statusCounts.REJECTED;
+  const resolutionRate = dashboardStats.total === 0 ? 0 : Math.round((dashboardStats.statusCounts.RESOLVED / dashboardStats.total) * 100);
+  const highPriorityShare = dashboardStats.total === 0 ? 0 : Math.round((dashboardStats.priorityCounts.HIGH / dashboardStats.total) * 100);
+
+  const statusPieSegments = useMemo(() => {
+    const total = dashboardStats.total || 1;
+    const parts = [
+      { label: "Open", count: dashboardStats.statusCounts.OPEN, color: "#14213D" },
+      { label: "Accepted", count: dashboardStats.statusCounts.ACCEPTED, color: "#FCA311" },
+      { label: "In Progress", count: dashboardStats.statusCounts.IN_PROGRESS, color: "#FA8112" },
+      { label: "Resolved", count: dashboardStats.statusCounts.RESOLVED, color: "#2e7d32" },
+      { label: "Rejected", count: dashboardStats.statusCounts.REJECTED, color: "#d32f2f" },
+    ];
+
+    let current = 0;
+    return parts.map((part) => {
+      const percent = (part.count / total) * 100;
+      const start = current;
+      current += percent;
+      return { ...part, percent, start, end: current };
+    });
+  }, [dashboardStats]);
+
+  const statusPieGradient = useMemo(() => {
+    if (dashboardStats.total === 0) {
+      return "conic-gradient(#E5E5E5 0 100%)";
+    }
+    const stops = statusPieSegments
+      .filter((s) => s.percent > 0)
+      .map((s) => `${s.color} ${s.start}% ${s.end}%`)
+      .join(", ");
+    return `conic-gradient(${stops})`;
+  }, [statusPieSegments, dashboardStats.total]);
+
+  const growthData = useMemo(() => {
+    const today = new Date();
+    const days = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const d = new Date(today);
+      d.setHours(0, 0, 0, 0);
+      d.setDate(today.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      days.push({
+        key,
+        label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+        count: 0,
+      });
+    }
+
+    const map = Object.fromEntries(days.map((d) => [d.key, d]));
+    filteredAndSortedTickets.forEach((item) => {
+      const createdAt = item?.ticket?.createdAt;
+      if (!createdAt) return;
+      const key = new Date(createdAt).toISOString().slice(0, 10);
+      if (map[key]) map[key].count += 1;
+    });
+
+    return days;
+  }, [filteredAndSortedTickets]);
+
+  const maxGrowthCount = Math.max(1, ...growthData.map((d) => d.count));
+
   return (
     <div style={pageStyle}>
       <section style={containerStyle}>
         <div style={headerStyle}>
           <div>
-            <h1 style={titleStyle}>Admin Dashboard</h1>
-            <p style={subtitleStyle}>Ticket monitoring and support operations</p>
+            <h1 style={titleStyle}>
+              {activeView === "dashboard" ? "Admin Ticket Main Dashboard" : "Admin Ticket Operations"}
+            </h1>
+            <p style={subtitleStyle}>
+              {activeView === "dashboard"
+                ? "Ticket monitoring and support operations"
+                : "Ticket list management with filtering and sorting"}
+            </p>
           </div>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             <span style={{ ...chipBaseStyle, backgroundColor: "#14213D", color: "#FFFFFF" }}>
@@ -248,50 +408,257 @@ export default function AdminTicketDashboard() {
           </div>
         </div>
 
-        <div
-          style={{
-            marginBottom: "12px",
-            padding: "14px",
-            border: "1px solid #F5E7C6",
-            borderRadius: "12px",
-            backgroundColor: "#FAF3E1",
-            display: "flex",
-            gap: "10px",
-            flexWrap: "wrap",
-            boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
-          }}
-        >
-          <select style={selectStyle} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="ALL">Filter by Status: All</option>
-            <option value="OPEN">Open</option>
-            <option value="ACCEPTED">Accepted</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="RESOLVED">Resolved</option>
-            <option value="REJECTED">Rejected</option>
-          </select>
-
-          <select style={selectStyle} value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
-            <option value="ALL">Filter by Priority: All</option>
-            <option value="HIGH">High</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="LOW">Low</option>
-          </select>
-
-          <select style={selectStyle} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            <option value="DATE_DESC">Sort by Date: Newest First</option>
-            <option value="DATE_ASC">Sort by Date: Oldest First</option>
-            <option value="PRIORITY_DESC">Sort by Priority: High to Low</option>
-            <option value="PRIORITY_ASC">Sort by Priority: Low to High</option>
-            <option value="STATUS_ASC">Sort by Status: A to Z</option>
-            <option value="STATUS_DESC">Sort by Status: Z to A</option>
-          </select>
+        <div style={{ marginBottom: "14px", border: "1px solid #F5E7C6", borderRadius: "12px", backgroundColor: "#FAF3E1", padding: "8px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            style={{
+              ...buttonStyle,
+              backgroundColor: activeView === "dashboard" ? "#14213D" : "#FFFFFF",
+              color: activeView === "dashboard" ? "#FFFFFF" : "#14213D",
+              border: activeView === "dashboard" ? "none" : "1px solid #F5E7C6",
+            }}
+            onClick={() => handleViewChange("dashboard")}
+          >
+            Main Dashboard
+          </button>
+          <button
+            type="button"
+            style={{
+              ...buttonStyle,
+              backgroundColor: activeView === "tickets" ? "#14213D" : "#FFFFFF",
+              color: activeView === "tickets" ? "#FFFFFF" : "#14213D",
+              border: activeView === "tickets" ? "none" : "1px solid #F5E7C6",
+            }}
+            onClick={() => handleViewChange("tickets")}
+          >
+            Ticket Operations
+          </button>
         </div>
 
-        {loading && <p>Loading all tickets...</p>}
-        {!loading && error && <p style={{ color: "#d32f2f" }}>{error}</p>}
-        {!loading && !error && filteredAndSortedTickets.length === 0 && <p>No tickets found.</p>}
+        {activeView === "dashboard" && (
+          <>
+            <div
+              style={{
+                marginBottom: "14px",
+                padding: "14px",
+                border: "1px solid #F5E7C6",
+                borderRadius: "12px",
+                backgroundColor: "#FAF3E1",
+                boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
+              }}
+            >
+              <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
+                <div style={metricCardStyle}>
+                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Total Tickets</div>
+                  <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{dashboardStats.total}</div>
+                </div>
+                <div style={metricCardStyle}>
+                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Open / In Progress</div>
+                  <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{openInProgressCount}</div>
+                </div>
+                <div style={metricCardStyle}>
+                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Resolved</div>
+                  <div style={{ color: "#2e7d32", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{dashboardStats.statusCounts.RESOLVED}</div>
+                </div>
+                <div style={metricCardStyle}>
+                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Rejected</div>
+                  <div style={{ color: "#d32f2f", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{dashboardStats.statusCounts.REJECTED}</div>
+                </div>
+                <div style={metricCardStyle}>
+                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Total Comments</div>
+                  <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{dashboardStats.totalComments}</div>
+                </div>
+                <div style={metricCardStyle}>
+                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Avg Comments / Ticket</div>
+                  <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{dashboardStats.avgComments}</div>
+                </div>
+              </div>
 
-        {!loading &&
+              <div style={{ marginTop: "10px", display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                <div style={metricCardStyle}>
+                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Resolution Rate</div>
+                  <div style={{ color: "#2e7d32", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{resolutionRate}%</div>
+                </div>
+                <div style={metricCardStyle}>
+                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>High Priority Share</div>
+                  <div style={{ color: "#d32f2f", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{highPriorityShare}%</div>
+                </div>
+                <div style={metricCardStyle}>
+                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Closed Tickets</div>
+                  <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{resolvedRejectedCount}</div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginBottom: "14px",
+                padding: "14px",
+                border: "1px solid #F5E7C6",
+                borderRadius: "12px",
+                backgroundColor: "#FAF3E1",
+                boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
+              }}
+            >
+              <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", marginBottom: "10px" }}>
+                <div style={chartCardStyle}>
+                  <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Status Pie Chart</div>
+                  <div style={{ display: "flex", gap: "14px", alignItems: "center", flexWrap: "wrap" }}>
+                    <div
+                      style={{
+                        width: "160px",
+                        height: "160px",
+                        borderRadius: "50%",
+                        background: statusPieGradient,
+                        border: "1px solid #F5E7C6",
+                        position: "relative",
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: "absolute",
+                          width: "72px",
+                          height: "72px",
+                          borderRadius: "50%",
+                          backgroundColor: "#FAF3E1",
+                          top: "50%",
+                          left: "50%",
+                          transform: "translate(-50%, -50%)",
+                          border: "1px solid #F5E7C6",
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: "grid", gap: "6px", minWidth: "150px" }}>
+                      {statusPieSegments.map((seg) => (
+                        <div key={seg.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#374151", fontSize: "13px", fontWeight: 600 }}>
+                            <span style={{ width: "10px", height: "10px", borderRadius: "999px", backgroundColor: seg.color }} />
+                            {seg.label}
+                          </div>
+                          <span style={{ color: "#222222", fontSize: "13px", fontWeight: 700 }}>{seg.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={chartCardStyle}>
+                  <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Growth Chart (Last 7 Days)</div>
+                  <div style={{ display: "flex", alignItems: "end", gap: "10px", height: "180px", padding: "8px 4px 0 4px", borderBottom: "1px solid #F5E7C6" }}>
+                    {growthData.map((day) => (
+                      <div key={day.key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+                        <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700 }}>{day.count}</div>
+                        <div
+                          style={{
+                            width: "100%",
+                            maxWidth: "24px",
+                            height: `${Math.max(8, (day.count / maxGrowthCount) * 120)}px`,
+                            borderRadius: "8px 8px 0 0",
+                            backgroundColor: "#14213D",
+                          }}
+                        />
+                        <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 600 }}>{day.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+              <div style={chartCardStyle}>
+                <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Status Chart</div>
+                {[
+                  ["OPEN", dashboardStats.statusCounts.OPEN, "#14213D"],
+                  ["ACCEPTED", dashboardStats.statusCounts.ACCEPTED, "#FCA311"],
+                  ["IN_PROGRESS", dashboardStats.statusCounts.IN_PROGRESS, "#FA8112"],
+                  ["RESOLVED", dashboardStats.statusCounts.RESOLVED, "#2e7d32"],
+                  ["REJECTED", dashboardStats.statusCounts.REJECTED, "#d32f2f"],
+                ].map(([label, count, color]) => (
+                  <div key={label} style={{ marginBottom: "8px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: "#374151", fontSize: "13px", fontWeight: 700 }}>
+                      <span>{label}</span>
+                      <span>{count}</span>
+                    </div>
+                    <div style={{ height: "10px", borderRadius: "999px", border: "1px solid #F5E7C6", backgroundColor: "#FAF3E1", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${(Number(count) / maxStatusCount) * 100}%`, backgroundColor: color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={chartCardStyle}>
+                <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Priority Chart</div>
+                {[
+                  ["HIGH", dashboardStats.priorityCounts.HIGH, "#d32f2f"],
+                  ["MEDIUM", dashboardStats.priorityCounts.MEDIUM, "#FCA311"],
+                  ["LOW", dashboardStats.priorityCounts.LOW, "#2e7d32"],
+                ].map(([label, count, color]) => (
+                  <div key={label} style={{ marginBottom: "10px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: "#374151", fontSize: "13px", fontWeight: 700 }}>
+                      <span>{label}</span>
+                      <span>{count}</span>
+                    </div>
+                    <div style={{ height: "12px", borderRadius: "999px", border: "1px solid #F5E7C6", backgroundColor: "#FAF3E1", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${(Number(count) / maxPriorityCount) * 100}%`, backgroundColor: color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            </div>
+          </>
+        )}
+
+        {activeView === "tickets" && (
+          <>
+            <div
+              style={{
+                marginBottom: "12px",
+                padding: "14px",
+                border: "1px solid #F5E7C6",
+                borderRadius: "12px",
+                backgroundColor: "#FAF3E1",
+                display: "flex",
+                gap: "10px",
+                flexWrap: "wrap",
+                boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
+              }}
+            >
+              <select style={selectStyle} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="ALL">Filter by Status: All</option>
+                <option value="OPEN">Open</option>
+                <option value="ACCEPTED">Accepted</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="RESOLVED">Resolved</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+
+              <select style={selectStyle} value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
+                <option value="ALL">Filter by Priority: All</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </select>
+
+              <select style={selectStyle} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                <option value="DATE_DESC">Sort by Date: Newest First</option>
+                <option value="DATE_ASC">Sort by Date: Oldest First</option>
+                <option value="PRIORITY_DESC">Sort by Priority: High to Low</option>
+                <option value="PRIORITY_ASC">Sort by Priority: Low to High</option>
+                <option value="STATUS_ASC">Sort by Status: A to Z</option>
+                <option value="STATUS_DESC">Sort by Status: Z to A</option>
+              </select>
+            </div>
+
+            {loading && <p>Loading all tickets...</p>}
+            {!loading && error && <p style={{ color: "#d32f2f" }}>{error}</p>}
+            {!loading && !error && filteredAndSortedTickets.length === 0 && <p>No tickets found.</p>}
+          </>
+        )}
+
+        {activeView === "tickets" &&
+          !loading &&
           !error &&
           filteredAndSortedTickets.map((item) => {
             const ticket = item.ticket || {};
