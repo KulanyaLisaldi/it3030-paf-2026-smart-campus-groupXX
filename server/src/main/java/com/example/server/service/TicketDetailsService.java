@@ -1,0 +1,119 @@
+package com.example.server.service;
+
+import com.example.server.dto.ticket.CreateTicketCommentRequest;
+import com.example.server.dto.ticket.TicketDetailsResponse;
+import com.example.server.dto.ticket.UpdateTicketCommentRequest;
+import com.example.server.model.Ticket;
+import com.example.server.model.TicketComment;
+import com.example.server.repository.TicketCommentRepo;
+import com.example.server.repository.TicketRepo;
+import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class TicketDetailsService {
+
+    private final TicketRepo ticketRepo;
+    private final TicketCommentRepo commentRepo;
+
+    public TicketDetailsService(TicketRepo ticketRepo, TicketCommentRepo commentRepo) {
+        this.ticketRepo = ticketRepo;
+        this.commentRepo = commentRepo;
+    }
+
+    public Optional<TicketDetailsResponse> getTicketDetails(String ticketId) {
+        Optional<Ticket> ticket = ticketRepo.findById(ticketId);
+        if (ticket.isEmpty()) {
+            return Optional.empty();
+        }
+
+        List<TicketComment> comments = commentRepo.findByTicketIdOrderByCreatedAtDesc(ticketId);
+        return Optional.of(new TicketDetailsResponse(ticket.get(), comments));
+    }
+
+    public Optional<TicketComment> addComment(String ticketId, CreateTicketCommentRequest request) {
+        Optional<Ticket> ticket = ticketRepo.findById(ticketId);
+        if (ticket.isEmpty()) {
+            return Optional.empty();
+        }
+
+        validateCommentContent(request.getContent());
+
+        TicketComment comment = new TicketComment();
+        comment.setTicketId(ticketId);
+        comment.setContent(request.getContent().trim());
+        comment.setCreatedBy(request.getCreatedBy().trim());
+        comment.setCreatedAt(Instant.now());
+
+        return Optional.of(commentRepo.save(comment));
+    }
+
+    public Optional<TicketComment> updateComment(String ticketId, String commentId, UpdateTicketCommentRequest request) {
+        Optional<Ticket> ticket = ticketRepo.findById(ticketId);
+        if (ticket.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Optional<TicketComment> maybeComment = commentRepo.findById(commentId);
+        if (maybeComment.isEmpty()) {
+            return Optional.empty();
+        }
+
+        TicketComment comment = maybeComment.get();
+        if (!ticketId.equals(comment.getTicketId())) {
+            return Optional.empty();
+        }
+
+        validateCommentContent(request.getContent());
+        comment.setContent(request.getContent().trim());
+        return Optional.of(commentRepo.save(comment));
+    }
+
+    public boolean deleteComment(String ticketId, String commentId) {
+        Optional<Ticket> ticket = ticketRepo.findById(ticketId);
+        if (ticket.isEmpty()) {
+            return false;
+        }
+
+        Optional<TicketComment> maybeComment = commentRepo.findById(commentId);
+        if (maybeComment.isEmpty()) {
+            return false;
+        }
+
+        TicketComment comment = maybeComment.get();
+        if (!ticketId.equals(comment.getTicketId())) {
+            return false;
+        }
+
+        commentRepo.deleteById(commentId);
+        return true;
+    }
+
+    public boolean deleteTicket(String ticketId) {
+        Optional<Ticket> maybeTicket = ticketRepo.findById(ticketId);
+        if (maybeTicket.isEmpty()) {
+            return false;
+        }
+
+        commentRepo.deleteByTicketId(ticketId);
+        ticketRepo.deleteById(ticketId);
+        return true;
+    }
+
+    private void validateCommentContent(String content) {
+        String trimmed = content == null ? "" : content.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("Comment content is required");
+        }
+        if (!trimmed.matches("^[a-zA-Z0-9\\s]+$")) {
+            throw new IllegalArgumentException("Comment cannot contain special characters");
+        }
+        if (trimmed.matches(".*(.)\\1{3,}.*")) {
+            throw new IllegalArgumentException("Comment cannot repeat the same character many times");
+        }
+    }
+}
+

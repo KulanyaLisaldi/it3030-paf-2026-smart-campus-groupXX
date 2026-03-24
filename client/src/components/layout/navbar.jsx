@@ -1,10 +1,28 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [pinnedDropdown, setPinnedDropdown] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(localStorage.getItem("smartCampusUser")));
+  const dropdownWrapperRef = useRef(null);
+  const [showSupportDeskMenu, setShowSupportDeskMenu] = useState(false);
+
+  useEffect(() => {
+    const handleDocumentMouseDown = (event) => {
+      if (!dropdownWrapperRef.current) return;
+      const clickedInside = dropdownWrapperRef.current.contains(event.target);
+      if (!clickedInside) {
+        setShowDropdown(false);
+        setPinnedDropdown(false);
+        setShowSupportDeskMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    return () => document.removeEventListener("mousedown", handleDocumentMouseDown);
+  }, []);
 
   const navStyle = {
     width: "100%",
@@ -187,11 +205,22 @@ const Navbar = () => {
       {/* Center - Menu */}
       <div style={centerMenuStyle}>
         <div 
+          ref={dropdownWrapperRef}
           style={{ position: "relative" }}
-          onMouseEnter={() => setShowDropdown(true)}
-          onMouseLeave={() => setShowDropdown(false)}
+          onMouseEnter={() => {
+            if (!pinnedDropdown) setShowDropdown(true);
+          }}
         >
-          <div style={centerLinkStyle}>
+          <div
+            style={centerLinkStyle}
+            onClick={() => {
+              setPinnedDropdown((prev) => {
+                const nextPinned = !prev;
+                setShowDropdown(nextPinned);
+                return nextPinned;
+              });
+            }}
+          >
             Features
             <span style={dropdownArrowStyle}>▼</span>
           </div>
@@ -202,6 +231,10 @@ const Navbar = () => {
                 style={dropdownItemStyle}
                 onMouseEnter={(e) => handleDropdownItemHover(e, true)}
                 onMouseLeave={(e) => handleDropdownItemHover(e, false)}
+                onClick={() => {
+                  setShowDropdown(false);
+                  setPinnedDropdown(false);
+                }}
               >
                 Lab Booking
               </a>
@@ -210,6 +243,10 @@ const Navbar = () => {
                 style={dropdownItemStyle}
                 onMouseEnter={(e) => handleDropdownItemHover(e, true)}
                 onMouseLeave={(e) => handleDropdownItemHover(e, false)}
+                onClick={() => {
+                  setShowDropdown(false);
+                  setPinnedDropdown(false);
+                }}
               >
                 Meeting Room Booking
               </a>
@@ -218,29 +255,61 @@ const Navbar = () => {
                 style={dropdownItemStyle}
                 onMouseEnter={(e) => handleDropdownItemHover(e, true)}
                 onMouseLeave={(e) => handleDropdownItemHover(e, false)}
+                onClick={() => {
+                  setShowDropdown(false);
+                  setPinnedDropdown(false);
+                }}
               >
                 Equipment Booking
               </a>
               <a 
-                href="#issue-reporting" 
+                href="#support-desk" 
                 style={dropdownItemStyle}
                 onMouseEnter={(e) => handleDropdownItemHover(e, true)}
                 onMouseLeave={(e) => handleDropdownItemHover(e, false)}
+                onClick={() => {
+                  // Toggle submenu instead of navigating immediately
+                  setShowSupportDeskMenu((prev) => !prev);
+                }}
               >
-                Issue Reporting
+                Support Desk
               </a>
+              {showSupportDeskMenu && (
+                <div style={{ padding: "4px 0 0 16px" }}>
+                  <a
+                    href="/tickets/create"
+                    style={dropdownItemStyle}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowDropdown(false);
+                      setPinnedDropdown(false);
+                      setShowSupportDeskMenu(false);
+                      navigate("/tickets/create");
+                    }}
+                  >
+                    Create Ticket
+                  </a>
+                  <a
+                    href="/my-tickets"
+                    style={dropdownItemStyle}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowDropdown(false);
+                      setPinnedDropdown(false);
+                      setShowSupportDeskMenu(false);
+                      navigate("/my-tickets");
+                    }}
+                  >
+                    My Tickets
+                  </a>
+                </div>
+              )}
             </div>
           )}
         </div>
         <a href="#resources" style={centerLinkStyle}>
           Resources
         </a>
-        <span style={centerLinkStyle} onClick={() => navigate('/tickets/create')}>
-          Create Ticket
-        </span>
-        <span style={centerLinkStyle} onClick={() => navigate('/my-tickets')}>
-          My Tickets
-        </span>
         <a href="#about" style={centerLinkStyle}>
           About
         </a>
