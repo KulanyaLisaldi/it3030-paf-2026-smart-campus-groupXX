@@ -62,6 +62,18 @@ const buttonStyle = {
   cursor: "pointer",
 };
 
+const logoutButtonStyle = {
+  padding: "8px 20px",
+  borderRadius: "6px",
+  border: "none",
+  backgroundColor: "#222222",
+  color: "#FFFFFF",
+  fontSize: "14px",
+  fontWeight: "600",
+  cursor: "pointer",
+  transition: "opacity 0.2s ease",
+};
+
 const chipBaseStyle = {
   display: "inline-flex",
   alignItems: "center",
@@ -240,6 +252,15 @@ export default function AdminTicketDashboard() {
         document.getElementById("admin-dashboard-top")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }, 0);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("smartCampusUser");
+    window.location.href = "/";
+  };
+
+  const handleLogoutHover = (e, isHover) => {
+    e.currentTarget.style.opacity = isHover ? "0.9" : "1";
   };
 
   const filteredAndSortedTickets = useMemo(() => {
@@ -538,6 +559,16 @@ export default function AdminTicketDashboard() {
                   Closed Tickets: <span style={{ color: "#14213D" }}>{resolvedRejectedCount}</span>
                 </div>
               </div>
+
+              <button
+                type="button"
+                style={{ ...logoutButtonStyle, marginTop: "12px", width: "100%" }}
+                onMouseEnter={(e) => handleLogoutHover(e, true)}
+                onMouseLeave={(e) => handleLogoutHover(e, false)}
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
             </aside>
 
             <div
@@ -736,56 +767,130 @@ export default function AdminTicketDashboard() {
         )}
 
         {activeView === "tickets" && (
-          <>
-            <div
+          <div
+            style={{
+              marginBottom: "14px",
+              display: "grid",
+              gridTemplateColumns: "250px minmax(0, 1fr)",
+              gap: "12px",
+              alignItems: "start",
+            }}
+          >
+            <aside
               style={{
-                marginBottom: "12px",
-                padding: "14px",
                 border: "1px solid #F5E7C6",
                 borderRadius: "12px",
                 backgroundColor: "#FAF3E1",
-                display: "flex",
-                gap: "10px",
-                flexWrap: "wrap",
-                boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
+                padding: "12px",
+                minHeight: "760px",
               }}
             >
-              <select style={selectStyle} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="ALL">Filter by Status: All</option>
-                <option value="OPEN">Open</option>
-                <option value="ACCEPTED">Accepted</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="RESOLVED">Resolved</option>
-                <option value="REJECTED">Rejected</option>
-              </select>
+              <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, marginBottom: "10px" }}>Admin Desk</div>
+              <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 600, marginBottom: "14px" }}>
+                Maintenance & Incident Analytics
+              </div>
 
-              <select style={selectStyle} value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
-                <option value="ALL">Filter by Priority: All</option>
-                <option value="HIGH">High</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="LOW">Low</option>
-              </select>
+              <div style={{ display: "grid", gap: "6px", marginBottom: "14px" }}>
+                {["Dashboard", "Tickets", "Charts", "Reports"].map((item) => (
+                  <button
+                    type="button"
+                    key={item}
+                    onClick={() => navigateFromSidebar(item)}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      border: "1px solid #F5E7C6",
+                      borderRadius: "8px",
+                      padding: "8px 10px",
+                      backgroundColor: activeMenuItem === item ? "#14213D" : "#FFFFFF",
+                      color: activeMenuItem === item ? "#FFFFFF" : "#374151",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
 
-              <select style={selectStyle} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                <option value="DATE_DESC">Sort by Date: Newest First</option>
-                <option value="DATE_ASC">Sort by Date: Oldest First</option>
-                <option value="PRIORITY_DESC">Sort by Priority: High to Low</option>
-                <option value="PRIORITY_ASC">Sort by Priority: Low to High</option>
-                <option value="STATUS_ASC">Sort by Status: A to Z</option>
-                <option value="STATUS_DESC">Sort by Status: Z to A</option>
-              </select>
-            </div>
+              <div style={{ display: "grid", gap: "8px" }}>
+                <div style={{ ...metricCardStyle, backgroundColor: "#14213D", color: "#FFFFFF", padding: "14px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", opacity: 0.9 }}>Open Tickets</div>
+                  <div style={{ fontSize: "28px", fontWeight: 800, lineHeight: 1.05 }}>{dashboardStats.statusCounts.OPEN}</div>
+                </div>
+                <div style={{ ...metricCardStyle, backgroundColor: "#FA8112", color: "#FFFFFF", padding: "14px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", opacity: 0.95 }}>High Priority</div>
+                  <div style={{ fontSize: "28px", fontWeight: 800, lineHeight: 1.05 }}>{dashboardStats.priorityCounts.HIGH}</div>
+                </div>
+                <div style={{ ...metricCardStyle, backgroundColor: "#FCA311", color: "#FFFFFF", padding: "14px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", opacity: 0.95 }}>Comments</div>
+                  <div style={{ fontSize: "28px", fontWeight: 800, lineHeight: 1.05 }}>{dashboardStats.totalComments}</div>
+                </div>
+                <div style={{ ...metricCardStyle, backgroundColor: "#2e7d32", color: "#FFFFFF", padding: "14px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", opacity: 0.95 }}>Resolved</div>
+                  <div style={{ fontSize: "28px", fontWeight: 800, lineHeight: 1.05 }}>{dashboardStats.statusCounts.RESOLVED}</div>
+                </div>
+              </div>
 
-            {loading && <p>Loading all tickets...</p>}
-            {!loading && error && <p style={{ color: "#d32f2f" }}>{error}</p>}
-            {!loading && !error && filteredAndSortedTickets.length === 0 && <p>No tickets found.</p>}
-          </>
-        )}
+              <button
+                type="button"
+                style={{ ...logoutButtonStyle, marginTop: "12px", width: "100%" }}
+                onMouseEnter={(e) => handleLogoutHover(e, true)}
+                onMouseLeave={(e) => handleLogoutHover(e, false)}
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </aside>
 
-        {activeView === "tickets" &&
-          !loading &&
-          !error &&
-          filteredAndSortedTickets.map((item) => {
+            <div>
+              <div
+                style={{
+                  marginBottom: "12px",
+                  padding: "14px",
+                  border: "1px solid #F5E7C6",
+                  borderRadius: "12px",
+                  backgroundColor: "#FAF3E1",
+                  display: "flex",
+                  gap: "10px",
+                  flexWrap: "wrap",
+                  boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
+                }}
+              >
+                <select style={selectStyle} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <option value="ALL">Filter by Status: All</option>
+                  <option value="OPEN">Open</option>
+                  <option value="ACCEPTED">Accepted</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="RESOLVED">Resolved</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+
+                <select style={selectStyle} value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
+                  <option value="ALL">Filter by Priority: All</option>
+                  <option value="HIGH">High</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="LOW">Low</option>
+                </select>
+
+                <select style={selectStyle} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                  <option value="DATE_DESC">Sort by Date: Newest First</option>
+                  <option value="DATE_ASC">Sort by Date: Oldest First</option>
+                  <option value="PRIORITY_DESC">Sort by Priority: High to Low</option>
+                  <option value="PRIORITY_ASC">Sort by Priority: Low to High</option>
+                  <option value="STATUS_ASC">Sort by Status: A to Z</option>
+                  <option value="STATUS_DESC">Sort by Status: Z to A</option>
+                </select>
+              </div>
+
+              {loading && <p>Loading all tickets...</p>}
+              {!loading && error && <p style={{ color: "#d32f2f" }}>{error}</p>}
+              {!loading && !error && filteredAndSortedTickets.length === 0 && <p>No tickets found.</p>}
+
+              {!loading &&
+                !error &&
+                filteredAndSortedTickets.map((item) => {
             const ticket = item.ticket || {};
             const comments = item.comments || [];
             const progress = getProgressInfo(ticket.status, comments.length);
@@ -906,6 +1011,9 @@ export default function AdminTicketDashboard() {
               </article>
             );
           })}
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
