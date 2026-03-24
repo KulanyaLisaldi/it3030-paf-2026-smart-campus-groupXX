@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { getAdminTicketList } from "../api/adminticket";
 
 const pageStyle = {
@@ -89,6 +89,18 @@ const commentBoxStyle = {
   backgroundColor: "#FAF3E1",
 };
 
+const selectStyle = {
+  border: "2px solid #F5E7C6",
+  borderRadius: "10px",
+  padding: "10px 12px",
+  fontSize: "14px",
+  fontWeight: 600,
+  color: "#222222",
+  backgroundColor: "#FFFFFF",
+  outline: "none",
+  minWidth: "180px",
+};
+
 function toProgressPercent(status) {
   if (status === "OPEN") return 20;
   if (status === "ACCEPTED") return 40;
@@ -138,6 +150,9 @@ export default function AdminTicketDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [openTicketIds, setOpenTicketIds] = useState({});
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [priorityFilter, setPriorityFilter] = useState("ALL");
+  const [sortBy, setSortBy] = useState("DATE_DESC");
 
   useEffect(() => {
     const load = async () => {
@@ -160,6 +175,55 @@ export default function AdminTicketDashboard() {
     setOpenTicketIds((prev) => ({ ...prev, [ticketId]: !prev[ticketId] }));
   };
 
+  const filteredAndSortedTickets = useMemo(() => {
+    const list = Array.isArray(tickets) ? [...tickets] : [];
+
+    const filtered = list.filter((item) => {
+      const ticket = item?.ticket || {};
+      const status = (ticket.status || "").toUpperCase();
+      const priority = (ticket.priority || "").toUpperCase();
+
+      if (statusFilter !== "ALL" && status !== statusFilter) return false;
+      if (priorityFilter !== "ALL" && priority !== priorityFilter) return false;
+      return true;
+    });
+
+    const priorityRank = {
+      HIGH: 3,
+      MEDIUM: 2,
+      LOW: 1,
+    };
+
+    filtered.sort((a, b) => {
+      const ticketA = a?.ticket || {};
+      const ticketB = b?.ticket || {};
+
+      if (sortBy === "DATE_DESC" || sortBy === "DATE_ASC") {
+        const dateA = new Date(ticketA.createdAt || 0).getTime();
+        const dateB = new Date(ticketB.createdAt || 0).getTime();
+        return sortBy === "DATE_DESC" ? dateB - dateA : dateA - dateB;
+      }
+
+      if (sortBy === "PRIORITY_DESC" || sortBy === "PRIORITY_ASC") {
+        const rankA = priorityRank[(ticketA.priority || "").toUpperCase()] || 0;
+        const rankB = priorityRank[(ticketB.priority || "").toUpperCase()] || 0;
+        return sortBy === "PRIORITY_DESC" ? rankB - rankA : rankA - rankB;
+      }
+
+      if (sortBy === "STATUS_ASC" || sortBy === "STATUS_DESC") {
+        const statusA = (ticketA.status || "").toUpperCase();
+        const statusB = (ticketB.status || "").toUpperCase();
+        return sortBy === "STATUS_ASC"
+          ? statusA.localeCompare(statusB)
+          : statusB.localeCompare(statusA);
+      }
+
+      return 0;
+    });
+
+    return filtered;
+  }, [tickets, statusFilter, priorityFilter, sortBy]);
+
   return (
     <div style={pageStyle}>
       <section style={containerStyle}>
@@ -167,18 +231,56 @@ export default function AdminTicketDashboard() {
           <h1 style={titleStyle}>Admin Dashboard</h1>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             <span style={{ ...chipBaseStyle, backgroundColor: "#14213D", color: "#FFFFFF" }}>
-              Total Tickets: {tickets.length}
+              Total Tickets: {filteredAndSortedTickets.length}
             </span>
           </div>
         </div>
 
+        <div
+          style={{
+            marginBottom: "12px",
+            padding: "12px",
+            border: "1px solid #F5E7C6",
+            borderRadius: "10px",
+            backgroundColor: "#FAF3E1",
+            display: "flex",
+            gap: "10px",
+            flexWrap: "wrap",
+          }}
+        >
+          <select style={selectStyle} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="ALL">Filter by Status: All</option>
+            <option value="OPEN">Open</option>
+            <option value="ACCEPTED">Accepted</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+
+          <select style={selectStyle} value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
+            <option value="ALL">Filter by Priority: All</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
+
+          <select style={selectStyle} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="DATE_DESC">Sort by Date: Newest First</option>
+            <option value="DATE_ASC">Sort by Date: Oldest First</option>
+            <option value="PRIORITY_DESC">Sort by Priority: High to Low</option>
+            <option value="PRIORITY_ASC">Sort by Priority: Low to High</option>
+            <option value="STATUS_ASC">Sort by Status: A to Z</option>
+            <option value="STATUS_DESC">Sort by Status: Z to A</option>
+          </select>
+        </div>
+
         {loading && <p>Loading all tickets...</p>}
         {!loading && error && <p style={{ color: "#d32f2f" }}>{error}</p>}
-        {!loading && !error && tickets.length === 0 && <p>No tickets found.</p>}
+        {!loading && !error && filteredAndSortedTickets.length === 0 && <p>No tickets found.</p>}
 
         {!loading &&
           !error &&
-          tickets.map((item) => {
+          filteredAndSortedTickets.map((item) => {
             const ticket = item.ticket || {};
             const comments = item.comments || [];
             const progress = getProgressInfo(ticket.status, comments.length);
