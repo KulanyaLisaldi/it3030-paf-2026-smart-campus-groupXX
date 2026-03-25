@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getAdminTicketList } from "../api/adminticket";
-import { createTechnician } from "../api/adminTechnicians";
-import { DEFAULT_TECHNICIAN_CATEGORY, TECHNICIAN_CATEGORIES } from "../constants/technicianCategories";
 
 const ADMIN_SIDEBAR_ITEMS = ["Dashboard", "Tickets", "Charts", "Reports", "Technicians"];
 
@@ -251,6 +250,7 @@ function getProgressInfo(status, commentsCount) {
 }
 
 export default function AdminTicketDashboard() {
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -263,17 +263,6 @@ export default function AdminTicketDashboard() {
   const [rejectingTicketId, setRejectingTicketId] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionError, setRejectionError] = useState("");
-  const [showTechniciansPanel, setShowTechniciansPanel] = useState(false);
-
-  const [techFirstName, setTechFirstName] = useState("");
-  const [techLastName, setTechLastName] = useState("");
-  const [techEmail, setTechEmail] = useState("");
-  const [techPhone, setTechPhone] = useState("");
-  const [techCategory, setTechCategory] = useState(DEFAULT_TECHNICIAN_CATEGORY);
-  const [techPassword, setTechPassword] = useState("");
-  const [techSubmitting, setTechSubmitting] = useState(false);
-  const [techMessage, setTechMessage] = useState("");
-  const [techError, setTechError] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -319,18 +308,15 @@ export default function AdminTicketDashboard() {
   const navigateFromSidebar = (item) => {
     setActiveMenuItem(item);
     if (item === "Tickets") {
-      setShowTechniciansPanel(false);
       handleViewChange("tickets");
       return;
     }
 
     if (item === "Technicians") {
-      handleViewChange("dashboard");
-      setShowTechniciansPanel(true);
+      navigate("/technician");
       return;
     }
 
-    setShowTechniciansPanel(false);
     handleViewChange("dashboard");
 
     setTimeout(() => {
@@ -342,34 +328,6 @@ export default function AdminTicketDashboard() {
         document.getElementById("admin-dashboard-top")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }, 0);
-  };
-
-  const submitAddTechnician = async (e) => {
-    e.preventDefault();
-    setTechMessage("");
-    setTechError("");
-    setTechSubmitting(true);
-    try {
-      await createTechnician({
-        firstName: techFirstName.trim(),
-        lastName: techLastName.trim(),
-        email: techEmail.trim(),
-        phoneNumber: techPhone.trim(),
-        password: techPassword,
-        category: techCategory,
-      });
-      setTechMessage("Technician created. They can sign in with email and password.");
-      setTechFirstName("");
-      setTechLastName("");
-      setTechEmail("");
-      setTechPhone("");
-      setTechCategory(DEFAULT_TECHNICIAN_CATEGORY);
-      setTechPassword("");
-    } catch (err) {
-      setTechError(err?.message || "Could not create technician.");
-    } finally {
-      setTechSubmitting(false);
-    }
   };
 
   const handleLogout = () => {
@@ -742,93 +700,6 @@ export default function AdminTicketDashboard() {
                 </div>
               </div>
 
-              {showTechniciansPanel && (
-                <div
-                  id="admin-add-technician"
-                  style={{
-                    border: "1px solid #F5E7C6",
-                    borderRadius: "10px",
-                    padding: "14px",
-                    backgroundColor: "#FFFFFF",
-                    marginBottom: "10px",
-                  }}
-                >
-                  <div style={sectionTitleStyle}>Technicians</div>
-                  <p style={{ margin: "0 0 12px 0", color: "#6b7280", fontSize: "13px", fontWeight: 500 }}>
-                    Create staff accounts. Technicians sign in with email and password on the main Sign In page.
-                  </p>
-                  <form onSubmit={submitAddTechnician} style={{ display: "grid", gap: "10px", maxWidth: "480px" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                      <input
-                        required
-                        placeholder="First name"
-                        value={techFirstName}
-                        onChange={(e) => setTechFirstName(e.target.value)}
-                        style={selectStyle}
-                      />
-                      <input
-                        required
-                        placeholder="Last name"
-                        value={techLastName}
-                        onChange={(e) => setTechLastName(e.target.value)}
-                        style={selectStyle}
-                      />
-                    </div>
-                    <input
-                      required
-                      type="email"
-                      placeholder="Work email"
-                      value={techEmail}
-                      onChange={(e) => setTechEmail(e.target.value)}
-                      style={selectStyle}
-                    />
-                    <input
-                      placeholder="Phone (optional)"
-                      value={techPhone}
-                      onChange={(e) => setTechPhone(e.target.value)}
-                      style={selectStyle}
-                    />
-                    <select
-                      required
-                      value={techCategory}
-                      onChange={(e) => setTechCategory(e.target.value)}
-                      style={selectStyle}
-                      aria-label="Technician category"
-                    >
-                      {TECHNICIAN_CATEGORIES.map((c) => (
-                        <option key={c.value} value={c.value}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      required
-                      type="password"
-                      minLength={6}
-                      placeholder="Initial password (min 6 characters)"
-                      value={techPassword}
-                      onChange={(e) => setTechPassword(e.target.value)}
-                      style={selectStyle}
-                    />
-                    <button
-                      type="submit"
-                      disabled={techSubmitting}
-                      style={{ ...buttonStyle, opacity: techSubmitting ? 0.85 : 1, width: "fit-content" }}
-                    >
-                      {techSubmitting ? "Saving…" : "Add technician"}
-                    </button>
-                  </form>
-                  {techMessage ? (
-                    <p style={{ margin: "10px 0 0 0", color: "#2e7d32", fontSize: "13px", fontWeight: 600 }}>{techMessage}</p>
-                  ) : null}
-                  {techError ? (
-                    <p style={{ margin: "10px 0 0 0", color: "#d32f2f", fontSize: "13px", fontWeight: 600 }}>{techError}</p>
-                  ) : null}
-                </div>
-              )}
-
-              {!showTechniciansPanel && (
-              <>
               <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", marginBottom: "10px" }}>
                 <div style={{ ...metricCardStyle, borderLeft: "6px solid #14213D" }}>
                   <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" }}>Total Tickets</div>
@@ -981,8 +852,6 @@ export default function AdminTicketDashboard() {
                   </div>
                 </div>
               </div>
-              </>
-              )}
             </div>
           </div>
         )}
