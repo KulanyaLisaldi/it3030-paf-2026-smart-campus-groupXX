@@ -9,11 +9,22 @@ public class AuthUserResponse {
     private String phoneNumber;
     private String role;
     private String profileImageUrl;
+    /** {@link com.example.server.model.TechnicianCategory} name for technicians; null otherwise. */
+    private String technicianCategory;
 
     public AuthUserResponse() {
     }
 
-    public AuthUserResponse(String id, String firstName, String lastName, String email, String phoneNumber, String role, String profileImageUrl) {
+    public AuthUserResponse(
+        String id,
+        String firstName,
+        String lastName,
+        String email,
+        String phoneNumber,
+        String role,
+        String profileImageUrl,
+        String technicianCategory
+    ) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -21,6 +32,7 @@ public class AuthUserResponse {
         this.phoneNumber = phoneNumber;
         this.role = role;
         this.profileImageUrl = profileImageUrl;
+        this.technicianCategory = technicianCategory;
     }
 
     public String getId() {
@@ -49,5 +61,13 @@ public class AuthUserResponse {
 
     public String getProfileImageUrl() {
         return profileImageUrl;
+    }
+
+    public String getTechnicianCategory() {
+        return technicianCategory;
+    }
+
+    public void setTechnicianCategory(String technicianCategory) {
+        this.technicianCategory = technicianCategory;
     }
 }

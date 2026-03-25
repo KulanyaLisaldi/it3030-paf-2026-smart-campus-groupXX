@@ -25,6 +25,9 @@ public class User {
     /** When null in the database, treated as {@link UserRole#USER} for legacy documents. */
     private UserRole role;
 
+    /** Set for {@link UserRole#TECHNICIAN} when created by admin; null for other roles or legacy users. */
+    private TechnicianCategory technicianCategory;
+
     private Instant createdAt;
 
     public User() {
@@ -113,6 +116,14 @@ public class User {
 
     public void setRole(UserRole role) {
         this.role = role;
+    }
+
+    public TechnicianCategory getTechnicianCategory() {
+        return technicianCategory;
+    }
+
+    public void setTechnicianCategory(TechnicianCategory technicianCategory) {
+        this.technicianCategory = technicianCategory;
     }
 
     /** Effective role for authorization (never null). */
