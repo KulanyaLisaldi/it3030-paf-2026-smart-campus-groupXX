@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { createTechnician } from "../api/adminTechnicians";
 import { getAuthToken } from "../api/http";
 import { DEFAULT_TECHNICIAN_CATEGORY, TECHNICIAN_CATEGORIES } from "../constants/technicianCategories";
-import { ACCOUNT_PATH } from "../utils/authRedirect";
+import { removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../api/auth";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 
 const shellStyle = {
@@ -174,12 +174,27 @@ function profileInitial(user) {
   return "A";
 }
 
+const PHONE_PATTERN = /^[0-9+\-()\s]{7,20}$/;
+
+function isValidPhone(value) {
+  const t = (value || "").trim();
+  return t.length > 0 && PHONE_PATTERN.test(t);
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [panel, setPanel] = useState("add-technician");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profilePhoneDraft, setProfilePhoneDraft] = useState("");
+  const [profileSaveState, setProfileSaveState] = useState({ busy: false, message: "", error: "" });
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarRemoveBusy, setAvatarRemoveBusy] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const [avatarSuccess, setAvatarSuccess] = useState("");
   const [userRev, setUserRev] = useState(0);
   const profileRef = useRef(null);
+  const avatarFileRef = useRef(null);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -218,6 +233,16 @@ export default function AdminDashboard() {
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, []);
 
+  useEffect(() => {
+    if (!profileModalOpen) return;
+    setProfilePhoneDraft((adminUser?.phoneNumber || "").trim());
+    setAvatarBusy(false);
+    setAvatarRemoveBusy(false);
+    setAvatarError("");
+    setAvatarSuccess("");
+    setProfileSaveState({ busy: false, message: "", error: "" });
+  }, [profileModalOpen, adminUser]);
+
   const handleLogout = () => {
     persistCampusUser(null);
     localStorage.removeItem("smartCampusAuthToken");
@@ -252,9 +277,66 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSaveProfilePhone = async () => {
+    if (!canSavePhone || profileSaveState.busy) return;
+    setProfileSaveState({ busy: true, message: "", error: "" });
+    try {
+      const updated = await updateProfilePhone({ phoneNumber: profilePhoneDraft.trim() });
+      persistCampusUser(updated);
+      setProfileSaveState({ busy: false, message: "Changes saved.", error: "" });
+    } catch (err) {
+      setProfileSaveState({ busy: false, message: "", error: err?.message || "Save failed" });
+    }
+  };
+
+  const handleProfileAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setAvatarError("");
+    setAvatarSuccess("");
+    setAvatarBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const updated = await uploadProfileAvatar(fd);
+      persistCampusUser(updated);
+      setAvatarSuccess("Profile photo updated.");
+    } catch (err) {
+      setAvatarError(err?.message || "Upload failed");
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const handleRemoveProfileAvatar = async () => {
+    if (!adminUser?.profileImageUrl) return;
+    const ok = window.confirm("Remove your profile photo from Smart Campus?");
+    if (!ok) return;
+    setAvatarError("");
+    setAvatarSuccess("");
+    setAvatarRemoveBusy(true);
+    try {
+      const updated = await removeProfileAvatar();
+      persistCampusUser(updated);
+      setAvatarSuccess("Profile photo removed.");
+    } catch (err) {
+      setAvatarError(err?.message || "Could not remove photo");
+    } finally {
+      setAvatarRemoveBusy(false);
+    }
+  };
+
   if (!getAuthToken() || !adminUser || adminUser.role !== "ADMIN") {
     return null;
   }
+
+  const serverPhone = (adminUser?.phoneNumber || "").trim();
+  const canSavePhone = useMemo(() => {
+    const draft = profilePhoneDraft.trim();
+    if (!isValidPhone(draft)) return false;
+    return draft !== serverPhone;
+  }, [adminUser, profilePhoneDraft, serverPhone]);
 
   const pageTitle =
     panel === "add-technician"
@@ -423,7 +505,7 @@ export default function AdminDashboard() {
                   role="menuitem"
                   onClick={() => {
                     setProfileMenuOpen(false);
-                    navigate(ACCOUNT_PATH);
+                    setProfileModalOpen(true);
                   }}
                   style={{
                     width: "100%",
@@ -566,6 +648,248 @@ export default function AdminDashboard() {
             <div style={PLACEHOLDER_STYLE}>No booking tools yet. This area is reserved for future campus booking management.</div>
           )}
         </main>
+
+        {profileModalOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1000,
+              backgroundColor: "rgba(15, 23, 42, 0.55)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "18px",
+            }}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setProfileModalOpen(false);
+            }}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: "760px",
+                backgroundColor: "#ffffff",
+                borderRadius: "16px",
+                border: "1px solid #e5e7eb",
+                boxShadow: "0 24px 90px rgba(0,0,0,0.25)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  padding: "16px 22px",
+                  borderBottom: "1px solid #e5e7eb",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "12px",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>My profile</div>
+                  <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>
+                    Personal info (admin)
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setProfileModalOpen(false)}
+                  style={{
+                    border: "1px solid #e5e7eb",
+                    background: "#ffffff",
+                    borderRadius: "10px",
+                    padding: "8px 12px",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                    color: "#111827",
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+
+              <div style={{ padding: "22px" }}>
+                <div style={{ display: "flex", gap: "18px", flexWrap: "wrap", alignItems: "flex-start" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: "170px" }}>
+                    <div
+                      style={{
+                        width: "110px",
+                        height: "110px",
+                        borderRadius: "50%",
+                        backgroundColor: "#f3f4f6",
+                        border: "1px solid #e5e7eb",
+                        overflow: "hidden",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {adminUser.profileImageUrl ? (
+                        <img
+                          src={adminUser.profileImageUrl}
+                          alt=""
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: "42px", fontWeight: 900, color: "#6b7280" }}>
+                          {profileInitial(adminUser)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ marginTop: "14px", width: "100%" }}>
+                      <input
+                        ref={avatarFileRef}
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={handleProfileAvatarChange}
+                      />
+
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", justifyContent: "center" }}>
+                        <button
+                          type="button"
+                          disabled={avatarBusy || avatarRemoveBusy}
+                          onClick={() => avatarFileRef.current?.click()}
+                          style={{
+                            padding: "10px 16px",
+                            borderRadius: "10px",
+                            border: "1px solid #d1d5db",
+                            background: "#ffffff",
+                            fontWeight: 900,
+                            fontSize: "14px",
+                            cursor: avatarBusy || avatarRemoveBusy ? "wait" : "pointer",
+                            color: "#111827",
+                          }}
+                        >
+                          {avatarBusy ? "Saving…" : adminUser.profileImageUrl ? "Change photo" : "Upload photo"}
+                        </button>
+
+                        {adminUser.profileImageUrl && (
+                          <button
+                            type="button"
+                            disabled={avatarBusy || avatarRemoveBusy}
+                            onClick={handleRemoveProfileAvatar}
+                            style={{
+                              padding: "10px 14px",
+                              borderRadius: "10px",
+                              border: "1px solid #fecaca",
+                              background: "#ffffff",
+                              fontWeight: 900,
+                              fontSize: "14px",
+                              cursor: avatarBusy || avatarRemoveBusy ? "wait" : "pointer",
+                              color: "#b91c1c",
+                            }}
+                          >
+                            {avatarRemoveBusy ? "Removing…" : "Remove photo"}
+                          </button>
+                        )}
+                      </div>
+
+                      {avatarSuccess && (
+                        <p style={{ margin: "10px 0 0 0", fontSize: "13px", color: "#059669", fontWeight: 800 }}>
+                          {avatarSuccess}
+                        </p>
+                      )}
+                      {avatarError && (
+                        <p style={{ margin: "10px 0 0 0", fontSize: "13px", color: "#b91c1c", fontWeight: 800 }}>
+                          {avatarError}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: "280px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                      <div>
+                        <label style={labelStyle}>Email address</label>
+                        <input
+                          type="email"
+                          readOnly
+                          disabled
+                          value={adminUser.email || ""}
+                          style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }}
+                        />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Phone number</label>
+                        <input
+                          type="tel"
+                          value={profilePhoneDraft}
+                          onChange={(e) => {
+                            setProfilePhoneDraft(e.target.value);
+                            setProfileSaveState((s) => ({ ...s, message: "", error: "" }));
+                          }}
+                          placeholder="+94 77 123 4567"
+                          style={inputStyle}
+                          autoComplete="tel"
+                        />
+                        <p style={{ fontSize: "12px", color: "#9ca3af", margin: "6px 0 0 0" }}>
+                          7–20 characters: digits, spaces, +, -, ( )
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: "16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                      <div>
+                        <label style={labelStyle}>First name</label>
+                        <input
+                          type="text"
+                          readOnly
+                          disabled
+                          value={adminUser.firstName || ""}
+                          style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }}
+                        />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Last name</label>
+                        <input
+                          type="text"
+                          readOnly
+                          disabled
+                          value={adminUser.lastName || ""}
+                          style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: "18px", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "14px" }}>
+                      {profileSaveState.message && (
+                        <span style={{ fontSize: "14px", color: "#059669", fontWeight: 900 }}>
+                          {profileSaveState.message}
+                        </span>
+                      )}
+                      {profileSaveState.error && (
+                        <span style={{ fontSize: "14px", color: "#b91c1c", fontWeight: 900 }}>
+                          {profileSaveState.error}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        disabled={!canSavePhone || profileSaveState.busy}
+                        onClick={handleSaveProfilePhone}
+                        style={{
+                          padding: "12px 20px",
+                          borderRadius: "10px",
+                          border: "none",
+                          backgroundColor: canSavePhone && !profileSaveState.busy ? "#FA8112" : "#d1d5db",
+                          color: "#ffffff",
+                          fontWeight: 900,
+                          cursor: canSavePhone && !profileSaveState.busy ? "pointer" : "not-allowed",
+                        }}
+                      >
+                        {profileSaveState.busy ? "Saving…" : "Save changes"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
