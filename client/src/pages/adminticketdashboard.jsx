@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { getAdminTicketList } from "../api/adminticket";
 
-const ADMIN_SIDEBAR_ITEMS = ["Dashboard", "Tickets", "Charts", "Reports", "Technicians"];
+const ADMIN_SIDEBAR_ITEMS = ["Dashboard", "Tickets", "Charts", "Reports"];
 
 const pageStyle = {
   minHeight: "100vh",
@@ -250,7 +249,6 @@ function getProgressInfo(status, commentsCount) {
 }
 
 export default function AdminTicketDashboard() {
-  const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -309,11 +307,6 @@ export default function AdminTicketDashboard() {
     setActiveMenuItem(item);
     if (item === "Tickets") {
       handleViewChange("tickets");
-      return;
-    }
-
-    if (item === "Technicians") {
-      navigate("/technician");
       return;
     }
 
