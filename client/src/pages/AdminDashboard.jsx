@@ -321,7 +321,7 @@ export default function AdminDashboard() {
           </button>
 
           <div style={sectionLabelStyle}>OPERATIONS</div>
-          <button type="button" style={navRowStyle(panel === "tickets")} onClick={() => setPanel("tickets")}>
+          <button type="button" style={navRowStyle(panel === "tickets")} onClick={() => navigate("/adminticket")}>
             Ticket management
           </button>
           <button type="button" style={navRowStyle(panel === "bookings")} onClick={() => setPanel("bookings")}>
