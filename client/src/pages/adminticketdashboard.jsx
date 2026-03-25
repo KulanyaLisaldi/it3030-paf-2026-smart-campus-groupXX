@@ -263,6 +263,7 @@ export default function AdminTicketDashboard() {
   const [rejectingTicketId, setRejectingTicketId] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionError, setRejectionError] = useState("");
+  const [showTechniciansPanel, setShowTechniciansPanel] = useState(false);
 
   const [techFirstName, setTechFirstName] = useState("");
   const [techLastName, setTechLastName] = useState("");
@@ -318,18 +319,22 @@ export default function AdminTicketDashboard() {
   const navigateFromSidebar = (item) => {
     setActiveMenuItem(item);
     if (item === "Tickets") {
+      setShowTechniciansPanel(false);
       handleViewChange("tickets");
       return;
     }
 
-    // Keep Dashboard view for dashboard sections.
+    if (item === "Technicians") {
+      handleViewChange("dashboard");
+      setShowTechniciansPanel(true);
+      return;
+    }
+
+    setShowTechniciansPanel(false);
     handleViewChange("dashboard");
 
-    // Smooth jump to chart/report/staff areas on this page.
     setTimeout(() => {
-      if (item === "Technicians") {
-        document.getElementById("admin-add-technician")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      } else if (item === "Charts") {
+      if (item === "Charts") {
         document.getElementById("admin-dashboard-charts")?.scrollIntoView({ behavior: "smooth", block: "start" });
       } else if (item === "Reports") {
         document.getElementById("admin-dashboard-reports")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -737,89 +742,93 @@ export default function AdminTicketDashboard() {
                 </div>
               </div>
 
-              <div
-                id="admin-add-technician"
-                style={{
-                  border: "1px solid #F5E7C6",
-                  borderRadius: "10px",
-                  padding: "14px",
-                  backgroundColor: "#FFFFFF",
-                  marginBottom: "10px",
-                }}
-              >
-                <div style={sectionTitleStyle}>Technicians</div>
-                <p style={{ margin: "0 0 12px 0", color: "#6b7280", fontSize: "13px", fontWeight: 500 }}>
-                  Create staff accounts. Technicians sign in with email and password on the main Sign In page.
-                </p>
-                <form onSubmit={submitAddTechnician} style={{ display: "grid", gap: "10px", maxWidth: "480px" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              {showTechniciansPanel && (
+                <div
+                  id="admin-add-technician"
+                  style={{
+                    border: "1px solid #F5E7C6",
+                    borderRadius: "10px",
+                    padding: "14px",
+                    backgroundColor: "#FFFFFF",
+                    marginBottom: "10px",
+                  }}
+                >
+                  <div style={sectionTitleStyle}>Technicians</div>
+                  <p style={{ margin: "0 0 12px 0", color: "#6b7280", fontSize: "13px", fontWeight: 500 }}>
+                    Create staff accounts. Technicians sign in with email and password on the main Sign In page.
+                  </p>
+                  <form onSubmit={submitAddTechnician} style={{ display: "grid", gap: "10px", maxWidth: "480px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                      <input
+                        required
+                        placeholder="First name"
+                        value={techFirstName}
+                        onChange={(e) => setTechFirstName(e.target.value)}
+                        style={selectStyle}
+                      />
+                      <input
+                        required
+                        placeholder="Last name"
+                        value={techLastName}
+                        onChange={(e) => setTechLastName(e.target.value)}
+                        style={selectStyle}
+                      />
+                    </div>
                     <input
                       required
-                      placeholder="First name"
-                      value={techFirstName}
-                      onChange={(e) => setTechFirstName(e.target.value)}
+                      type="email"
+                      placeholder="Work email"
+                      value={techEmail}
+                      onChange={(e) => setTechEmail(e.target.value)}
                       style={selectStyle}
                     />
                     <input
-                      required
-                      placeholder="Last name"
-                      value={techLastName}
-                      onChange={(e) => setTechLastName(e.target.value)}
+                      placeholder="Phone (optional)"
+                      value={techPhone}
+                      onChange={(e) => setTechPhone(e.target.value)}
                       style={selectStyle}
                     />
-                  </div>
-                  <input
-                    required
-                    type="email"
-                    placeholder="Work email"
-                    value={techEmail}
-                    onChange={(e) => setTechEmail(e.target.value)}
-                    style={selectStyle}
-                  />
-                  <input
-                    placeholder="Phone (optional)"
-                    value={techPhone}
-                    onChange={(e) => setTechPhone(e.target.value)}
-                    style={selectStyle}
-                  />
-                  <select
-                    required
-                    value={techCategory}
-                    onChange={(e) => setTechCategory(e.target.value)}
-                    style={selectStyle}
-                    aria-label="Technician category"
-                  >
-                    {TECHNICIAN_CATEGORIES.map((c) => (
-                      <option key={c.value} value={c.value}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    required
-                    type="password"
-                    minLength={6}
-                    placeholder="Initial password (min 6 characters)"
-                    value={techPassword}
-                    onChange={(e) => setTechPassword(e.target.value)}
-                    style={selectStyle}
-                  />
-                  <button
-                    type="submit"
-                    disabled={techSubmitting}
-                    style={{ ...buttonStyle, opacity: techSubmitting ? 0.85 : 1, width: "fit-content" }}
-                  >
-                    {techSubmitting ? "Saving…" : "Add technician"}
-                  </button>
-                </form>
-                {techMessage ? (
-                  <p style={{ margin: "10px 0 0 0", color: "#2e7d32", fontSize: "13px", fontWeight: 600 }}>{techMessage}</p>
-                ) : null}
-                {techError ? (
-                  <p style={{ margin: "10px 0 0 0", color: "#d32f2f", fontSize: "13px", fontWeight: 600 }}>{techError}</p>
-                ) : null}
-              </div>
+                    <select
+                      required
+                      value={techCategory}
+                      onChange={(e) => setTechCategory(e.target.value)}
+                      style={selectStyle}
+                      aria-label="Technician category"
+                    >
+                      {TECHNICIAN_CATEGORIES.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      required
+                      type="password"
+                      minLength={6}
+                      placeholder="Initial password (min 6 characters)"
+                      value={techPassword}
+                      onChange={(e) => setTechPassword(e.target.value)}
+                      style={selectStyle}
+                    />
+                    <button
+                      type="submit"
+                      disabled={techSubmitting}
+                      style={{ ...buttonStyle, opacity: techSubmitting ? 0.85 : 1, width: "fit-content" }}
+                    >
+                      {techSubmitting ? "Saving…" : "Add technician"}
+                    </button>
+                  </form>
+                  {techMessage ? (
+                    <p style={{ margin: "10px 0 0 0", color: "#2e7d32", fontSize: "13px", fontWeight: 600 }}>{techMessage}</p>
+                  ) : null}
+                  {techError ? (
+                    <p style={{ margin: "10px 0 0 0", color: "#d32f2f", fontSize: "13px", fontWeight: 600 }}>{techError}</p>
+                  ) : null}
+                </div>
+              )}
 
+              {!showTechniciansPanel && (
+              <>
               <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", marginBottom: "10px" }}>
                 <div style={{ ...metricCardStyle, borderLeft: "6px solid #14213D" }}>
                   <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" }}>Total Tickets</div>
@@ -972,6 +981,8 @@ export default function AdminTicketDashboard() {
                   </div>
                 </div>
               </div>
+              </>
+              )}
             </div>
           </div>
         )}
