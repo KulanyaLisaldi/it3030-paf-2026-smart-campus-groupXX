@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { getAdminTicketList } from "../api/adminticket";
 import { createTechnician } from "../api/adminTechnicians";
+import { DEFAULT_TECHNICIAN_CATEGORY, TECHNICIAN_CATEGORIES } from "../constants/technicianCategories";
 
 const ADMIN_SIDEBAR_ITEMS = ["Dashboard", "Tickets", "Charts", "Reports", "Technicians"];
 
@@ -267,6 +268,7 @@ export default function AdminTicketDashboard() {
   const [techLastName, setTechLastName] = useState("");
   const [techEmail, setTechEmail] = useState("");
   const [techPhone, setTechPhone] = useState("");
+  const [techCategory, setTechCategory] = useState(DEFAULT_TECHNICIAN_CATEGORY);
   const [techPassword, setTechPassword] = useState("");
   const [techSubmitting, setTechSubmitting] = useState(false);
   const [techMessage, setTechMessage] = useState("");
@@ -349,12 +351,14 @@ export default function AdminTicketDashboard() {
         email: techEmail.trim(),
         phoneNumber: techPhone.trim(),
         password: techPassword,
+        category: techCategory,
       });
       setTechMessage("Technician created. They can sign in with email and password.");
       setTechFirstName("");
       setTechLastName("");
       setTechEmail("");
       setTechPhone("");
+      setTechCategory(DEFAULT_TECHNICIAN_CATEGORY);
       setTechPassword("");
     } catch (err) {
       setTechError(err?.message || "Could not create technician.");
@@ -778,6 +782,19 @@ export default function AdminTicketDashboard() {
                     onChange={(e) => setTechPhone(e.target.value)}
                     style={selectStyle}
                   />
+                  <select
+                    required
+                    value={techCategory}
+                    onChange={(e) => setTechCategory(e.target.value)}
+                    style={selectStyle}
+                    aria-label="Technician category"
+                  >
+                    {TECHNICIAN_CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
                   <input
                     required
                     type="password"

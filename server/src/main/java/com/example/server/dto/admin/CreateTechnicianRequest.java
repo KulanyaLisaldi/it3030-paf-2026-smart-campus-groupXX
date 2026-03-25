@@ -1,7 +1,9 @@
 package com.example.server.dto.admin;
 
+import com.example.server.model.TechnicianCategory;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -24,6 +26,9 @@ public class CreateTechnicianRequest {
     @NotBlank(message = "Password is required")
     @Size(min = 6, max = 128, message = "Password must be at least 6 characters")
     private String password;
+
+    @NotNull(message = "Category is required")
+    private TechnicianCategory category;
 
     public String getFirstName() {
         return firstName;
@@ -63,5 +68,13 @@ public class CreateTechnicianRequest {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public TechnicianCategory getCategory() {
+        return category;
+    }
+
+    public void setCategory(TechnicianCategory category) {
+        this.category = category;
     }
 }

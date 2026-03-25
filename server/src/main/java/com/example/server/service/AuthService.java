@@ -100,6 +100,7 @@ public class AuthService {
             Instant.now()
         );
         user.setRole(UserRole.TECHNICIAN);
+        user.setTechnicianCategory(request.getCategory());
         User saved = userRepo.save(user);
         return toUserResponse(saved);
     }
@@ -295,6 +296,7 @@ public class AuthService {
     }
 
     private AuthUserResponse toUserResponse(User user) {
+        String category = user.getTechnicianCategory() != null ? user.getTechnicianCategory().name() : null;
         return new AuthUserResponse(
             user.getId(),
             user.getFirstName(),
@@ -302,7 +304,8 @@ public class AuthService {
             user.getEmail(),
             user.getPhoneNumber(),
             user.getEffectiveRole().name(),
-            user.getProfileImageUrl()
+            user.getProfileImageUrl(),
+            category
         );
     }
 }

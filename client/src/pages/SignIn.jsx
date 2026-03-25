@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { signIn } from '../api/auth';
-import { setAuthToken } from '../api/http';
-import { persistCampusUser } from '../utils/campusUserStorage';
-import { navigateAfterLogin } from '../utils/authRedirect';
+import { getAuthToken, setAuthToken } from '../api/http';
+import { persistCampusUser, readCampusUser } from '../utils/campusUserStorage';
+import { ADMIN_DASHBOARD_PATH, navigateAfterLogin } from '../utils/authRedirect';
 
 const SignIn = () => {
   const navigate = useNavigate();
@@ -12,6 +12,14 @@ const SignIn = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!getAuthToken()) return;
+    const user = readCampusUser();
+    if (user?.role === 'ADMIN') {
+      navigate(ADMIN_DASHBOARD_PATH, { replace: true });
+    }
+  }, [navigate]);
 
   const pageStyle = {
     minHeight: '100vh',
