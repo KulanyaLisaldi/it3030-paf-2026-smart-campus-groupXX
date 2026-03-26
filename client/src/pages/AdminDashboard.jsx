@@ -7,10 +7,11 @@ import { removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "..
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 
 const shellStyle = {
-  minHeight: "100vh",
+  height: "100vh",
   display: "flex",
   backgroundColor: "#f1f5f9",
   fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  overflow: "hidden",
 };
 
 const sidebarStyle = {
@@ -20,17 +21,19 @@ const sidebarStyle = {
   color: "#e2e8f0",
   display: "flex",
   flexDirection: "column",
-  minHeight: "100vh",
+  height: "100vh",
   boxSizing: "border-box",
   borderRight: "1px solid rgba(148, 163, 184, 0.12)",
+  overflow: "hidden",
 };
 
 const mainColumnStyle = {
   flex: 1,
   display: "flex",
   flexDirection: "column",
-  minHeight: "100vh",
+  height: "100vh",
   minWidth: 0,
+  overflow: "hidden",
 };
 
 const topBarStyle = {
@@ -47,7 +50,8 @@ const topBarStyle = {
 
 const mainScrollStyle = {
   flex: 1,
-  overflow: "auto",
+  overflowY: "auto",
+  overflowX: "hidden",
   padding: "28px 28px 40px",
   boxSizing: "border-box",
 };
@@ -385,22 +389,24 @@ export default function AdminDashboard() {
       >
         <div style={{ padding: "22px 18px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
-            <div
-              style={{
-                width: "42px",
-                height: "42px",
-                borderRadius: "12px",
-                background: "linear-gradient(135deg, #FA8112, #F5E7C6)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#fff",
-                fontWeight: 800,
-                fontSize: "18px",
-              }}
-            >
-              A
-            </div>
+            {!sidebarCollapsed && (
+              <div
+                style={{
+                  width: "42px",
+                  height: "42px",
+                  borderRadius: "12px",
+                  background: "linear-gradient(135deg, #FA8112, #F5E7C6)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  fontWeight: 800,
+                  fontSize: "18px",
+                }}
+              >
+                A
+              </div>
+            )}
             {!sidebarCollapsed && (
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 800, fontSize: "16px", color: "#f8fafc" }}>Admin</div>
@@ -426,63 +432,61 @@ export default function AdminDashboard() {
               flexShrink: 0,
             }}
           >
-            <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{sidebarCollapsed ? "≡" : "×"}</span>
+            <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>≡</span>
           </button>
         </div>
 
         <nav style={{ flex: 1, padding: "4px 0" }} aria-label="Admin sections">
-          <div style={sectionLabelStyle}>MENU</div>
+          {!sidebarCollapsed && <div style={sectionLabelStyle}>MENU</div>}
 
-          <button type="button" style={navRowStyle(panel === "dashboard")} onClick={() => setPanel("dashboard")}>
-            {sidebarCollapsed ? "D" : "Dashboard"}
-          </button>
-          <button type="button" style={navRowStyle(panel === "resources")} onClick={() => setPanel("resources")}>
-            {sidebarCollapsed ? "R" : "Resource Management"}
-          </button>
-          <button type="button" style={navRowStyle(panel === "bookings")} onClick={() => setPanel("bookings")}>
-            {sidebarCollapsed ? "B" : "Booking Management"}
-          </button>
-          <button type="button" style={navRowStyle(panel === "tickets")} onClick={() => setPanel("tickets")}>
-            {sidebarCollapsed ? "T" : "Ticket Management"}
-          </button>
-          <button type="button" style={navRowStyle(panel === "users")} onClick={() => setPanel("users")}>
-            {sidebarCollapsed ? "U" : "User Management"}
-          </button>
-          <button
-            type="button"
-            style={navRowStyle(panel === "notifications")}
-            onClick={() => setPanel("notifications")}
-          >
-            {sidebarCollapsed ? "N" : "Notification"}
-          </button>
-          <button
-            type="button"
-            style={navRowStyle(panel === "analytics")}
-            onClick={() => setPanel("analytics")}
-          >
-            {sidebarCollapsed ? "A" : "Analytics & Report"}
-          </button>
+          {!sidebarCollapsed && (
+            <>
+              <button type="button" style={navRowStyle(panel === "dashboard")} onClick={() => setPanel("dashboard")}>
+                Dashboard
+              </button>
+              <button type="button" style={navRowStyle(panel === "resources")} onClick={() => setPanel("resources")}>
+                Resource Management
+              </button>
+              <button type="button" style={navRowStyle(panel === "bookings")} onClick={() => setPanel("bookings")}>
+                Booking Management
+              </button>
+              <button type="button" style={navRowStyle(panel === "tickets")} onClick={() => setPanel("tickets")}>
+                Ticket Management
+              </button>
+              <button type="button" style={navRowStyle(panel === "users")} onClick={() => setPanel("users")}>
+                User Management
+              </button>
+              <button type="button" style={navRowStyle(panel === "notifications")} onClick={() => setPanel("notifications")}>
+                Notification
+              </button>
+              <button type="button" style={navRowStyle(panel === "analytics")} onClick={() => setPanel("analytics")}>
+                Analytics & Report
+              </button>
+            </>
+          )}
         </nav>
 
-        <div style={{ padding: "12px 14px 20px", borderTop: "1px solid rgba(148, 163, 184, 0.15)" }}>
-          <button
-            type="button"
-            onClick={handleLogout}
-            style={{
-              width: "100%",
-              padding: "12px 14px",
-              borderRadius: "10px",
-              border: "1px solid rgba(248, 113, 113, 0.35)",
-              background: "rgba(127, 29, 29, 0.35)",
-              color: "#fecaca",
-              fontWeight: 700,
-              fontSize: "14px",
-              cursor: "pointer",
-            }}
-          >
-            {sidebarCollapsed ? "Logout" : "Log out"}
-          </button>
-        </div>
+        {!sidebarCollapsed && (
+          <div style={{ padding: "12px 14px 20px", borderTop: "1px solid rgba(148, 163, 184, 0.15)" }}>
+            <button
+              type="button"
+              onClick={handleLogout}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                borderRadius: "10px",
+                border: "1px solid rgba(248, 113, 113, 0.35)",
+                background: "rgba(127, 29, 29, 0.35)",
+                color: "#fecaca",
+                fontWeight: 700,
+                fontSize: "14px",
+                cursor: "pointer",
+              }}
+            >
+              Logout
+            </button>
+          </div>
+        )}
       </aside>
 
       <div style={mainColumnStyle}>
