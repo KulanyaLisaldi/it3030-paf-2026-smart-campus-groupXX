@@ -1,5 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { getAdminUsers } from "../../api/adminUsers";
+import {
+  adminChangeUserRole,
+  adminSetUserStatus,
+  adminUpdateUserProfile,
+  getAdminUsers,
+} from "../../api/adminUsers";
 
 const pageCardStyle = {
   maxWidth: "100%",
@@ -64,7 +69,7 @@ function formatDate(value) {
   }
 }
 
-export default function AdminUsersTable({ onAddTechnician, refreshKey = 0 }) {
+export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onRequestRefresh }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [users, setUsers] = useState([]);
@@ -73,6 +78,115 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0 }) {
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [providerFilter, setProviderFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
+
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
+
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editPhoneNumber, setEditPhoneNumber] = useState("");
+
+  const [roleDraft, setRoleDraft] = useState("USER");
+
+  const modalInputStyle = {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: "10px",
+    border: "1px solid #e5e7eb",
+    fontSize: "14px",
+    outline: "none",
+    boxSizing: "border-box",
+    backgroundColor: "#FFFFFF",
+    color: "#0f172a",
+  };
+
+  const modalSelectStyle = { ...modalInputStyle, cursor: "pointer", minHeight: "46px" };
+
+  const closeModals = () => {
+    setEditModalOpen(false);
+    setRoleModalOpen(false);
+    setSelectedUser(null);
+    setActionBusy(false);
+    setActionError("");
+  };
+
+  useEffect(() => {
+    if (!editModalOpen || !selectedUser) return;
+    setEditFirstName(selectedUser.firstName || "");
+    setEditLastName(selectedUser.lastName || "");
+    setEditPhoneNumber(selectedUser.phoneNumber || "");
+    setActionError("");
+  }, [editModalOpen, selectedUser]);
+
+  useEffect(() => {
+    if (!roleModalOpen || !selectedUser) return;
+    setRoleDraft(selectedUser.role || "USER");
+    setActionError("");
+  }, [roleModalOpen, selectedUser]);
+
+  const refresh = () => {
+    if (typeof onRequestRefresh === "function") onRequestRefresh();
+  };
+
+  const handleEditSave = async () => {
+    if (!selectedUser) return;
+    setActionBusy(true);
+    setActionError("");
+    try {
+      await adminUpdateUserProfile(selectedUser.userId, {
+        firstName: editFirstName.trim(),
+        lastName: editLastName.trim(),
+        phoneNumber: editPhoneNumber.trim() ? editPhoneNumber.trim() : null,
+      });
+      closeModals();
+      refresh();
+    } catch (e) {
+      setActionError(e.message || "Failed to update user.");
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleRoleSave = async () => {
+    if (!selectedUser) return;
+    setActionBusy(true);
+    setActionError("");
+    try {
+      await adminChangeUserRole(selectedUser.userId, { role: roleDraft });
+      closeModals();
+      refresh();
+    } catch (e) {
+      setActionError(e.message || "Failed to change role.");
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleToggleDisabled = async (u) => {
+    if (!u) return;
+    const currentlyDisabled = (u.accountStatus || "") === "Disabled";
+    const nextDisabled = !currentlyDisabled;
+    const ok = window.confirm(
+      currentlyDisabled
+        ? "Enable this account?"
+        : "Disable this account? It will not be able to sign in."
+    );
+    if (!ok) return;
+
+    setActionBusy(true);
+    setActionError("");
+    try {
+      await adminSetUserStatus(u.userId, { disabled: nextDisabled });
+      refresh();
+    } catch (e) {
+      setActionError(e.message || "Failed to update account status.");
+    } finally {
+      setActionBusy(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -231,7 +345,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0 }) {
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td style={tdStyle} colSpan={9}>
+                    <td style={tdStyle} colSpan={10}>
                       No users found.
                     </td>
                   </tr>
@@ -251,23 +365,32 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0 }) {
                         <button
                           type="button"
                           style={smallBtnStyle("neutral")}
-                          onClick={() => window.alert("Edit user - not implemented yet")}
+                          disabled={actionBusy}
+                          onClick={() => {
+                            setSelectedUser(u);
+                            setEditModalOpen(true);
+                          }}
                         >
                           Edit
                         </button>
                         <button
                           type="button"
                           style={smallBtnStyle("neutral")}
-                          onClick={() => window.alert("Change role - not implemented yet")}
+                          disabled={actionBusy}
+                          onClick={() => {
+                            setSelectedUser(u);
+                            setRoleModalOpen(true);
+                          }}
                         >
                           Role Change
                         </button>
                         <button
                           type="button"
-                          style={smallBtnStyle("danger")}
-                          onClick={() => window.alert("Disable user - not implemented yet")}
+                          style={((u.accountStatus || "") === "Disabled") ? smallBtnStyle("primary") : smallBtnStyle("danger")}
+                          disabled={actionBusy}
+                          onClick={() => handleToggleDisabled(u)}
                         >
-                          Disable
+                          {(u.accountStatus || "") === "Disabled" ? "Enable" : "Disable"}
                         </button>
                       </div>
                     </td>
@@ -277,6 +400,218 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0 }) {
             </table>
           </div>
         </>
+      )}
+
+      {editModalOpen && selectedUser && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1002,
+            backgroundColor: "rgba(15, 23, 42, 0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "18px",
+          }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeModals();
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "760px",
+              backgroundColor: "#ffffff",
+              borderRadius: "16px",
+              border: "1px solid #e5e7eb",
+              boxShadow: "0 24px 90px rgba(0,0,0,0.25)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: "16px 22px",
+                borderBottom: "1px solid #e5e7eb",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              <div>
+                <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Edit profile</div>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>
+                  {selectedUser.email || selectedUser.userId}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeModals}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: "10px",
+                  border: "1px solid #e5e7eb",
+                  background: "#fff",
+                  fontWeight: 900,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  color: "#0f172a",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleEditSave();
+              }}
+              style={{ padding: "18px 22px 22px", display: "grid", gap: "16px" }}
+            >
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                    First name
+                  </label>
+                  <input
+                    value={editFirstName}
+                    onChange={(e) => setEditFirstName(e.target.value)}
+                    style={modalInputStyle}
+                    placeholder="First name"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                    Last name
+                  </label>
+                  <input
+                    value={editLastName}
+                    onChange={(e) => setEditLastName(e.target.value)}
+                    style={modalInputStyle}
+                    placeholder="Last name"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                  Phone number <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
+                </label>
+                <input
+                  value={editPhoneNumber}
+                  onChange={(e) => setEditPhoneNumber(e.target.value)}
+                  style={modalInputStyle}
+                  placeholder="+94 77 000 0000"
+                />
+              </div>
+
+              {actionError && (
+                <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 900 }}>{actionError}</p>
+              )}
+
+              <button type="submit" disabled={actionBusy} style={{ ...smallBtnStyle("primary"), opacity: actionBusy ? 0.85 : 1 }}>
+                {actionBusy ? "Saving..." : "Save changes"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {roleModalOpen && selectedUser && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1002,
+            backgroundColor: "rgba(15, 23, 42, 0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "18px",
+          }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeModals();
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "600px",
+              backgroundColor: "#ffffff",
+              borderRadius: "16px",
+              border: "1px solid #e5e7eb",
+              boxShadow: "0 24px 90px rgba(0,0,0,0.25)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: "16px 22px",
+                borderBottom: "1px solid #e5e7eb",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              <div>
+                <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Role change</div>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>
+                  {selectedUser.email || selectedUser.userId}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeModals}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: "10px",
+                  border: "1px solid #e5e7eb",
+                  background: "#fff",
+                  fontWeight: 900,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  color: "#0f172a",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleRoleSave();
+              }}
+              style={{ padding: "18px 22px 22px", display: "grid", gap: "16px" }}
+            >
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                  New role
+                </label>
+                <select value={roleDraft} onChange={(e) => setRoleDraft(e.target.value)} style={modalSelectStyle}>
+                  <option value="USER">USER</option>
+                  <option value="ADMIN">ADMIN</option>
+                  <option value="TECHNICIAN">TECHNICIAN</option>
+                </select>
+              </div>
+
+              {actionError && (
+                <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 900 }}>{actionError}</p>
+              )}
+
+              <button type="submit" disabled={actionBusy} style={{ ...smallBtnStyle("primary"), opacity: actionBusy ? 0.85 : 1 }}>
+                {actionBusy ? "Updating..." : "Update role"}
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

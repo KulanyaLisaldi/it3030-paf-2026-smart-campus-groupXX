@@ -624,6 +624,7 @@ export default function AdminDashboard() {
             <AdminUsersTable
               refreshKey={usersTableRev}
               onAddTechnician={() => setAddTechnicianModalOpen(true)}
+              onRequestRefresh={() => setUsersTableRev((n) => n + 1)}
             />
           )}
 
