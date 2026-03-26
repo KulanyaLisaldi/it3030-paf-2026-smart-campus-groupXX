@@ -183,7 +183,7 @@ function isValidPhone(value) {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [panel, setPanel] = useState("add-technician");
+  const [panel, setPanel] = useState("dashboard");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profilePhoneDraft, setProfilePhoneDraft] = useState("");
@@ -192,6 +192,7 @@ export default function AdminDashboard() {
   const [avatarRemoveBusy, setAvatarRemoveBusy] = useState(false);
   const [avatarError, setAvatarError] = useState("");
   const [avatarSuccess, setAvatarSuccess] = useState("");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userRev, setUserRev] = useState(0);
   const profileRef = useRef(null);
   const avatarFileRef = useRef(null);
@@ -339,11 +340,19 @@ export default function AdminDashboard() {
   }, [adminUser, profilePhoneDraft, serverPhone]);
 
   const pageTitle =
-    panel === "add-technician"
-      ? "User management · Add technician"
-      : panel === "tickets"
-        ? "Ticket management"
-        : "Booking management";
+    panel === "dashboard"
+      ? "Dashboard"
+      : panel === "resources"
+        ? "Resource Management"
+        : panel === "bookings"
+          ? "Booking Management"
+          : panel === "tickets"
+            ? "Ticket Management"
+            : panel === "users"
+              ? "User Management"
+              : panel === "notifications"
+                ? "Notification"
+                : "Analytics & Report";
 
   const avatarSize = 40;
   const triggerStyle = {
@@ -366,9 +375,16 @@ export default function AdminDashboard() {
 
   return (
     <div style={shellStyle}>
-      <aside style={sidebarStyle}>
-        <div style={{ padding: "22px 18px 18px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      <aside
+        style={{
+          ...sidebarStyle,
+          width: sidebarCollapsed ? "92px" : "272px",
+          minWidth: sidebarCollapsed ? "92px" : "272px",
+          transition: "width 0.2s ease, min-width 0.2s ease",
+        }}
+      >
+        <div style={{ padding: "22px 18px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
             <div
               style={{
                 width: "42px",
@@ -385,29 +401,66 @@ export default function AdminDashboard() {
             >
               A
             </div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: "16px", color: "#f8fafc" }}>Admin</div>
-              <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600, marginTop: "2px" }}>Smart Campus</div>
-            </div>
+            {!sidebarCollapsed && (
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: "16px", color: "#f8fafc" }}>Admin</div>
+                <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600, marginTop: "2px" }}>Smart Campus</div>
+              </div>
+            )}
           </div>
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            aria-label={sidebarCollapsed ? "Open menu" : "Close menu"}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: "rgba(148, 163, 184, 0.12)",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#e2e8f0",
+              flexShrink: 0,
+            }}
+          >
+            <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{sidebarCollapsed ? "≡" : "×"}</span>
+          </button>
         </div>
 
         <nav style={{ flex: 1, padding: "4px 0" }} aria-label="Admin sections">
-          <div style={sectionLabelStyle}>USER MANAGEMENT</div>
-          <button
-            type="button"
-            style={subNavStyle(panel === "add-technician")}
-            onClick={() => setPanel("add-technician")}
-          >
-            Add technician
-          </button>
+          <div style={sectionLabelStyle}>MENU</div>
 
-          <div style={sectionLabelStyle}>OPERATIONS</div>
-          <button type="button" style={navRowStyle(panel === "tickets")} onClick={() => navigate("/adminticket")}>
-            Ticket management
+          <button type="button" style={navRowStyle(panel === "dashboard")} onClick={() => setPanel("dashboard")}>
+            {sidebarCollapsed ? "D" : "Dashboard"}
+          </button>
+          <button type="button" style={navRowStyle(panel === "resources")} onClick={() => setPanel("resources")}>
+            {sidebarCollapsed ? "R" : "Resource Management"}
           </button>
           <button type="button" style={navRowStyle(panel === "bookings")} onClick={() => setPanel("bookings")}>
-            Booking management
+            {sidebarCollapsed ? "B" : "Booking Management"}
+          </button>
+          <button type="button" style={navRowStyle(panel === "tickets")} onClick={() => setPanel("tickets")}>
+            {sidebarCollapsed ? "T" : "Ticket Management"}
+          </button>
+          <button type="button" style={navRowStyle(panel === "users")} onClick={() => setPanel("users")}>
+            {sidebarCollapsed ? "U" : "User Management"}
+          </button>
+          <button
+            type="button"
+            style={navRowStyle(panel === "notifications")}
+            onClick={() => setPanel("notifications")}
+          >
+            {sidebarCollapsed ? "N" : "Notification"}
+          </button>
+          <button
+            type="button"
+            style={navRowStyle(panel === "analytics")}
+            onClick={() => setPanel("analytics")}
+          >
+            {sidebarCollapsed ? "A" : "Analytics & Report"}
           </button>
         </nav>
 
@@ -427,7 +480,7 @@ export default function AdminDashboard() {
               cursor: "pointer",
             }}
           >
-            Log out
+            {sidebarCollapsed ? "Logout" : "Log out"}
           </button>
         </div>
       </aside>
@@ -530,13 +583,16 @@ export default function AdminDashboard() {
         <main style={mainScrollStyle}>
           <h1 style={{ margin: "0 0 8px 0", fontSize: "26px", fontWeight: 800, color: "#14213D" }}>{pageTitle}</h1>
           <p style={{ margin: "0 0 28px 0", fontSize: "14px", color: "#64748b", maxWidth: "640px", lineHeight: 1.5 }}>
-            {panel === "add-technician" &&
-              "Create technician accounts for your support team. They sign in on the main Sign In page with the credentials you set."}
-            {panel === "tickets" && "Review and manage support tickets. More tools will be added here."}
-            {panel === "bookings" && "Manage campus bookings and reservations. This section is coming soon."}
+            {panel === "dashboard" && "Overview and quick actions for admin operations."}
+            {panel === "resources" && "Manage campus resources. (Coming soon)"}
+            {panel === "bookings" && "Manage campus bookings and reservations. (Coming soon)"}
+            {panel === "tickets" && "Review and manage support tickets. (Coming soon)"}
+            {panel === "users" && "Create technician accounts for your support team. They sign in with email/password you set."}
+            {panel === "notifications" && "View and manage admin notifications. (Coming soon)"}
+            {panel === "analytics" && "View analytics and reports for tickets and operations. (Coming soon)"}
           </p>
 
-          {panel === "add-technician" && (
+          {panel === "users" && (
             <div style={cardStyle}>
               <h2 style={{ margin: "0 0 20px 0", fontSize: "18px", fontWeight: 700, color: "#222222" }}>New technician</h2>
               <form onSubmit={handleSubmitTechnician} style={{ display: "grid", gap: "16px" }}>
@@ -640,12 +696,24 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {panel === "tickets" && (
-            <div style={PLACEHOLDER_STYLE}>Ticket management tools will appear here in a future update.</div>
-          )}
+          {panel === "dashboard" && <div style={PLACEHOLDER_STYLE}>Select a section from the left menu.</div>}
+
+          {panel === "resources" && <div style={PLACEHOLDER_STYLE}>Resource Management tools will appear here in a future update.</div>}
 
           {panel === "bookings" && (
-            <div style={PLACEHOLDER_STYLE}>No booking tools yet. This area is reserved for future campus booking management.</div>
+            <div style={PLACEHOLDER_STYLE}>Booking Management tools will appear here in a future update.</div>
+          )}
+
+          {panel === "tickets" && (
+            <div style={PLACEHOLDER_STYLE}>Ticket Management tools will appear here in a future update.</div>
+          )}
+
+          {panel === "notifications" && (
+            <div style={PLACEHOLDER_STYLE}>Notifications tools will appear here in a future update.</div>
+          )}
+
+          {panel === "analytics" && (
+            <div style={PLACEHOLDER_STYLE}>Analytics & Report tools will appear here in a future update.</div>
           )}
         </main>
 
