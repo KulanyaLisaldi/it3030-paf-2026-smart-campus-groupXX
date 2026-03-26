@@ -64,7 +64,7 @@ function formatDate(value) {
   }
 }
 
-export default function AdminUsersTable({ onAddTechnician }) {
+export default function AdminUsersTable({ onAddTechnician, refreshKey = 0 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [users, setUsers] = useState([]);
@@ -89,7 +89,7 @@ export default function AdminUsersTable({ onAddTechnician }) {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [refreshKey]);
 
   const filtered = useMemo(() => {
     const q = (search || "").trim().toLowerCase();

@@ -189,7 +189,8 @@ function isValidPhone(value) {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [panel, setPanel] = useState("dashboard");
-  const [usersTab, setUsersTab] = useState("all");
+  const [addTechnicianModalOpen, setAddTechnicianModalOpen] = useState(false);
+  const [usersTableRev, setUsersTableRev] = useState(0);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profilePhoneDraft, setProfilePhoneDraft] = useState("");
@@ -250,6 +251,19 @@ export default function AdminDashboard() {
     setProfileSaveState({ busy: false, message: "", error: "" });
   }, [profileModalOpen, adminUser]);
 
+  useEffect(() => {
+    if (!addTechnicianModalOpen) return;
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setPhoneNumber("");
+    setCategory(DEFAULT_TECHNICIAN_CATEGORY);
+    setPassword("");
+    setSubmitting(false);
+    setMessage("");
+    setError("");
+  }, [addTechnicianModalOpen]);
+
   const handleLogout = () => {
     persistCampusUser(null);
     localStorage.removeItem("smartCampusAuthToken");
@@ -271,6 +285,8 @@ export default function AdminDashboard() {
         category,
       });
       setMessage("Technician created. They can sign in with email and password on the main Sign In page.");
+      setUsersTableRev((n) => n + 1);
+      setAddTechnicianModalOpen(false);
       setFirstName("");
       setLastName("");
       setEmail("");
@@ -459,7 +475,6 @@ export default function AdminDashboard() {
                 type="button"
                 style={navRowStyle(panel === "users")}
                 onClick={() => {
-                  setUsersTab("all");
                   setPanel("users");
                 }}
               >
@@ -606,86 +621,137 @@ export default function AdminDashboard() {
           </p>
 
           {panel === "users" && (
-            <>
-              <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+            <AdminUsersTable
+              refreshKey={usersTableRev}
+              onAddTechnician={() => setAddTechnicianModalOpen(true)}
+            />
+          )}
+
+          {panel === "dashboard" && <div style={PLACEHOLDER_STYLE}>Select a section from the left menu.</div>}
+
+          {panel === "resources" && <div style={PLACEHOLDER_STYLE}>Resource Management tools will appear here in a future update.</div>}
+
+          {panel === "bookings" && (
+            <div style={PLACEHOLDER_STYLE}>Booking Management tools will appear here in a future update.</div>
+          )}
+
+          {panel === "tickets" && (
+            <div style={PLACEHOLDER_STYLE}>Ticket Management tools will appear here in a future update.</div>
+          )}
+
+          {panel === "notifications" && (
+            <div style={PLACEHOLDER_STYLE}>Notifications tools will appear here in a future update.</div>
+          )}
+
+          {panel === "analytics" && (
+            <div style={PLACEHOLDER_STYLE}>Analytics & Report tools will appear here in a future update.</div>
+          )}
+        </main>
+
+        {addTechnicianModalOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1001,
+              backgroundColor: "rgba(15, 23, 42, 0.55)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "18px",
+            }}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setAddTechnicianModalOpen(false);
+            }}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: "760px",
+                backgroundColor: "#ffffff",
+                borderRadius: "16px",
+                border: "1px solid #e5e7eb",
+                boxShadow: "0 24px 90px rgba(0,0,0,0.25)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  padding: "16px 22px",
+                  borderBottom: "1px solid #e5e7eb",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "12px",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Add technician</div>
+                  <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>
+                    Create a technician account (email/password)
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setUsersTab("all")}
+                  onClick={() => setAddTechnicianModalOpen(false)}
                   style={{
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: `1px solid ${usersTab === "all" ? "rgba(250,129,18,0.45)" : "#e5e7eb"}`,
-                    background: usersTab === "all" ? "rgba(250,129,18,0.12)" : "#fff",
+                    padding: "10px 12px",
+                    borderRadius: "10px",
+                    border: "1px solid #e5e7eb",
+                    background: "#fff",
                     fontWeight: 900,
+                    fontSize: "14px",
                     cursor: "pointer",
-                    color: usersTab === "all" ? "#9a3412" : "#0f172a",
+                    color: "#0f172a",
                   }}
                 >
-                  All Users
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUsersTab("add")}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: `1px solid ${usersTab === "add" ? "rgba(250,129,18,0.45)" : "#e5e7eb"}`,
-                    background: usersTab === "add" ? "rgba(250,129,18,0.12)" : "#fff",
-                    fontWeight: 900,
-                    cursor: "pointer",
-                    color: usersTab === "add" ? "#9a3412" : "#0f172a",
-                  }}
-                >
-                  Add technician
+                  Cancel
                 </button>
               </div>
 
-              {usersTab === "all" ? (
-                <AdminUsersTable onAddTechnician={() => setUsersTab("add")} />
-              ) : (
-                <div style={cardStyle}>
-                  <h2 style={{ margin: "0 0 20px 0", fontSize: "18px", fontWeight: 700, color: "#222222" }}>
-                    New technician
-                  </h2>
-                  <form onSubmit={handleSubmitTechnician} style={{ display: "grid", gap: "16px" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                      <div>
-                        <label style={labelStyle}>First name</label>
-                        <input
-                          required
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          style={inputStyle}
-                          placeholder="First name"
-                          autoComplete="given-name"
-                        />
-                      </div>
-                      <div>
-                        <label style={labelStyle}>Last name</label>
-                        <input
-                          required
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          style={inputStyle}
-                          placeholder="Last name"
-                          autoComplete="family-name"
-                        />
-                      </div>
-                    </div>
-
+              <div style={{ padding: "18px 22px 22px" }}>
+                <form onSubmit={handleSubmitTechnician} style={{ display: "grid", gap: "16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                     <div>
-                      <label style={labelStyle}>Work email</label>
+                      <label style={labelStyle}>First name</label>
                       <input
                         required
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
                         style={inputStyle}
-                        placeholder="name@campus.edu"
-                        autoComplete="email"
+                        placeholder="First name"
+                        autoComplete="given-name"
                       />
                     </div>
+                    <div>
+                      <label style={labelStyle}>Last name</label>
+                      <input
+                        required
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        style={inputStyle}
+                        placeholder="Last name"
+                        autoComplete="family-name"
+                      />
+                    </div>
+                  </div>
 
+                  <div>
+                    <label style={labelStyle}>Work email</label>
+                    <input
+                      required
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      style={inputStyle}
+                      placeholder="name@campus.edu"
+                      autoComplete="email"
+                    />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                     <div>
                       <label style={labelStyle}>Category</label>
                       <select
@@ -715,61 +781,41 @@ export default function AdminDashboard() {
                         autoComplete="tel"
                       />
                     </div>
+                  </div>
 
-                    <div>
-                      <label style={labelStyle}>Initial password</label>
-                      <input
-                        required
-                        type="password"
-                        minLength={6}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        style={inputStyle}
-                        placeholder="At least 6 characters"
-                        autoComplete="new-password"
-                      />
-                    </div>
+                  <div>
+                    <label style={labelStyle}>Initial password</label>
+                    <input
+                      required
+                      type="password"
+                      minLength={6}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      style={inputStyle}
+                      placeholder="At least 6 characters"
+                      autoComplete="new-password"
+                    />
+                  </div>
 
-                    {error && (
-                      <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 600 }} role="alert">
-                        {error}
-                      </p>
-                    )}
-                    {message && (
-                      <p style={{ margin: 0, color: "#15803d", fontSize: "14px", fontWeight: 600 }} role="status">
-                        {message}
-                      </p>
-                    )}
+                  {error && (
+                    <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 600 }} role="alert">
+                      {error}
+                    </p>
+                  )}
+                  {message && (
+                    <p style={{ margin: 0, color: "#15803d", fontSize: "14px", fontWeight: 600 }} role="status">
+                      {message}
+                    </p>
+                  )}
 
-                    <button type="submit" disabled={submitting} style={{ ...primaryBtn, opacity: submitting ? 0.85 : 1 }}>
-                      {submitting ? "Creating…" : "Create technician"}
-                    </button>
-                  </form>
-                </div>
-              )}
-            </>
-          )}
-
-          {panel === "dashboard" && <div style={PLACEHOLDER_STYLE}>Select a section from the left menu.</div>}
-
-          {panel === "resources" && <div style={PLACEHOLDER_STYLE}>Resource Management tools will appear here in a future update.</div>}
-
-          {panel === "bookings" && (
-            <div style={PLACEHOLDER_STYLE}>Booking Management tools will appear here in a future update.</div>
-          )}
-
-          {panel === "tickets" && (
-            <div style={PLACEHOLDER_STYLE}>Ticket Management tools will appear here in a future update.</div>
-          )}
-
-          {panel === "notifications" && (
-            <div style={PLACEHOLDER_STYLE}>Notifications tools will appear here in a future update.</div>
-          )}
-
-          {panel === "analytics" && (
-            <div style={PLACEHOLDER_STYLE}>Analytics & Report tools will appear here in a future update.</div>
-          )}
-        </main>
+                  <button type="submit" disabled={submitting} style={{ ...primaryBtn, opacity: submitting ? 0.85 : 1 }}>
+                    {submitting ? "Creating…" : "Create technician"}
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
 
         {profileModalOpen && (
           <div
