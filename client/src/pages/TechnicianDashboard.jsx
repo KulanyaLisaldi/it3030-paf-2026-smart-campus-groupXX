@@ -4,6 +4,7 @@ import { createTechnician } from "../api/adminTechnicians";
 import { DEFAULT_TECHNICIAN_CATEGORY, TECHNICIAN_CATEGORIES } from "../constants/technicianCategories";
 import { removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../api/auth";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
+import PasswordInput from "../components/PasswordInput.jsx";
 
 const PHONE_PATTERN = /^[0-9+\-()\s]{7,20}$/;
 
@@ -682,14 +683,14 @@ function AdminTechnicianForm() {
               </option>
             ))}
           </select>
-          <input
+          <PasswordInput
             required
-            type="password"
             minLength={6}
             placeholder="Initial password (min 6 characters)"
             value={techPassword}
             onChange={(e) => setTechPassword(e.target.value)}
             style={selectStyle}
+            autoComplete="new-password"
           />
           <button
             type="submit"

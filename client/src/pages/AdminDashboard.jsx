@@ -6,6 +6,7 @@ import { DEFAULT_TECHNICIAN_CATEGORY, TECHNICIAN_CATEGORIES } from "../constants
 import { removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../api/auth";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import AdminUsersTable from "../components/admin/AdminUsersTable.jsx";
+import PasswordInput from "../components/PasswordInput.jsx";
 
 const shellStyle = {
   height: "100vh",
@@ -786,15 +787,15 @@ export default function AdminDashboard() {
 
                   <div>
                     <label style={labelStyle}>Initial password</label>
-                    <input
+                    <PasswordInput
                       required
-                      type="password"
                       minLength={6}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       style={inputStyle}
                       placeholder="At least 6 characters"
                       autoComplete="new-password"
+                      toggleStyle={{ color: "#64748b" }}
                     />
                   </div>
 

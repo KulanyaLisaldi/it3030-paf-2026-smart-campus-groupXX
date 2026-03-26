@@ -4,6 +4,7 @@ import { signIn } from '../api/auth';
 import { getAuthToken, setAuthToken } from '../api/http';
 import { persistCampusUser, readCampusUser } from '../utils/campusUserStorage';
 import { ADMIN_DASHBOARD_PATH, navigateAfterLogin } from '../utils/authRedirect';
+import PasswordInput from '../components/PasswordInput';
 
 const SignIn = () => {
   const navigate = useNavigate();
@@ -249,8 +250,7 @@ const SignIn = () => {
 
           <div style={inputContainerStyle}>
             <label style={labelStyle}>Password</label>
-            <input
-              type="password"
+            <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onFocus={handleInputFocus}
