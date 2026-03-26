@@ -65,6 +65,9 @@ public class AuthService {
         }
 
         User user = maybeUser.get();
+        if (user.isDisabled()) {
+            return Optional.empty();
+        }
         UserRole effective = user.getEffectiveRole();
         if (effective != UserRole.ADMIN && effective != UserRole.TECHNICIAN) {
             return Optional.empty();
@@ -77,6 +80,10 @@ public class AuthService {
         if (!passwordEncoder.matches(request.getPassword(), hash)) {
             return Optional.empty();
         }
+
+        // Record successful sign-in
+        user.setLastLoginAt(Instant.now());
+        userRepo.save(user);
 
         AuthUserResponse profile = toUserResponse(user);
         AuthResponse response = new AuthResponse("Sign in successful", profile);
@@ -129,11 +136,19 @@ public class AuthService {
         String firstName = (given != null && !given.isBlank()) ? given.trim() : extractFirstName(oauth2User);
         String lastName = (family != null && !family.isBlank()) ? family.trim() : extractLastName(oauth2User);
 
-        return userRepo.findByGoogleSubject(sub)
+        User synced = userRepo.findByGoogleSubject(sub)
             .map(existing -> ensureUserRole(updateProfileIfNeeded(existing, firstName, lastName, normalizedEmail)))
             .orElseGet(() -> userRepo.findByEmail(normalizedEmail)
                 .map(existing -> linkGoogleToExistingUser(existing, sub, firstName, lastName))
                 .orElseGet(() -> createGoogleUser(sub, normalizedEmail, firstName, lastName)));
+
+        if (synced.isDisabled()) {
+            throw new IllegalStateException("Account disabled");
+        }
+
+        // Record successful sign-in for analytics/admin display
+        synced.setLastLoginAt(Instant.now());
+        return userRepo.save(synced);
     }
 
     private User ensureUserRole(User user) {

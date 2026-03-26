@@ -30,6 +30,12 @@ public class User {
 
     private Instant createdAt;
 
+    /** If true, user can't sign in (email/password, Google OAuth, or JWT). */
+    private boolean disabled = false;
+
+    /** Updated on every successful sign-in (email/password or Google OAuth). */
+    private Instant lastLoginAt;
+
     public User() {
     }
 
@@ -100,6 +106,22 @@ public class User {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public boolean isDisabled() {
+        return disabled;
+    }
+
+    public void setDisabled(boolean disabled) {
+        this.disabled = disabled;
+    }
+
+    public Instant getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    public void setLastLoginAt(Instant lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
     }
 
     public String getGoogleSubject() {

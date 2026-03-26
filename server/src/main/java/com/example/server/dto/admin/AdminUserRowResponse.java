@@ -5,8 +5,11 @@ import java.time.Instant;
 public class AdminUserRowResponse {
 
     private String userId;
+    private String firstName;
+    private String lastName;
     private String name;
     private String email;
+    private String phoneNumber;
     private String role;
     private String accountStatus;
     private String provider;
@@ -18,8 +21,11 @@ public class AdminUserRowResponse {
 
     public AdminUserRowResponse(
         String userId,
+        String firstName,
+        String lastName,
         String name,
         String email,
+        String phoneNumber,
         String role,
         String accountStatus,
         String provider,
@@ -27,8 +33,11 @@ public class AdminUserRowResponse {
         Instant lastLogin
     ) {
         this.userId = userId;
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.name = name;
         this.email = email;
+        this.phoneNumber = phoneNumber;
         this.role = role;
         this.accountStatus = accountStatus;
         this.provider = provider;
@@ -40,12 +49,24 @@ public class AdminUserRowResponse {
         return userId;
     }
 
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
     public String getName() {
         return name;
     }
 
     public String getEmail() {
         return email;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
     }
 
     public String getRole() {
