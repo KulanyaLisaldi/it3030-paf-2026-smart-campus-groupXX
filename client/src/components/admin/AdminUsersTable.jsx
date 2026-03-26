@@ -58,6 +58,54 @@ const smallBtnStyle = (variant = "neutral") => {
   return { ...base, border: "1px solid #e5e7eb", color: "#0f172a" };
 };
 
+const iconBtnStyle = (variant = "neutral") => ({
+  ...smallBtnStyle(variant),
+  width: "34px",
+  height: "34px",
+  padding: 0,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+});
+
+function EditIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M4 20h4l10-10-4-4L4 16v4z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13 7l4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function RoleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M8 7h10M8 12h6M8 17h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="5" cy="7" r="1" fill="currentColor" />
+      <circle cx="5" cy="12" r="1" fill="currentColor" />
+      <circle cx="5" cy="17" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function DisableIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M8 16l8-8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function EnableIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M8.5 12.5l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function formatDate(value) {
   if (!value) return "";
   try {
@@ -364,33 +412,39 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <button
                           type="button"
-                          style={smallBtnStyle("neutral")}
+                          style={iconBtnStyle("neutral")}
                           disabled={actionBusy}
+                          title="Edit profile"
+                          aria-label="Edit profile"
                           onClick={() => {
                             setSelectedUser(u);
                             setEditModalOpen(true);
                           }}
                         >
-                          Edit
+                          <EditIcon />
                         </button>
                         <button
                           type="button"
-                          style={smallBtnStyle("neutral")}
+                          style={iconBtnStyle("neutral")}
                           disabled={actionBusy}
+                          title="Role change"
+                          aria-label="Role change"
                           onClick={() => {
                             setSelectedUser(u);
                             setRoleModalOpen(true);
                           }}
                         >
-                          Role Change
+                          <RoleIcon />
                         </button>
                         <button
                           type="button"
-                          style={((u.accountStatus || "") === "Disabled") ? smallBtnStyle("primary") : smallBtnStyle("danger")}
+                          style={((u.accountStatus || "") === "Disabled") ? iconBtnStyle("primary") : iconBtnStyle("danger")}
                           disabled={actionBusy}
+                          title={(u.accountStatus || "") === "Disabled" ? "Enable account" : "Disable account"}
+                          aria-label={(u.accountStatus || "") === "Disabled" ? "Enable account" : "Disable account"}
                           onClick={() => handleToggleDisabled(u)}
                         >
-                          {(u.accountStatus || "") === "Disabled" ? "Enable" : "Disable"}
+                          {(u.accountStatus || "") === "Disabled" ? <EnableIcon /> : <DisableIcon />}
                         </button>
                       </div>
                     </td>
