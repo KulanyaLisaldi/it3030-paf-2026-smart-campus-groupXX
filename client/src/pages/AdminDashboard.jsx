@@ -5,6 +5,7 @@ import { getAuthToken } from "../api/http";
 import { DEFAULT_TECHNICIAN_CATEGORY, TECHNICIAN_CATEGORIES } from "../constants/technicianCategories";
 import { removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../api/auth";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
+import AdminUsersTable from "../components/admin/AdminUsersTable.jsx";
 
 const shellStyle = {
   height: "100vh",
@@ -188,6 +189,7 @@ function isValidPhone(value) {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [panel, setPanel] = useState("dashboard");
+  const [usersTab, setUsersTab] = useState("all");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profilePhoneDraft, setProfilePhoneDraft] = useState("");
@@ -453,7 +455,14 @@ export default function AdminDashboard() {
               <button type="button" style={navRowStyle(panel === "tickets")} onClick={() => setPanel("tickets")}>
                 Ticket Management
               </button>
-              <button type="button" style={navRowStyle(panel === "users")} onClick={() => setPanel("users")}>
+              <button
+                type="button"
+                style={navRowStyle(panel === "users")}
+                onClick={() => {
+                  setUsersTab("all");
+                  setPanel("users");
+                }}
+              >
                 User Management
               </button>
               <button type="button" style={navRowStyle(panel === "notifications")} onClick={() => setPanel("notifications")}>
@@ -591,113 +600,154 @@ export default function AdminDashboard() {
             {panel === "resources" && "Manage campus resources. (Coming soon)"}
             {panel === "bookings" && "Manage campus bookings and reservations. (Coming soon)"}
             {panel === "tickets" && "Review and manage support tickets. (Coming soon)"}
-            {panel === "users" && "Create technician accounts for your support team. They sign in with email/password you set."}
+            {panel === "users" && "Manage all staff accounts, including technicians."}
             {panel === "notifications" && "View and manage admin notifications. (Coming soon)"}
             {panel === "analytics" && "View analytics and reports for tickets and operations. (Coming soon)"}
           </p>
 
           {panel === "users" && (
-            <div style={cardStyle}>
-              <h2 style={{ margin: "0 0 20px 0", fontSize: "18px", fontWeight: 700, color: "#222222" }}>New technician</h2>
-              <form onSubmit={handleSubmitTechnician} style={{ display: "grid", gap: "16px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                  <div>
-                    <label style={labelStyle}>First name</label>
-                    <input
-                      required
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      style={inputStyle}
-                      placeholder="First name"
-                      autoComplete="given-name"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Last name</label>
-                    <input
-                      required
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      style={inputStyle}
-                      placeholder="Last name"
-                      autoComplete="family-name"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Work email</label>
-                  <input
-                    required
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    style={inputStyle}
-                    placeholder="name@campus.edu"
-                    autoComplete="email"
-                  />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Category</label>
-                  <select
-                    required
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    style={selectFieldStyle}
-                    aria-label="Technician category"
-                  >
-                    {TECHNICIAN_CATEGORIES.map((c) => (
-                      <option key={c.value} value={c.value}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={labelStyle}>
-                    Phone <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
-                  </label>
-                  <input
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    style={inputStyle}
-                    placeholder="+94 77 000 0000"
-                    autoComplete="tel"
-                  />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Initial password</label>
-                  <input
-                    required
-                    type="password"
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    style={inputStyle}
-                    placeholder="At least 6 characters"
-                    autoComplete="new-password"
-                  />
-                </div>
-
-                {error && (
-                  <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 600 }} role="alert">
-                    {error}
-                  </p>
-                )}
-                {message && (
-                  <p style={{ margin: 0, color: "#15803d", fontSize: "14px", fontWeight: 600 }} role="status">
-                    {message}
-                  </p>
-                )}
-
-                <button type="submit" disabled={submitting} style={{ ...primaryBtn, opacity: submitting ? 0.85 : 1 }}>
-                  {submitting ? "Creating…" : "Create technician"}
+            <>
+              <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => setUsersTab("all")}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: `1px solid ${usersTab === "all" ? "rgba(250,129,18,0.45)" : "#e5e7eb"}`,
+                    background: usersTab === "all" ? "rgba(250,129,18,0.12)" : "#fff",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                    color: usersTab === "all" ? "#9a3412" : "#0f172a",
+                  }}
+                >
+                  All Users
                 </button>
-              </form>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setUsersTab("add")}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: `1px solid ${usersTab === "add" ? "rgba(250,129,18,0.45)" : "#e5e7eb"}`,
+                    background: usersTab === "add" ? "rgba(250,129,18,0.12)" : "#fff",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                    color: usersTab === "add" ? "#9a3412" : "#0f172a",
+                  }}
+                >
+                  Add technician
+                </button>
+              </div>
+
+              {usersTab === "all" ? (
+                <AdminUsersTable onAddTechnician={() => setUsersTab("add")} />
+              ) : (
+                <div style={cardStyle}>
+                  <h2 style={{ margin: "0 0 20px 0", fontSize: "18px", fontWeight: 700, color: "#222222" }}>
+                    New technician
+                  </h2>
+                  <form onSubmit={handleSubmitTechnician} style={{ display: "grid", gap: "16px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                      <div>
+                        <label style={labelStyle}>First name</label>
+                        <input
+                          required
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          style={inputStyle}
+                          placeholder="First name"
+                          autoComplete="given-name"
+                        />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Last name</label>
+                        <input
+                          required
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          style={inputStyle}
+                          placeholder="Last name"
+                          autoComplete="family-name"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>Work email</label>
+                      <input
+                        required
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        style={inputStyle}
+                        placeholder="name@campus.edu"
+                        autoComplete="email"
+                      />
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>Category</label>
+                      <select
+                        required
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        style={selectFieldStyle}
+                        aria-label="Technician category"
+                      >
+                        {TECHNICIAN_CATEGORIES.map((c) => (
+                          <option key={c.value} value={c.value}>
+                            {c.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>
+                        Phone <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
+                      </label>
+                      <input
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        style={inputStyle}
+                        placeholder="+94 77 000 0000"
+                        autoComplete="tel"
+                      />
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>Initial password</label>
+                      <input
+                        required
+                        type="password"
+                        minLength={6}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        style={inputStyle}
+                        placeholder="At least 6 characters"
+                        autoComplete="new-password"
+                      />
+                    </div>
+
+                    {error && (
+                      <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 600 }} role="alert">
+                        {error}
+                      </p>
+                    )}
+                    {message && (
+                      <p style={{ margin: 0, color: "#15803d", fontSize: "14px", fontWeight: 600 }} role="status">
+                        {message}
+                      </p>
+                    )}
+
+                    <button type="submit" disabled={submitting} style={{ ...primaryBtn, opacity: submitting ? 0.85 : 1 }}>
+                      {submitting ? "Creating…" : "Create technician"}
+                    </button>
+                  </form>
+                </div>
+              )}
+            </>
           )}
 
           {panel === "dashboard" && <div style={PLACEHOLDER_STYLE}>Select a section from the left menu.</div>}
