@@ -9,6 +9,7 @@ import {
 } from "../constants/technicianCategories";
 import { removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../api/auth";
 import { getTechnicianAssignedTickets, updateTechnicianTicketProgress } from "../api/technicianTickets";
+import { getTicketDetails } from "../api/tickets";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import PasswordInput from "../components/PasswordInput.jsx";
 
@@ -120,6 +121,26 @@ function assignedTicketStatusLabel(status) {
   return status || "—";
 }
 
+function normalizeTicketAttachments(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    return raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function formatModalDate(value) {
+  try {
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? "" : d.toLocaleString();
+  } catch {
+    return "";
+  }
+}
+
 function TechnicianWorkspace() {
   const navigate = useNavigate();
   const [userRev, setUserRev] = useState(0);
@@ -142,6 +163,11 @@ function TechnicianWorkspace() {
   const [assignedLoading, setAssignedLoading] = useState(false);
   const [assignedError, setAssignedError] = useState("");
   const [progressBusyId, setProgressBusyId] = useState("");
+
+  const [ticketDetailModalId, setTicketDetailModalId] = useState(null);
+  const [ticketDetailModalData, setTicketDetailModalData] = useState(null);
+  const [ticketDetailModalLoading, setTicketDetailModalLoading] = useState(false);
+  const [ticketDetailModalError, setTicketDetailModalError] = useState("");
 
   useEffect(() => {
     const onUserUpdated = () => setUserRev((n) => n + 1);
@@ -197,6 +223,34 @@ function TechnicianWorkspace() {
     navigate("/signin", { replace: true });
   };
 
+  const closeTicketDetailModal = () => {
+    setTicketDetailModalId(null);
+    setTicketDetailModalData(null);
+    setTicketDetailModalError("");
+    setTicketDetailModalLoading(false);
+  };
+
+  const loadTicketDetailsForModal = async (ticketId) => {
+    if (!ticketId) return;
+    setTicketDetailModalLoading(true);
+    setTicketDetailModalError("");
+    try {
+      const data = await getTicketDetails(ticketId);
+      setTicketDetailModalData(data);
+    } catch (e) {
+      setTicketDetailModalError(e?.message || "Failed to load ticket.");
+      setTicketDetailModalData(null);
+    } finally {
+      setTicketDetailModalLoading(false);
+    }
+  };
+
+  const openTicketDetailModal = (ticketId) => {
+    if (!ticketId) return;
+    setTicketDetailModalId(ticketId);
+    loadTicketDetailsForModal(ticketId);
+  };
+
   const handleTicketProgress = async (ticketId, nextStatus) => {
     if (!ticketId) return;
     setProgressBusyId(ticketId);
@@ -206,6 +260,9 @@ function TechnicianWorkspace() {
       const updated = res?.ticket;
       if (updated?.id) {
         setAssignedTickets((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
+        if (ticketDetailModalId === ticketId) {
+          await loadTicketDetailsForModal(ticketId);
+        }
       }
     } catch (e) {
       setAssignedError(e?.message || "Could not update progress.");
@@ -538,7 +595,7 @@ function TechnicianWorkspace() {
                           cursor: busy ? "wait" : "pointer",
                         }}
                         disabled={busy}
-                        onClick={() => navigate(`/tickets/${t.id}`)}
+                        onClick={() => openTicketDetailModal(t.id)}
                       >
                         View details
                       </button>
@@ -872,6 +929,192 @@ function TechnicianWorkspace() {
                   {saveState.busy ? "Saving…" : "Save changes"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ticketDetailModalId && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tech-ticket-detail-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1100,
+            backgroundColor: "rgba(15, 23, 42, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeTicketDetailModal();
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 640,
+              maxHeight: "min(90vh, 720px)",
+              display: "flex",
+              flexDirection: "column",
+              backgroundColor: "#fff",
+              borderRadius: 14,
+              border: "1px solid #e5e7eb",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.2)",
+              overflow: "hidden",
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: "14px 16px",
+                borderBottom: "1px solid #F5E7C6",
+                backgroundColor: "#FAF3E1",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                flexShrink: 0,
+              }}
+            >
+              <div id="tech-ticket-detail-title" style={{ fontSize: 17, fontWeight: 900, color: "#14213D" }}>
+                Ticket details
+              </div>
+              <button
+                type="button"
+                onClick={closeTicketDetailModal}
+                style={{
+                  border: "1px solid #e5e7eb",
+                  background: "#fff",
+                  borderRadius: 10,
+                  padding: "8px 14px",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  color: "#14213D",
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <div style={{ padding: 16, overflowY: "auto", flex: 1, minHeight: 0 }}>
+              {ticketDetailModalLoading && <p style={{ margin: 0, color: "#6b7280" }}>Loading ticket…</p>}
+              {ticketDetailModalError && (
+                <p style={{ margin: 0, color: "#d32f2f", fontWeight: 600 }}>{ticketDetailModalError}</p>
+              )}
+              {!ticketDetailModalLoading && !ticketDetailModalError && ticketDetailModalData?.ticket && (() => {
+                const tk = ticketDetailModalData.ticket;
+                const comments = ticketDetailModalData.comments || [];
+                const attachments = normalizeTicketAttachments(tk.attachments);
+                const priorityBg =
+                  tk.priority === "High" ? "#d32f2f" : tk.priority === "Medium" ? "#FCA311" : "#2e7d32";
+                const chip = {
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "6px 10px",
+                  borderRadius: "999px",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                };
+                return (
+                  <>
+                    <div style={{ fontSize: "18px", fontWeight: 800, color: "#222", marginBottom: "12px" }}>
+                      {tk.issueTitle || "Ticket"}
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
+                      <span style={{ ...chip, backgroundColor: "#14213D", color: "#fff" }}>Status: {tk.status}</span>
+                      <span style={{ ...chip, backgroundColor: priorityBg, color: "#fff" }}>Priority: {tk.priority}</span>
+                      <span style={{ ...chip, backgroundColor: "#E5E5E5", color: "#14213D" }}>Category: {tk.category}</span>
+                    </div>
+                    {tk.assignedTechnicianName && (
+                      <p style={{ margin: "0 0 8px 0", color: "#14213D", fontSize: "14px", fontWeight: 700 }}>
+                        Assigned technician: <span style={{ fontWeight: 600, color: "#374151" }}>{tk.assignedTechnicianName}</span>
+                      </p>
+                    )}
+                    <p style={{ margin: "0 0 8px 0", color: "#374151", fontSize: "14px" }}>
+                      <span style={{ fontWeight: 700 }}>Reporter:</span> {tk.fullName || "—"} · {tk.email || "—"} ·{" "}
+                      {tk.phoneNumber || "—"}
+                    </p>
+                    <p style={{ margin: "0 0 12px 0", color: "#374151", fontSize: "14px" }}>
+                      <span style={{ fontWeight: 700 }}>Location:</span> {tk.resourceLocation || "—"}
+                    </p>
+                    <div
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 12,
+                        border: "1px solid #F5E7C6",
+                        backgroundColor: "#FAF3E1",
+                        color: "#374151",
+                        fontSize: "14px",
+                        lineHeight: 1.45,
+                        marginBottom: 14,
+                      }}
+                    >
+                      {tk.description || "—"}
+                    </div>
+
+                    <div style={{ ...sectionTitleStyle, color: "#14213D" }}>Attachments</div>
+                    {attachments.length === 0 ? (
+                      <p style={{ margin: "0 0 14px 0", color: "#6b7280", fontSize: "13px" }}>No attachments.</p>
+                    ) : (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
+                        {attachments.map((path, idx) => (
+                          <div
+                            key={`${path}-${idx}`}
+                            style={{
+                              flex: "1 1 140px",
+                              maxWidth: 200,
+                              border: "1px solid #F5E7C6",
+                              borderRadius: 10,
+                              padding: 6,
+                              backgroundColor: "#fff",
+                            }}
+                          >
+                            <img
+                              src={path}
+                              alt=""
+                              style={{
+                                width: "100%",
+                                height: 100,
+                                objectFit: "contain",
+                                borderRadius: 8,
+                                backgroundColor: "#FAF3E1",
+                                display: "block",
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div style={{ ...sectionTitleStyle, color: "#14213D" }}>Comments</div>
+                    {comments.length === 0 ? (
+                      <p style={{ margin: "0 0 12px 0", color: "#6b7280", fontSize: "13px" }}>No comments yet.</p>
+                    ) : (
+                      <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+                        {comments.map((c) => (
+                          <div
+                            key={c.id}
+                            style={{
+                              border: "1px solid #F5E7C6",
+                              borderRadius: 12,
+                              padding: "12px",
+                              backgroundColor: "#FAF3E1",
+                            }}
+                          >
+                            <div style={{ fontWeight: 800, color: "#14213D", fontSize: "14px" }}>{c.createdBy}</div>
+                            <div style={{ marginTop: 6, color: "#374151", fontSize: "14px", lineHeight: 1.45 }}>{c.content}</div>
+                            <div style={{ marginTop: 6, color: "#6b7280", fontSize: "12px" }}>{formatModalDate(c.createdAt)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
