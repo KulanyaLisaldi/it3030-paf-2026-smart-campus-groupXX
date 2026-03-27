@@ -8,6 +8,7 @@ import {
   updateTicket,
   updateTicketComment,
 } from "../api/tickets";
+import { technicianCategoryLabel } from "../constants/technicianCategories";
 
 const pageStyle = {
   minHeight: "100vh",
@@ -301,7 +302,7 @@ export default function TicketDetails() {
       setCommentContent("");
       // refresh ticket details
       const data = await getTicketDetails(id);
-      setTicketDetails(data);
+      setTicketDetails(applyAdminDecisionToDetails(data));
     } catch (err) {
       setCommentError(err.message || "Failed to add comment.");
     } finally {
@@ -458,13 +459,6 @@ export default function TicketDetails() {
                   Category: {ticketDetails.ticket.category}
                 </span>
               </div>
-
-              {ticketDetails.ticket.assignedTechnicianName && (
-                <p style={{ margin: "10px 0 0 0", color: "#14213D", fontSize: "14px", fontWeight: 700 }}>
-                  Assigned technician:{" "}
-                  <span style={{ fontWeight: 600, color: "#374151" }}>{ticketDetails.ticket.assignedTechnicianName}</span>
-                </p>
-              )}
 
               <p style={{ margin: "10px 0 0 0", color: "#374151", fontWeight: 700 }}>
                 Location: <span style={{ fontWeight: 600 }}>{ticketDetails.ticket.resourceLocation}</span>
@@ -668,6 +662,53 @@ export default function TicketDetails() {
                 </button>
               </form>
             </div>
+
+            {(ticketDetails.assignedTechnician || ticketDetails.ticket.assignedTechnicianName) && (
+              <div style={{ ...cardStyle, backgroundColor: "#FAF3E1", border: "1px solid #F5E7C6" }}>
+                <div
+                  style={{
+                    color: "#14213D",
+                    fontSize: "13px",
+                    fontWeight: 800,
+                    marginBottom: "12px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  Assigned technician
+                </div>
+                {(() => {
+                  const a = ticketDetails.assignedTechnician;
+                  const name = a?.displayName || ticketDetails.ticket.assignedTechnicianName || "—";
+                  const email = a?.email || "—";
+                  const phone = (a?.phoneNumber || "").trim() || "—";
+                  const specialty = a?.technicianCategory
+                    ? technicianCategoryLabel(a.technicianCategory)
+                    : "—";
+                  return (
+                    <div style={{ display: "grid", gap: "10px", fontSize: "14px", color: "#374151" }}>
+                      <div>
+                        <span style={{ fontWeight: 700, color: "#222" }}>Name:</span>{" "}
+                        <span style={{ fontWeight: 600 }}>{name}</span>
+                      </div>
+
+                      <div>
+                        <span style={{ fontWeight: 700, color: "#222" }}>Email:</span>{" "}
+                        <span style={{ fontWeight: 600, wordBreak: "break-word" }}>{email}</span>
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: 700, color: "#222" }}>Phone:</span>{" "}
+                        <span style={{ fontWeight: 600 }}>{phone}</span>
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: 700, color: "#222" }}>Specialty:</span>{" "}
+                        <span style={{ fontWeight: 600 }}>{specialty}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </>
         )}
       </section>

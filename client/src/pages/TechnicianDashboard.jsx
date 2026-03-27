@@ -1006,6 +1006,7 @@ function TechnicianWorkspace() {
               )}
               {!ticketDetailModalLoading && !ticketDetailModalError && ticketDetailModalData?.ticket && (() => {
                 const tk = ticketDetailModalData.ticket;
+                const assignee = ticketDetailModalData.assignedTechnician;
                 const comments = ticketDetailModalData.comments || [];
                 const attachments = normalizeTicketAttachments(tk.attachments);
                 const priorityBg =
@@ -1029,10 +1030,48 @@ function TechnicianWorkspace() {
                       <span style={{ ...chip, backgroundColor: priorityBg, color: "#fff" }}>Priority: {tk.priority}</span>
                       <span style={{ ...chip, backgroundColor: "#E5E5E5", color: "#14213D" }}>Category: {tk.category}</span>
                     </div>
-                    {tk.assignedTechnicianName && (
-                      <p style={{ margin: "0 0 8px 0", color: "#14213D", fontSize: "14px", fontWeight: 700 }}>
-                        Assigned technician: <span style={{ fontWeight: 600, color: "#374151" }}>{tk.assignedTechnicianName}</span>
-                      </p>
+                    {(assignee || tk.assignedTechnicianName) && (
+                      <div
+                        style={{
+                          marginBottom: 12,
+                          padding: "12px 14px",
+                          borderRadius: 12,
+                          border: "1px solid #F5E7C6",
+                          backgroundColor: "#FAF3E1",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: 800,
+                            color: "#14213D",
+                            marginBottom: 8,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          Assigned technician
+                        </div>
+                        <div style={{ display: "grid", gap: 6, fontSize: "13px", color: "#374151" }}>
+                          <div>
+                            <span style={{ fontWeight: 700 }}>Name:</span>{" "}
+                            {assignee?.displayName || tk.assignedTechnicianName || "—"}
+                          </div>
+                          <div>
+                            <span style={{ fontWeight: 700 }}>Email:</span>{" "}
+                            <span style={{ wordBreak: "break-word" }}>{assignee?.email || "—"}</span>
+                          </div>
+                          <div>
+                            <span style={{ fontWeight: 700 }}>Phone:</span> {(assignee?.phoneNumber || "").trim() || "—"}
+                          </div>
+                          {assignee?.technicianCategory && (
+                            <div>
+                              <span style={{ fontWeight: 700 }}>Specialty:</span>{" "}
+                              {technicianCategoryLabel(assignee.technicianCategory)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
                     <p style={{ margin: "0 0 8px 0", color: "#374151", fontSize: "14px" }}>
                       <span style={{ fontWeight: 700 }}>Reporter:</span> {tk.fullName || "—"} · {tk.email || "—"} ·{" "}

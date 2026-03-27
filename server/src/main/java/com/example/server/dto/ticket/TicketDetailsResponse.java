@@ -9,13 +9,19 @@ public class TicketDetailsResponse {
 
     private Ticket ticket;
     private List<TicketComment> comments;
+    private AssignedTechnicianDetails assignedTechnician;
 
     public TicketDetailsResponse() {
     }
 
-    public TicketDetailsResponse(Ticket ticket, List<TicketComment> comments) {
+    public TicketDetailsResponse(Ticket ticket, List<TicketComment> comments, AssignedTechnicianDetails assignedTechnician) {
         this.ticket = ticket;
         this.comments = comments;
+        this.assignedTechnician = assignedTechnician;
+    }
+
+    public TicketDetailsResponse(Ticket ticket, List<TicketComment> comments) {
+        this(ticket, comments, null);
     }
 
     public Ticket getTicket() {
@@ -32,6 +38,14 @@ public class TicketDetailsResponse {
 
     public void setComments(List<TicketComment> comments) {
         this.comments = comments;
+    }
+
+    public AssignedTechnicianDetails getAssignedTechnician() {
+        return assignedTechnician;
+    }
+
+    public void setAssignedTechnician(AssignedTechnicianDetails assignedTechnician) {
+        this.assignedTechnician = assignedTechnician;
     }
 }
 

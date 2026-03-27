@@ -1,16 +1,20 @@
 package com.example.server.service;
 
+import com.example.server.dto.ticket.AssignedTechnicianDetails;
 import com.example.server.dto.ticket.CreateTicketCommentRequest;
 import com.example.server.dto.ticket.TicketDetailsResponse;
 import com.example.server.dto.ticket.UpdateTicketCommentRequest;
 import com.example.server.model.Ticket;
 import com.example.server.model.TicketComment;
+import com.example.server.model.User;
 import com.example.server.repository.TicketCommentRepo;
 import com.example.server.repository.TicketRepo;
+import com.example.server.repository.UserRepo;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -18,10 +22,12 @@ public class TicketDetailsService {
 
     private final TicketRepo ticketRepo;
     private final TicketCommentRepo commentRepo;
+    private final UserRepo userRepo;
 
-    public TicketDetailsService(TicketRepo ticketRepo, TicketCommentRepo commentRepo) {
+    public TicketDetailsService(TicketRepo ticketRepo, TicketCommentRepo commentRepo, UserRepo userRepo) {
         this.ticketRepo = ticketRepo;
         this.commentRepo = commentRepo;
+        this.userRepo = userRepo;
     }
 
     public Optional<TicketDetailsResponse> getTicketDetails(String ticketId) {
@@ -30,8 +36,60 @@ public class TicketDetailsService {
             return Optional.empty();
         }
 
+        Ticket entity = ticket.get();
         List<TicketComment> comments = commentRepo.findByTicketIdOrderByCreatedAtDesc(ticketId);
-        return Optional.of(new TicketDetailsResponse(ticket.get(), comments));
+        AssignedTechnicianDetails assignee = resolveAssignedTechnician(entity);
+        return Optional.of(new TicketDetailsResponse(entity, comments, assignee));
+    }
+
+    private AssignedTechnicianDetails resolveAssignedTechnician(Ticket ticket) {
+        String ref = ticket.getAssignedTechnicianId();
+        String storedName = ticket.getAssignedTechnicianName();
+        boolean refBlank = ref == null || ref.isBlank();
+        boolean nameBlank = storedName == null || storedName.isBlank();
+        if (refBlank && nameBlank) {
+            return null;
+        }
+
+        if (!refBlank) {
+            String r = ref.trim();
+            Optional<User> user = userRepo.findById(r);
+            if (user.isEmpty()) {
+                user = userRepo.findByEmail(r.toLowerCase(Locale.ROOT));
+            }
+            if (user.isPresent()) {
+                return mapAssignee(user.get());
+            }
+        }
+
+        if (!nameBlank) {
+            AssignedTechnicianDetails fallback = new AssignedTechnicianDetails();
+            fallback.setDisplayName(storedName.trim());
+            if (!refBlank && ref.trim().contains("@")) {
+                fallback.setEmail(ref.trim());
+            }
+            return fallback;
+        }
+
+        return null;
+    }
+
+    private static AssignedTechnicianDetails mapAssignee(User u) {
+        AssignedTechnicianDetails d = new AssignedTechnicianDetails();
+        d.setUserId(u.getId());
+        String fn = u.getFirstName() == null ? "" : u.getFirstName().trim();
+        String ln = u.getLastName() == null ? "" : u.getLastName().trim();
+        String full = (fn + " " + ln).trim();
+        if (full.isEmpty()) {
+            full = u.getEmail() != null && !u.getEmail().isBlank() ? u.getEmail().trim() : "Technician";
+        }
+        d.setDisplayName(full);
+        d.setEmail(u.getEmail());
+        d.setPhoneNumber(u.getPhoneNumber());
+        if (u.getTechnicianCategory() != null) {
+            d.setTechnicianCategory(u.getTechnicianCategory().name());
+        }
+        return d;
     }
 
     public Optional<TicketComment> addComment(String ticketId, CreateTicketCommentRequest request) {
