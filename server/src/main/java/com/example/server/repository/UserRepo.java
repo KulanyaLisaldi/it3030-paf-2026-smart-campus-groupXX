@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 import com.example.server.model.UserRole;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepo extends MongoRepository<User, String> {
@@ -15,4 +16,6 @@ public interface UserRepo extends MongoRepository<User, String> {
     Optional<User> findByEmail(String email);
 
     Optional<User> findByGoogleSubject(String googleSubject);
+
+    List<User> findByRole(UserRole role);
 }

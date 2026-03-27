@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -110,6 +111,15 @@ public class AuthService {
         user.setTechnicianCategory(request.getCategory());
         User saved = userRepo.save(user);
         return toUserResponse(saved);
+    }
+
+    public List<AuthUserResponse> listTechnicians() {
+        return userRepo.findByRole(UserRole.TECHNICIAN).stream()
+            .sorted(Comparator
+                .comparing(User::getLastName, Comparator.nullsFirst(String.CASE_INSENSITIVE_ORDER))
+                .thenComparing(User::getFirstName, Comparator.nullsFirst(String.CASE_INSENSITIVE_ORDER)))
+            .map(this::toUserResponse)
+            .toList();
     }
 
     private String normalizeEmail(String email) {

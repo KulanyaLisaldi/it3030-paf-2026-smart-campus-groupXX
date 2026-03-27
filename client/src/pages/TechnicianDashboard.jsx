@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createTechnician } from "../api/adminTechnicians";
+import { createTechnician, listTechnicians } from "../api/adminTechnicians";
 import { DEFAULT_TECHNICIAN_CATEGORY, TECHNICIAN_CATEGORIES } from "../constants/technicianCategories";
 import { removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../api/auth";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
@@ -76,6 +76,21 @@ function getStoredUser() {
   }
 }
 
+function technicianCategoryLabel(value) {
+  if (value == null || value === "") return "—";
+  const found = TECHNICIAN_CATEGORIES.find((c) => c.value === value);
+  return found ? found.label : String(value);
+}
+
+function userDisplayInitial(user) {
+  if (!user) return "?";
+  const first = (user.firstName || "").trim();
+  if (first) return first.charAt(0).toUpperCase();
+  const email = (user.email || "").trim();
+  if (email) return email.charAt(0).toUpperCase();
+  return "T";
+}
+
 function TechnicianWorkspace() {
   const navigate = useNavigate();
   const [userRev, setUserRev] = useState(0);
@@ -134,15 +149,6 @@ function TechnicianWorkspace() {
     return draft !== serverPhone;
   }, [phoneDraft, serverPhone]);
 
-  const profileInitial = (user) => {
-    if (!user) return "?";
-    const first = (user.firstName || "").trim();
-    if (first) return first.charAt(0).toUpperCase();
-    const email = (user.email || "").trim();
-    if (email) return email.charAt(0).toUpperCase();
-    return "T";
-  };
-
   const triggerStyle = {
     width: 40,
     height: 40,
@@ -178,7 +184,6 @@ function TechnicianWorkspace() {
     <>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 18 }}>
         <div>
-          <h1 style={{ margin: "0 0 8px 0", fontSize: "24px", fontWeight: 800, color: "#222222" }}>Technician workspace</h1>
           <p style={{ margin: "0 0 0 0", color: "#6b7280", fontSize: "14px" }}>
             Welcome back, {name}. Ticket assignment and maintenance workflows can plug in here.
           </p>
@@ -199,7 +204,7 @@ function TechnicianWorkspace() {
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
             ) : (
-              profileInitial(techUser)
+              userDisplayInitial(techUser)
             )}
           </button>
 
@@ -225,7 +230,7 @@ function TechnicianWorkspace() {
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
                   ) : (
-                    <span style={{ color: "#fff", fontWeight: 800 }}>{profileInitial(techUser)}</span>
+                    <span style={{ color: "#fff", fontWeight: 800 }}>{userDisplayInitial(techUser)}</span>
                   )}
                 </div>
                 <div style={{ minWidth: 0 }}>
@@ -260,6 +265,77 @@ function TechnicianWorkspace() {
               </button>
             </div>
           )}
+        </div>
+      </div>
+
+      <div
+        style={{
+          border: "1px solid #F5E7C6",
+          borderRadius: "12px",
+          padding: "18px",
+          backgroundColor: "#FAF3E1",
+          marginBottom: "18px",
+          display: "grid",
+          gridTemplateColumns: "auto 1fr",
+          gap: "18px",
+          alignItems: "start",
+        }}
+      >
+        <div
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: "50%",
+            backgroundColor: techUser?.profileImageUrl ? "#fff" : "#475569",
+            border: "1px solid #F5E7C6",
+            overflow: "hidden",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          {techUser?.profileImageUrl ? (
+            <img src={techUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <span style={{ color: "#fff", fontWeight: 800, fontSize: 22 }}>{userDisplayInitial(techUser)}</span>
+          )}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: "13px",
+              fontWeight: 800,
+              color: "#14213D",
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              marginBottom: "10px",
+            }}
+          >
+            Your personal details
+          </div>
+          <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "4px" }}>Full name</div>
+              <div style={{ fontSize: "15px", fontWeight: 700, color: "#222222" }}>
+                {`${(techUser?.firstName || "").trim()} ${(techUser?.lastName || "").trim()}`.trim() || "—"}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "4px" }}>Email</div>
+              <div style={{ fontSize: "15px", fontWeight: 600, color: "#222222", wordBreak: "break-word" }}>{techUser?.email || "—"}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "4px" }}>Phone</div>
+              <div style={{ fontSize: "15px", fontWeight: 600, color: "#222222" }}>{(techUser?.phoneNumber || "").trim() || "—"}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "4px" }}>Specialty</div>
+              <div style={{ fontSize: "15px", fontWeight: 600, color: "#222222" }}>
+                {technicianCategoryLabel(techUser?.technicianCategory)}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -361,7 +437,7 @@ function TechnicianWorkspace() {
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
                   ) : (
-                    <span style={{ fontSize: 42, fontWeight: 900, color: "#6b7280" }}>{profileInitial(techUser)}</span>
+                    <span style={{ fontSize: 42, fontWeight: 900, color: "#6b7280" }}>{userDisplayInitial(techUser)}</span>
                   )}
                 </div>
 
@@ -563,6 +639,27 @@ function AdminTechnicianForm() {
   const [techSubmitting, setTechSubmitting] = useState(false);
   const [techMessage, setTechMessage] = useState("");
   const [techError, setTechError] = useState("");
+  const [technicians, setTechnicians] = useState([]);
+  const [techListLoading, setTechListLoading] = useState(true);
+  const [techListError, setTechListError] = useState("");
+
+  const loadTechnicianRoster = async () => {
+    setTechListLoading(true);
+    setTechListError("");
+    try {
+      const data = await listTechnicians();
+      setTechnicians(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setTechListError(err?.message || "Could not load technicians.");
+      setTechnicians([]);
+    } finally {
+      setTechListLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTechnicianRoster();
+  }, []);
 
   const submitAddTechnician = async (e) => {
     e.preventDefault();
@@ -585,6 +682,7 @@ function AdminTechnicianForm() {
       setTechPhone("");
       setTechCategory(DEFAULT_TECHNICIAN_CATEGORY);
       setTechPassword("");
+      loadTechnicianRoster();
     } catch (err) {
       setTechError(err?.message || "Could not create technician.");
     } finally {
@@ -626,6 +724,88 @@ function AdminTechnicianForm() {
       >
         ← Back to Admin Ticket Dashboard
       </button>
+
+      <div
+        style={{
+          border: "1px solid #F5E7C6",
+          borderRadius: "10px",
+          padding: "14px",
+          backgroundColor: "#FFFFFF",
+          marginBottom: "16px",
+        }}
+      >
+        <div style={sectionTitleStyle}>Technician roster</div>
+        <p style={{ margin: "0 0 12px 0", color: "#6b7280", fontSize: "13px", fontWeight: 500 }}>
+          Personal details for each registered technician.
+        </p>
+        {techListLoading && <p style={{ margin: 0, color: "#6b7280", fontSize: "13px" }}>Loading technicians…</p>}
+        {techListError && !techListLoading && (
+          <p style={{ margin: 0, color: "#d32f2f", fontSize: "13px", fontWeight: 600 }}>{techListError}</p>
+        )}
+        {!techListLoading && !techListError && technicians.length === 0 && (
+          <p style={{ margin: 0, color: "#6b7280", fontSize: "13px" }}>No technicians yet. Add one below.</p>
+        )}
+        {!techListLoading && technicians.length > 0 && (
+          <div
+            style={{
+              display: "grid",
+              gap: "12px",
+              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+            }}
+          >
+            {technicians.map((t) => (
+              <div
+                key={t.id || t.email}
+                style={{
+                  border: "1px solid #F5E7C6",
+                  borderRadius: "12px",
+                  padding: "14px",
+                  backgroundColor: "#FAF3E1",
+                  display: "grid",
+                  gridTemplateColumns: "auto 1fr",
+                  gap: "12px",
+                  alignItems: "start",
+                }}
+              >
+                <div
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: "50%",
+                    backgroundColor: t.profileImageUrl ? "#fff" : "#475569",
+                    border: "1px solid #F5E7C6",
+                    overflow: "hidden",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  {t.profileImageUrl ? (
+                    <img src={t.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <span style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>{userDisplayInitial(t)}</span>
+                  )}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: "15px", fontWeight: 800, color: "#222222", lineHeight: 1.25 }}>
+                    {`${(t.firstName || "").trim()} ${(t.lastName || "").trim()}`.trim() || "Technician"}
+                  </div>
+                  <div style={{ fontSize: "12px", fontWeight: 600, color: "#6b7280", marginTop: "6px", wordBreak: "break-word" }}>
+                    {t.email || "—"}
+                  </div>
+                  <div style={{ fontSize: "12px", fontWeight: 600, color: "#374151", marginTop: "4px" }}>
+                    Phone: {(t.phoneNumber || "").trim() || "—"}
+                  </div>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "#14213D", marginTop: "6px" }}>
+                    Specialty: {technicianCategoryLabel(t.technicianCategory)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div
         style={{
@@ -715,7 +895,9 @@ export default function TechnicianDashboard() {
 
   return (
     <div style={pageStyle}>
-      <section style={containerStyle}>{isTechnician ? <TechnicianWorkspace /> : <AdminTechnicianForm />}</section>
+      <section style={{ ...containerStyle, maxWidth: isTechnician ? "720px" : "980px" }}>
+        {isTechnician ? <TechnicianWorkspace /> : <AdminTechnicianForm />}
+      </section>
     </div>
   );
 }

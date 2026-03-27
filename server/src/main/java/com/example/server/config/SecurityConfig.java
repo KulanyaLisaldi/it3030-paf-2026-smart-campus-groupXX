@@ -49,6 +49,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/api/auth/signin").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/admin/technicians").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/admin/technicians").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/admin/users").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PATCH, "/api/admin/users/**").hasRole("ADMIN")
