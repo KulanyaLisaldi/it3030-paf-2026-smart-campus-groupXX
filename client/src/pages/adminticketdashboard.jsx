@@ -973,200 +973,194 @@ export default function AdminTicketDashboard() {
               {!loading && error && <p style={{ color: "#d32f2f" }}>{error}</p>}
               {!loading && !error && filteredAndSortedTickets.length === 0 && <p>No tickets found.</p>}
 
-              {!loading &&
-                !error &&
-                filteredAndSortedTickets.map((item) => {
-            const ticket = item.ticket || {};
-            const comments = item.comments || [];
-            const progress = getProgressInfo(ticket.status, comments.length);
+              {!loading && !error && filteredAndSortedTickets.length > 0 && (
+                <div style={{ border: "1px solid #F5E7C6", borderRadius: "12px", overflowX: "auto", backgroundColor: "#FFFFFF" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "980px", tableLayout: "fixed" }}>
+                    <thead>
+                      <tr style={{ backgroundColor: "#FAF3E1" }}>
+                        <th style={{ width: "18%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Ticket</th>
+                        <th style={{ width: "15%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Reported By</th>
+                        <th style={{ width: "10%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Status</th>
+                        <th style={{ width: "8%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Priority</th>
+                        <th style={{ width: "12%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Progress</th>
+                        <th style={{ width: "11%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Created</th>
+                        <th style={{ width: "14%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Rejection Reason</th>
+                        <th style={{ width: "12%", textAlign: "right", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAndSortedTickets.map((item) => {
+                        const ticket = item.ticket || {};
+                        const comments = item.comments || [];
+                        const progress = getProgressInfo(ticket.status, comments.length);
+                        const isOpen = !!openTicketIds[ticket.id];
+                        const isRejecting = rejectingTicketId === ticket.id;
 
-            return (
-              <article key={ticket.id} style={cardStyle}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-                  <div style={{ minWidth: "260px" }}>
-                    <div style={{ fontWeight: 800, color: "#14213D", marginBottom: "6px" }}>
-                      {ticket.issueTitle || "Untitled Ticket"}
-                    </div>
-                    <div style={{ color: "#374151", fontSize: "14px", fontWeight: 600 }}>
-                      Location: <span style={{ fontWeight: 400 }}>{ticket.resourceLocation}</span>
-                    </div>
-                  </div>
+                        return (
+                          <React.Fragment key={ticket.id}>
+                            <tr>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top", wordBreak: "break-word" }}>
+                                <div style={{ fontWeight: 800, color: "#14213D", marginBottom: "4px" }}>{ticket.issueTitle || "Untitled Ticket"}</div>
+                                <div style={{ color: "#374151", fontSize: "13px" }}>Location: {ticket.resourceLocation || "N/A"}</div>
+                                <div style={{ marginTop: "6px", color: "#6b7280", fontSize: "12px", lineHeight: 1.4 }}>
+                                  {ticket.description || "No description provided."}
+                                </div>
+                              </td>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top", color: "#374151", fontSize: "13px", wordBreak: "break-word" }}>
+                                <div style={{ fontWeight: 700, color: "#222222" }}>{ticket.fullName || "N/A"}</div>
+                                <div style={{ marginTop: "2px" }}>{ticket.email || "N/A"}</div>
+                                <div style={{ marginTop: "2px" }}>{ticket.phoneNumber || "N/A"}</div>
+                              </td>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top" }}>
+                                <span style={{ ...chipBaseStyle, backgroundColor: "#14213D", color: "#FFFFFF", fontSize: "12px", minHeight: "30px" }}>
+                                  {ticket.status || "N/A"}
+                                </span>
+                              </td>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top" }}>
+                                <span
+                                  style={{
+                                    ...chipBaseStyle,
+                                    minHeight: "30px",
+                                    fontSize: "12px",
+                                    backgroundColor:
+                                      ticket.priority === "High" ? "#d32f2f" : ticket.priority === "Medium" ? "#FCA311" : "#2e7d32",
+                                    color: "#FFFFFF",
+                                  }}
+                                >
+                                  {ticket.priority || "N/A"}
+                                </span>
+                              </td>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top" }}>
+                                <div style={{ color: "#374151", fontWeight: 600, fontSize: "12px" }}>{progress.percent}%</div>
+                                <div style={{ color: "#6b7280", fontSize: "12px", margin: "4px 0 6px" }}>{progress.label}</div>
+                                <div style={{ height: "8px", backgroundColor: "#FAF3E1", border: "1px solid #F5E7C6", borderRadius: "999px", overflow: "hidden" }}>
+                                  <div style={{ width: `${progress.percent}%`, height: "100%", backgroundColor: progress.color }} />
+                                </div>
+                              </td>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top", color: "#6b7280", fontSize: "12px" }}>
+                                {formatDate(ticket.createdAt)}
+                              </td>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top", color: "#374151", fontSize: "12px", wordBreak: "break-word" }}>
+                                {(ticket.status || "").toUpperCase() === "REJECTED" && ticket.rejectionReason
+                                  ? ticket.rejectionReason
+                                  : "-"}
+                              </td>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top" }}>
+                                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+                                  {(ticket.status || "").toUpperCase() !== "REJECTED" && !isRejecting && (
+                                    <button
+                                      type="button"
+                                      style={{ ...buttonStyle, backgroundColor: "#2e7d32", minWidth: "74px", padding: "8px 10px", fontSize: "12px" }}
+                                      onClick={() => handleTicketDecision(ticket.id, "ACCEPTED")}
+                                      disabled={(ticket.status || "").toUpperCase() === "ACCEPTED"}
+                                    >
+                                      Accept
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    style={{ ...buttonStyle, backgroundColor: "#d32f2f", minWidth: "74px", padding: "8px 10px", fontSize: "12px" }}
+                                    onClick={() => openRejectionForm(ticket.id)}
+                                    disabled={(ticket.status || "").toUpperCase() === "REJECTED"}
+                                  >
+                                    Reject
+                                  </button>
+                                  <button
+                                    type="button"
+                                    style={{ ...buttonStyle, minWidth: "96px", padding: "8px 10px", fontSize: "12px" }}
+                                    onClick={() => toggleOpen(ticket.id)}
+                                  >
+                                    {isOpen ? "Hide Details" : "Show Details"}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
 
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                    <span style={{ ...chipBaseStyle, backgroundColor: "#14213D", color: "#FFFFFF" }}>
-                      Status: {ticket.status}
-                    </span>
-                    <span
-                      style={{
-                        ...chipBaseStyle,
-                        backgroundColor:
-                          ticket.priority === "High"
-                            ? "#d32f2f"
-                            : ticket.priority === "Medium"
-                              ? "#FCA311"
-                              : "#2e7d32",
-                        color: "#FFFFFF",
-                      }}
-                    >
-                      Priority: {ticket.priority}
-                    </span>
-                    <span style={{ ...chipBaseStyle, backgroundColor: "#E5E5E5", color: "#14213D" }}>
-                      Comments: {comments.length}
-                    </span>
-                  </div>
+                            {(isOpen || isRejecting) && (
+                              <tr>
+                                <td colSpan={8} style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", backgroundColor: "#FAF3E1" }}>
+                                  {isRejecting && (
+                                    <div style={{ ...commentBoxStyle, marginTop: "10px" }}>
+                                      <div style={{ color: "#222222", fontSize: "14px", fontWeight: 700, marginBottom: "8px" }}>Add Rejection Reason</div>
+                                      <textarea
+                                        value={rejectionReason}
+                                        onChange={(e) => setRejectionReason(e.target.value)}
+                                        placeholder="Enter rejection reason"
+                                        style={{
+                                          width: "100%",
+                                          minHeight: "84px",
+                                          resize: "vertical",
+                                          border: "2px solid #F5E7C6",
+                                          borderRadius: "8px",
+                                          padding: "10px 12px",
+                                          fontSize: "14px",
+                                          outline: "none",
+                                          boxSizing: "border-box",
+                                          backgroundColor: "#FFFFFF",
+                                        }}
+                                      />
+                                      {rejectionError && <div style={{ marginTop: "8px", color: "#d32f2f", fontSize: "13px", fontWeight: 600 }}>{rejectionError}</div>}
+                                      <div style={{ marginTop: "10px", display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                                        <button
+                                          type="button"
+                                          style={{ ...buttonStyle, backgroundColor: "#6b7280", minWidth: "96px" }}
+                                          onClick={() => {
+                                            setRejectingTicketId("");
+                                            setRejectionReason("");
+                                            setRejectionError("");
+                                          }}
+                                        >
+                                          Cancel
+                                        </button>
+                                        <button
+                                          type="button"
+                                          style={{ ...buttonStyle, backgroundColor: "#d32f2f", minWidth: "96px" }}
+                                          onClick={() => submitRejection(ticket.id)}
+                                        >
+                                          Save Reject
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {isOpen && (
+                                    <div style={{ ...commentBoxStyle, marginTop: "10px" }}>
+                                      <div style={sectionTitleStyle}>Comments</div>
+                                      {comments.length === 0 ? (
+                                        <p style={{ margin: 0, color: "#6b7280" }}>No comments yet.</p>
+                                      ) : (
+                                        <div style={{ display: "grid", gap: "10px" }}>
+                                          {comments.map((c) => (
+                                            <div
+                                              key={c.id}
+                                              style={{
+                                                border: "1px solid #F5E7C6",
+                                                borderRadius: "12px",
+                                                padding: "12px",
+                                                backgroundColor: "#FFFFFF",
+                                              }}
+                                            >
+                                              <div style={{ fontWeight: 800, color: "#14213D" }}>{c.createdBy || "Unknown"}</div>
+                                              <div style={{ marginTop: "6px", color: "#374151", fontSize: "14px", fontWeight: 400, lineHeight: 1.45 }}>
+                                                {c.content}
+                                              </div>
+                                              <div style={{ marginTop: "8px", color: "#6b7280", fontSize: "12px" }}>{formatDate(c.createdAt)}</div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-
-                <div style={{ marginTop: "10px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", marginBottom: "6px" }}>
-                    <div style={{ color: "#374151", fontWeight: 600 }}>Progress: {progress.percent}%</div>
-                    <div style={{ color: "#6b7280", fontSize: "12px" }}>{formatDate(ticket.createdAt)}</div>
-                  </div>
-                  <div style={{ color: "#6b7280", fontSize: "13px", fontWeight: 600, marginBottom: "6px" }}>
-                    {progress.label}
-                  </div>
-                  <div style={{ height: "10px", backgroundColor: "#FAF3E1", border: "1px solid #F5E7C6", borderRadius: "999px", overflow: "hidden" }}>
-                    <div
-                      style={{
-                        width: `${progress.percent}%`,
-                        height: "100%",
-                        backgroundColor: progress.color,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    marginTop: "12px",
-                    display: "grid",
-                    gap: "8px",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-                    alignItems: "start",
-                  }}
-                >
-                  <div style={{ border: "1px solid #F5E7C6", borderRadius: "10px", padding: "12px", backgroundColor: "#FAF3E1" }}>
-                    <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Reported By</div>
-                    <div style={{ color: "#222222", fontSize: "14px", fontWeight: 700 }}>{ticket.fullName || "N/A"}</div>
-                    <div style={{ color: "#374151", fontSize: "13px", marginTop: "4px" }}>{ticket.email || "N/A"}</div>
-                    <div style={{ color: "#374151", fontSize: "13px", marginTop: "2px" }}>{ticket.phoneNumber || "N/A"}</div>
-                  </div>
-                </div>
-
-                <div style={{ marginTop: "10px", border: "1px solid #F5E7C6", borderRadius: "10px", padding: "12px", backgroundColor: "#FAF3E1" }}>
-                  <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>Description</div>
-                  <div style={{ color: "#374151", fontSize: "14px", fontWeight: 400, lineHeight: 1.45, marginTop: "4px" }}>
-                    {ticket.description || "No description provided."}
-                  </div>
-                </div>
-
-                {(ticket.status || "").toUpperCase() === "REJECTED" && ticket.rejectionReason && (
-                  <div style={{ marginTop: "10px", border: "1px solid #F5E7C6", borderRadius: "10px", padding: "12px", backgroundColor: "#FAF3E1" }}>
-                    <div style={{ color: "#6b7280", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>
-                      Rejection Reason
-                    </div>
-                    <div style={{ color: "#d32f2f", fontSize: "14px", fontWeight: 600, lineHeight: 1.45, marginTop: "4px" }}>
-                      {ticket.rejectionReason}
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}>
-                  <div style={{ display: "flex", gap: "8px", marginRight: "8px" }}>
-                    {(ticket.status || "").toUpperCase() !== "REJECTED" && rejectingTicketId !== ticket.id && (
-                      <button
-                        type="button"
-                        style={{ ...buttonStyle, backgroundColor: "#2e7d32", minWidth: "96px" }}
-                        onClick={() => handleTicketDecision(ticket.id, "ACCEPTED")}
-                        disabled={(ticket.status || "").toUpperCase() === "ACCEPTED"}
-                      >
-                        Accept
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      style={{ ...buttonStyle, backgroundColor: "#d32f2f", minWidth: "96px" }}
-                      onClick={() => openRejectionForm(ticket.id)}
-                      disabled={(ticket.status || "").toUpperCase() === "REJECTED"}
-                    >
-                      Reject
-                    </button>
-                  </div>
-                  <button type="button" style={buttonStyle} onClick={() => toggleOpen(ticket.id)}>
-                    {openTicketIds[ticket.id] ? "Hide Comments" : "Show Comments"}
-                  </button>
-                </div>
-
-                {rejectingTicketId === ticket.id && (
-                  <div style={{ marginTop: "10px", border: "1px solid #F5E7C6", borderRadius: "10px", padding: "12px", backgroundColor: "#FAF3E1" }}>
-                    <div style={{ color: "#222222", fontSize: "14px", fontWeight: 700, marginBottom: "8px" }}>Add Rejection Reason</div>
-                    <textarea
-                      value={rejectionReason}
-                      onChange={(e) => setRejectionReason(e.target.value)}
-                      placeholder="Enter rejection reason"
-                      style={{
-                        width: "100%",
-                        minHeight: "84px",
-                        resize: "vertical",
-                        border: "2px solid #F5E7C6",
-                        borderRadius: "8px",
-                        padding: "10px 12px",
-                        fontSize: "14px",
-                        outline: "none",
-                        boxSizing: "border-box",
-                        backgroundColor: "#FFFFFF",
-                      }}
-                    />
-                    {rejectionError && <div style={{ marginTop: "8px", color: "#d32f2f", fontSize: "13px", fontWeight: 600 }}>{rejectionError}</div>}
-                    <div style={{ marginTop: "10px", display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                      <button
-                        type="button"
-                        style={{ ...buttonStyle, backgroundColor: "#6b7280", minWidth: "96px" }}
-                        onClick={() => {
-                          setRejectingTicketId("");
-                          setRejectionReason("");
-                          setRejectionError("");
-                        }}
-                      >
-                        Cancel
-                      </button>
-                      <button type="button" style={{ ...buttonStyle, backgroundColor: "#d32f2f", minWidth: "96px" }} onClick={() => submitRejection(ticket.id)}>
-                        Save Reject
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {openTicketIds[ticket.id] && (
-                  <div style={commentBoxStyle}>
-                    <div style={sectionTitleStyle}>Comments</div>
-                    {comments.length === 0 ? (
-                      <p style={{ margin: 0, color: "#6b7280" }}>No comments yet.</p>
-                    ) : (
-                      <div style={{ display: "grid", gap: "10px" }}>
-                        {comments.map((c) => (
-                          <div
-                            key={c.id}
-                            style={{
-                              border: "1px solid #F5E7C6",
-                              borderRadius: "12px",
-                              padding: "12px",
-                              backgroundColor: "#FFFFFF",
-                            }}
-                          >
-                            <div style={{ fontWeight: 800, color: "#14213D" }}>{c.createdBy || "Unknown"}</div>
-                            <div style={{ marginTop: "6px", color: "#374151", fontSize: "14px", fontWeight: 400, lineHeight: 1.45 }}>
-                              {c.content}
-                            </div>
-                            <div style={{ marginTop: "8px", color: "#6b7280", fontSize: "12px" }}>{formatDate(c.createdAt)}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </article>
-            );
-          })}
+              )}
             </div>
           </div>
         )}
