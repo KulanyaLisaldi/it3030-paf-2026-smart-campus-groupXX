@@ -13,13 +13,14 @@ function isValidPhone(value) {
   return t.length > 0 && PHONE_PATTERN.test(t);
 }
 
-const pageStyle = {
+const pageStyleBase = {
   minHeight: "100vh",
-  backgroundColor: "#FAF3E1",
-  backgroundImage: "linear-gradient(180deg, #FAF3E1 0%, #FFFFFF 70%)",
+  backgroundColor: "#FFFFFF",
   padding: "28px 16px",
   display: "flex",
-  justifyContent: "center",
+  flexDirection: "column",
+  alignItems: "center",
+  boxSizing: "border-box",
 };
 
 const containerStyle = {
@@ -30,6 +31,26 @@ const containerStyle = {
   border: "1px solid #F5E7C6",
   boxShadow: "0 14px 32px rgba(0, 0, 0, 0.08)",
   padding: "28px",
+  flexShrink: 0,
+};
+
+const technicianPageOuterStyle = {
+  ...pageStyleBase,
+  justifyContent: "flex-start",
+  alignItems: "stretch",
+  width: "100%",
+  padding: "20px clamp(16px, 4vw, 32px)",
+};
+
+const technicianCardStyle = {
+  ...containerStyle,
+  maxWidth: "min(960px, 100%)",
+  width: "100%",
+  margin: "0 auto",
+  minHeight: "calc(100vh - 40px)",
+  display: "flex",
+  flexDirection: "column",
+  boxSizing: "border-box",
 };
 
 const selectStyle = {
@@ -137,6 +158,7 @@ function TechnicianWorkspace() {
   }, [profileModalOpen, techUser]);
 
   const handleLogout = () => {
+    setProfileMenuOpen(false);
     persistCampusUser(null);
     localStorage.removeItem("smartCampusAuthToken");
     navigate("/signin", { replace: true });
@@ -182,14 +204,44 @@ function TechnicianWorkspace() {
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 18 }}>
-        <div>
-          <p style={{ margin: "0 0 0 0", color: "#6b7280", fontSize: "14px" }}>
-            Welcome back, {name}. Ticket assignment and maintenance workflows can plug in here.
-          </p>
-        </div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+          width: "100%",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            flexShrink: 0,
+            marginBottom: 20,
+            padding: "16px 18px",
+            backgroundColor: "#FAF3E1",
+            border: "1px solid #F5E7C6",
+            borderLeft: "4px solid #FA8112",
+            borderRadius: "12px",
+            boxSizing: "border-box",
+            boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: "0 0 0 0", lineHeight: 1.45 }}>
+              <span style={{ fontSize: "clamp(17px, 2.1vw, 22px)", fontWeight: 800, color: "#14213D" }}>
+                Welcome back, {name}.
+              </span>{" "}
+              <span style={{ fontSize: "clamp(15px, 1.7vw, 18px)", fontWeight: 600, color: "#4b5563" }}>
+                Ticket assignment and maintenance workflows can plug in here.
+              </span>
+            </p>
+          </div>
 
-        <div style={{ position: "relative" }} ref={profileRef}>
+          <div style={{ position: "relative", flexShrink: 0 }} ref={profileRef}>
           <button
             type="button"
             style={triggerStyle}
@@ -241,119 +293,143 @@ function TechnicianWorkspace() {
                 </div>
               </div>
 
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setProfileMenuOpen(false);
-                  setProfileModalOpen(true);
-                }}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                  background: "#ffffff",
-                  fontWeight: 700,
-                  fontSize: 14,
-                  color: "#0f172a",
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                My profile
-              </button>
+              <div style={{ display: "grid", gap: 8 }}>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setProfileMenuOpen(false);
+                    setProfileModalOpen(true);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #e5e7eb",
+                    background: "#ffffff",
+                    fontWeight: 700,
+                    fontSize: 14,
+                    color: "#0f172a",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  My profile
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={handleLogout}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #e5e7eb",
+                    background: "#ffffff",
+                    fontWeight: 700,
+                    fontSize: 14,
+                    color: "#0f172a",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           )}
         </div>
-      </div>
+        </div>
 
-      <div
-        style={{
-          border: "1px solid #F5E7C6",
-          borderRadius: "12px",
-          padding: "18px",
-          backgroundColor: "#FAF3E1",
-          marginBottom: "18px",
-          display: "grid",
-          gridTemplateColumns: "auto 1fr",
-          gap: "18px",
-          alignItems: "start",
-        }}
-      >
         <div
           style={{
-            width: 72,
-            height: 72,
-            borderRadius: "50%",
-            backgroundColor: techUser?.profileImageUrl ? "#fff" : "#475569",
-            border: "1px solid #F5E7C6",
-            overflow: "hidden",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             flexShrink: 0,
+            marginBottom: 0,
+            border: "1px solid #F5E7C6",
+            borderRadius: "12px",
+            padding: "clamp(18px, 3vw, 24px)",
+            backgroundColor: "#FAF3E1",
+            boxSizing: "border-box",
+            boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
           }}
         >
-          {techUser?.profileImageUrl ? (
-            <img src={techUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (
-            <span style={{ color: "#fff", fontWeight: 800, fontSize: 22 }}>{userDisplayInitial(techUser)}</span>
-          )}
-        </div>
-        <div style={{ minWidth: 0 }}>
           <div
             style={{
-              fontSize: "13px",
-              fontWeight: 800,
-              color: "#14213D",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-              marginBottom: "10px",
+              display: "grid",
+              gridTemplateColumns: "auto 1fr",
+              gap: "clamp(16px, 3vw, 24px)",
+              alignItems: "start",
+              width: "100%",
             }}
           >
-            Your personal details
-          </div>
-          <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
-            <div>
-              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "4px" }}>Full name</div>
-              <div style={{ fontSize: "15px", fontWeight: 700, color: "#222222" }}>
-                {`${(techUser?.firstName || "").trim()} ${(techUser?.lastName || "").trim()}`.trim() || "—"}
+            <div
+              style={{
+                width: "clamp(72px, 11vw, 88px)",
+                height: "clamp(72px, 11vw, 88px)",
+                borderRadius: "50%",
+                backgroundColor: techUser?.profileImageUrl ? "#fff" : "#475569",
+                border: "1px solid #F5E7C6",
+                overflow: "hidden",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              {techUser?.profileImageUrl ? (
+                <img src={techUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <span style={{ color: "#fff", fontWeight: 800, fontSize: "clamp(20px, 4vw, 26px)" }}>{userDisplayInitial(techUser)}</span>
+              )}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 800,
+                  color: "#14213D",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  marginBottom: "14px",
+                }}
+              >
+                Your personal details
               </div>
-            </div>
-            <div>
-              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "4px" }}>Email</div>
-              <div style={{ fontSize: "15px", fontWeight: 600, color: "#222222", wordBreak: "break-word" }}>{techUser?.email || "—"}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "4px" }}>Phone</div>
-              <div style={{ fontSize: "15px", fontWeight: 600, color: "#222222" }}>{(techUser?.phoneNumber || "").trim() || "—"}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "4px" }}>Specialty</div>
-              <div style={{ fontSize: "15px", fontWeight: 600, color: "#222222" }}>
-                {technicianCategoryLabel(techUser?.technicianCategory)}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: "14px 24px",
+                  width: "100%",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "4px" }}>Full name</div>
+                  <div style={{ fontSize: "15px", fontWeight: 700, color: "#222222", wordBreak: "break-word" }}>
+                    {`${(techUser?.firstName || "").trim()} ${(techUser?.lastName || "").trim()}`.trim() || "—"}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "4px" }}>Email</div>
+                  <div style={{ fontSize: "15px", fontWeight: 600, color: "#222222", wordBreak: "break-word" }}>{techUser?.email || "—"}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "4px" }}>Specialty</div>
+                  <div style={{ fontSize: "15px", fontWeight: 600, color: "#222222" }}>
+                    {technicianCategoryLabel(techUser?.technicianCategory)}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "4px" }}>Phone</div>
+                  <div style={{ fontSize: "15px", fontWeight: 600, color: "#222222" }}>{(techUser?.phoneNumber || "").trim() || "—"}</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <button
-        type="button"
-        onClick={handleLogout}
-        style={{
-          padding: "10px 18px",
-          borderRadius: "8px",
-          border: "none",
-          backgroundColor: "#222222",
-          color: "#FFFFFF",
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
-      >
-        Logout
-      </button>
+        <div style={{ flex: 1, minHeight: 12 }} aria-hidden />
+      </div>
 
       {profileModalOpen && (
         <div
@@ -894,8 +970,14 @@ export default function TechnicianDashboard() {
   const isTechnician = (user?.role || "").toUpperCase() === "TECHNICIAN";
 
   return (
-    <div style={pageStyle}>
-      <section style={{ ...containerStyle, maxWidth: isTechnician ? "720px" : "980px" }}>
+    <div style={isTechnician ? technicianPageOuterStyle : { ...pageStyleBase, justifyContent: "flex-start" }}>
+      <section
+        style={
+          isTechnician
+            ? technicianCardStyle
+            : { ...containerStyle, maxWidth: "980px", margin: "0 auto" }
+        }
+      >
         {isTechnician ? <TechnicianWorkspace /> : <AdminTechnicianForm />}
       </section>
     </div>
