@@ -8,6 +8,7 @@ import {
   toApiTechnicianCategory,
 } from "../constants/technicianCategories";
 import { removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../api/auth";
+import { getTechnicianAssignedTickets, updateTechnicianTicketProgress } from "../api/technicianTickets";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import PasswordInput from "../components/PasswordInput.jsx";
 
@@ -111,6 +112,14 @@ function userDisplayInitial(user) {
   return "T";
 }
 
+function assignedTicketStatusLabel(status) {
+  const s = (status || "").toUpperCase();
+  if (s === "ACCEPTED") return "Accepted — ready to start";
+  if (s === "IN_PROGRESS") return "In progress";
+  if (s === "RESOLVED") return "Resolved";
+  return status || "—";
+}
+
 function TechnicianWorkspace() {
   const navigate = useNavigate();
   const [userRev, setUserRev] = useState(0);
@@ -129,11 +138,36 @@ function TechnicianWorkspace() {
   const [avatarError, setAvatarError] = useState("");
   const [avatarSuccess, setAvatarSuccess] = useState("");
 
+  const [assignedTickets, setAssignedTickets] = useState([]);
+  const [assignedLoading, setAssignedLoading] = useState(false);
+  const [assignedError, setAssignedError] = useState("");
+  const [progressBusyId, setProgressBusyId] = useState("");
+
   useEffect(() => {
     const onUserUpdated = () => setUserRev((n) => n + 1);
     window.addEventListener(CAMPUS_USER_UPDATED, onUserUpdated);
     return () => window.removeEventListener(CAMPUS_USER_UPDATED, onUserUpdated);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setAssignedLoading(true);
+      setAssignedError("");
+      try {
+        const data = await getTechnicianAssignedTickets();
+        if (!cancelled) setAssignedTickets(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!cancelled) setAssignedError(e?.message || "Could not load assigned tickets.");
+      } finally {
+        if (!cancelled) setAssignedLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [userRev]);
 
   useEffect(() => {
     const onDocMouseDown = (e) => {
@@ -161,6 +195,23 @@ function TechnicianWorkspace() {
     persistCampusUser(null);
     localStorage.removeItem("smartCampusAuthToken");
     navigate("/signin", { replace: true });
+  };
+
+  const handleTicketProgress = async (ticketId, nextStatus) => {
+    if (!ticketId) return;
+    setProgressBusyId(ticketId);
+    setAssignedError("");
+    try {
+      const res = await updateTechnicianTicketProgress(ticketId, nextStatus);
+      const updated = res?.ticket;
+      if (updated?.id) {
+        setAssignedTickets((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
+      }
+    } catch (e) {
+      setAssignedError(e?.message || "Could not update progress.");
+    } finally {
+      setProgressBusyId("");
+    }
   };
 
   const serverPhone = (techUser?.phoneNumber || "").trim();
@@ -425,6 +476,132 @@ function TechnicianWorkspace() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div
+          style={{
+            flexShrink: 0,
+            marginTop: 20,
+            border: "1px solid #F5E7C6",
+            borderRadius: "12px",
+            padding: "clamp(16px, 3vw, 22px)",
+            backgroundColor: "#FFFFFF",
+            boxSizing: "border-box",
+            boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
+          }}
+        >
+          <div style={{ ...sectionTitleStyle, fontSize: "17px", color: "#14213D", marginBottom: "12px" }}>
+            My assigned tickets
+          </div>
+          <p style={{ margin: "0 0 14px 0", color: "#6b7280", fontSize: "13px", lineHeight: 1.45 }}>
+            Tickets the admin assigned to you. Updates sync to the reporter and admin dashboards.
+          </p>
+          {assignedLoading && <p style={{ margin: 0, color: "#6b7280", fontSize: "14px" }}>Loading…</p>}
+          {assignedError && <p style={{ margin: "0 0 10px 0", color: "#d32f2f", fontSize: "13px", fontWeight: 600 }}>{assignedError}</p>}
+          {!assignedLoading && !assignedError && assignedTickets.length === 0 && (
+            <p style={{ margin: 0, color: "#6b7280", fontSize: "14px" }}>No assigned tickets yet.</p>
+          )}
+          {!assignedLoading && assignedTickets.length > 0 && (
+            <div style={{ display: "grid", gap: "12px" }}>
+              {assignedTickets.map((t) => {
+                const st = (t.status || "").toUpperCase();
+                const busy = progressBusyId === t.id;
+                return (
+                  <div
+                    key={t.id}
+                    style={{
+                      border: "1px solid #F5E7C6",
+                      borderRadius: "12px",
+                      padding: "14px 16px",
+                      backgroundColor: "#FAF3E1",
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, color: "#14213D", fontSize: "15px", marginBottom: "6px" }}>{t.issueTitle || "Ticket"}</div>
+                    <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "8px", lineHeight: 1.4 }}>
+                      {t.category || "—"} · Priority {t.priority || "—"} · {assignedTicketStatusLabel(t.status)}
+                    </div>
+                    <div style={{ fontSize: "13px", color: "#374151", marginBottom: "10px" }}>
+                      <span style={{ fontWeight: 700 }}>Reporter:</span> {t.fullName || "—"} · {t.email || "—"}
+                    </div>
+                    <div style={{ fontSize: "13px", color: "#374151", marginBottom: "12px" }}>
+                      <span style={{ fontWeight: 700 }}>Location:</span> {t.resourceLocation || "—"}
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
+                      <button
+                        type="button"
+                        style={{
+                          ...buttonStyle,
+                          backgroundColor: "#14213D",
+                          padding: "10px 14px",
+                          fontSize: "13px",
+                          opacity: busy ? 0.7 : 1,
+                          cursor: busy ? "wait" : "pointer",
+                        }}
+                        disabled={busy}
+                        onClick={() => navigate(`/tickets/${t.id}`)}
+                      >
+                        View details
+                      </button>
+                      {st === "ACCEPTED" && (
+                        <>
+                          <button
+                            type="button"
+                            style={{
+                              ...buttonStyle,
+                              backgroundColor: "#FCA311",
+                              padding: "10px 14px",
+                              fontSize: "13px",
+                              opacity: busy ? 0.7 : 1,
+                              cursor: busy ? "wait" : "pointer",
+                            }}
+                            disabled={busy}
+                            onClick={() => handleTicketProgress(t.id, "IN_PROGRESS")}
+                          >
+                            Start work
+                          </button>
+                          <button
+                            type="button"
+                            style={{
+                              ...buttonStyle,
+                              backgroundColor: "#2e7d32",
+                              padding: "10px 14px",
+                              fontSize: "13px",
+                              opacity: busy ? 0.7 : 1,
+                              cursor: busy ? "wait" : "pointer",
+                            }}
+                            disabled={busy}
+                            onClick={() => handleTicketProgress(t.id, "RESOLVED")}
+                          >
+                            Mark resolved
+                          </button>
+                        </>
+                      )}
+                      {st === "IN_PROGRESS" && (
+                        <button
+                          type="button"
+                          style={{
+                            ...buttonStyle,
+                            backgroundColor: "#2e7d32",
+                            padding: "10px 14px",
+                            fontSize: "13px",
+                            opacity: busy ? 0.7 : 1,
+                            cursor: busy ? "wait" : "pointer",
+                          }}
+                          disabled={busy}
+                          onClick={() => handleTicketProgress(t.id, "RESOLVED")}
+                        >
+                          Mark resolved
+                        </button>
+                      )}
+                      {st === "RESOLVED" && (
+                        <span style={{ fontSize: "13px", fontWeight: 700, color: "#2e7d32" }}>Completed</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div style={{ flex: 1, minHeight: 12 }} aria-hidden />

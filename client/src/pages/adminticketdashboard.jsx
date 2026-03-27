@@ -246,22 +246,18 @@ const pushUserNotification = (ticket, status, rejectionReason = "") => {
   }
 };
 
+/** Only merge local admin rejection; acceptance and technician progress come from the server. */
 const applyStoredDecision = (item, decisions) => {
   const ticketId = item?.ticket?.id;
   if (!ticketId) return item;
   const decision = decisions[ticketId];
-  if (!decision?.status) return item;
-  const st = (decision.status || "").toUpperCase();
+  if (!decision?.status || (decision.status || "").toUpperCase() !== "REJECTED") return item;
   const ticket = {
     ...item.ticket,
     status: decision.status,
     rejectionReason: decision.rejectionReason || "",
   };
-  if (st === "REJECTED") {
-    delete ticket.assignedTechnicianName;
-  } else if (st === "ACCEPTED" && decision.assignedTechnicianName) {
-    ticket.assignedTechnicianName = decision.assignedTechnicianName;
-  }
+  delete ticket.assignedTechnicianName;
   return {
     ...item,
     ticket,

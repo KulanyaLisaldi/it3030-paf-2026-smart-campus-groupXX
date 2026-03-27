@@ -180,7 +180,7 @@ const applyAdminDecisionToDetails = (data) => {
   const decisionMap = getAdminDecisionMap();
   const ticketId = data?.ticket?.id;
   const decision = ticketId ? decisionMap[ticketId] : null;
-  if (!decision?.status) return data;
+  if (!decision?.status || (decision.status || "").toUpperCase() !== "REJECTED") return data;
   return {
     ...data,
     ticket: {
@@ -458,6 +458,13 @@ export default function TicketDetails() {
                   Category: {ticketDetails.ticket.category}
                 </span>
               </div>
+
+              {ticketDetails.ticket.assignedTechnicianName && (
+                <p style={{ margin: "10px 0 0 0", color: "#14213D", fontSize: "14px", fontWeight: 700 }}>
+                  Assigned technician:{" "}
+                  <span style={{ fontWeight: 600, color: "#374151" }}>{ticketDetails.ticket.assignedTechnicianName}</span>
+                </p>
+              )}
 
               <p style={{ margin: "10px 0 0 0", color: "#374151", fontWeight: 700 }}>
                 Location: <span style={{ fontWeight: 600 }}>{ticketDetails.ticket.resourceLocation}</span>

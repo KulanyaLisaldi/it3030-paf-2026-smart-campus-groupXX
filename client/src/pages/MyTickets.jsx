@@ -135,7 +135,7 @@ export default function MyTickets() {
         const list = Array.isArray(data) ? data : [];
         const merged = list.map((ticket) => {
           const decision = decisions[ticket?.id];
-          if (!decision?.status) return ticket;
+          if (!decision?.status || (decision.status || "").toUpperCase() !== "REJECTED") return ticket;
           return {
             ...ticket,
             status: decision.status,
@@ -251,6 +251,12 @@ export default function MyTickets() {
                     <h3 style={{ margin: "0 0 6px 0", color: "#222222", fontSize: "16px", fontWeight: 700 }}>
                       {ticket.issueTitle}
                     </h3>
+
+                    {ticket.assignedTechnicianName && (
+                      <p style={{ margin: "8px 0 0 0", color: "#14213D", fontSize: "13px", fontWeight: 700 }}>
+                        Assigned technician: <span style={{ fontWeight: 600 }}>{ticket.assignedTechnicianName}</span>
+                      </p>
+                    )}
 
                     <div style={{ marginTop: "10px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", marginBottom: "6px" }}>
