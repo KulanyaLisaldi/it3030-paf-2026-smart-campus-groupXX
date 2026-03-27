@@ -79,6 +79,15 @@ const chipBaseStyle = {
   minHeight: "40px",
 };
 
+/** Compact chips for dense table cells so long statuses (e.g. IN_PROGRESS) stay inside the column */
+const tableChipStyle = {
+  ...chipBaseStyle,
+  padding: "6px 10px",
+  fontSize: "11px",
+  minHeight: "28px",
+  boxSizing: "border-box",
+};
+
 const cardStyle = {
   border: "1px solid #F5E7C6",
   borderRadius: "12px",
@@ -369,8 +378,9 @@ export default function AdminTicketDashboard() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [openTicketIds, setOpenTicketIds] = useState({});
   const [activeView, setActiveView] = useState("dashboard");
+  /** { ticket, comments } when “Show details” modal is open */
+  const [commentsModalPayload, setCommentsModalPayload] = useState(null);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("DATE_DESC");
@@ -418,9 +428,14 @@ export default function AdminTicketDashboard() {
     }
   }, []);
 
-  const toggleOpen = (ticketId) => {
-    setOpenTicketIds((prev) => ({ ...prev, [ticketId]: !prev[ticketId] }));
+  const openCommentsModalRow = (item) => {
+    setCommentsModalPayload({
+      ticket: item?.ticket || {},
+      comments: Array.isArray(item?.comments) ? item.comments : [],
+    });
   };
+
+  const closeCommentsModal = () => setCommentsModalPayload(null);
 
   const handleViewChange = (view) => {
     setActiveView(view);
@@ -1371,18 +1386,17 @@ export default function AdminTicketDashboard() {
 
               {!loading && !error && filteredAndSortedTickets.length > 0 && (
                 <div style={{ border: "1px solid #F5E7C6", borderRadius: "12px", overflowX: "auto", backgroundColor: "#FFFFFF" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1060px", tableLayout: "fixed" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1020px", tableLayout: "fixed" }}>
                     <thead>
                       <tr style={{ backgroundColor: "#FAF3E1" }}>
-                        <th style={{ width: "16%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Ticket</th>
-                        <th style={{ width: "14%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Reported By</th>
-                        <th style={{ width: "9%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Status</th>
-                        <th style={{ width: "8%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Priority</th>
+                        <th style={{ width: "18%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Ticket</th>
+                        <th style={{ width: "15%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Reported By</th>
+                        <th style={{ width: "12%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Status</th>
+                        <th style={{ width: "10%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Priority</th>
                         <th style={{ width: "11%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Progress</th>
-                        <th style={{ width: "11%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Assigned to</th>
-                        <th style={{ width: "10%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Created</th>
-                        <th style={{ width: "13%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Rejection Reason</th>
-                        <th style={{ width: "8%", textAlign: "right", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Actions</th>
+                        <th style={{ width: "12%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Assigned to</th>
+                        <th style={{ width: "11%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Created</th>
+                        <th style={{ width: "11%", textAlign: "right", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1390,7 +1404,6 @@ export default function AdminTicketDashboard() {
                         const ticket = item.ticket || {};
                         const comments = item.comments || [];
                         const progress = getProgressInfo(ticket.status, comments.length);
-                        const isOpen = !!openTicketIds[ticket.id];
                         const statusU = (ticket.status || "").toUpperCase();
 
                         return (
@@ -1408,24 +1421,24 @@ export default function AdminTicketDashboard() {
                                 <div style={{ marginTop: "2px" }}>{ticket.email || "N/A"}</div>
                                 <div style={{ marginTop: "2px" }}>{ticket.phoneNumber || "N/A"}</div>
                               </td>
-                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top" }}>
-                                <span style={{ ...chipBaseStyle, backgroundColor: "#14213D", color: "#FFFFFF", fontSize: "12px", minHeight: "30px" }}>
-                                  {ticket.status || "N/A"}
-                                </span>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "middle" }}>
+                                <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center" }}>
+                                  <span style={{ ...tableChipStyle, backgroundColor: "#14213D", color: "#FFFFFF" }}>{ticket.status || "N/A"}</span>
+                                </div>
                               </td>
-                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top" }}>
-                                <span
-                                  style={{
-                                    ...chipBaseStyle,
-                                    minHeight: "30px",
-                                    fontSize: "12px",
-                                    backgroundColor:
-                                      ticket.priority === "High" ? "#d32f2f" : ticket.priority === "Medium" ? "#FCA311" : "#2e7d32",
-                                    color: "#FFFFFF",
-                                  }}
-                                >
-                                  {ticket.priority || "N/A"}
-                                </span>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "middle" }}>
+                                <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center" }}>
+                                  <span
+                                    style={{
+                                      ...tableChipStyle,
+                                      backgroundColor:
+                                        ticket.priority === "High" ? "#d32f2f" : ticket.priority === "Medium" ? "#FCA311" : "#2e7d32",
+                                      color: "#FFFFFF",
+                                    }}
+                                  >
+                                    {ticket.priority || "N/A"}
+                                  </span>
+                                </div>
                               </td>
                               <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top" }}>
                                 <div style={{ color: "#374151", fontWeight: 600, fontSize: "12px" }}>{progress.percent}%</div>
@@ -1439,11 +1452,6 @@ export default function AdminTicketDashboard() {
                               </td>
                               <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top", color: "#6b7280", fontSize: "12px" }}>
                                 {formatDate(ticket.createdAt)}
-                              </td>
-                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top", color: "#374151", fontSize: "12px", wordBreak: "break-word" }}>
-                                {(ticket.status || "").toUpperCase() === "REJECTED" && ticket.rejectionReason
-                                  ? ticket.rejectionReason
-                                  : "-"}
                               </td>
                               <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top" }}>
                                 <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
@@ -1470,46 +1478,13 @@ export default function AdminTicketDashboard() {
                                   <button
                                     type="button"
                                     style={{ ...buttonStyle, minWidth: "96px", padding: "8px 10px", fontSize: "12px" }}
-                                    onClick={() => toggleOpen(ticket.id)}
+                                    onClick={() => openCommentsModalRow(item)}
                                   >
-                                    {isOpen ? "Hide Details" : "Show Details"}
+                                    Show Details
                                   </button>
                                 </div>
                               </td>
                             </tr>
-
-                            {isOpen && (
-                              <tr>
-                                <td colSpan={9} style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", backgroundColor: "#FAF3E1" }}>
-                                    <div style={{ ...commentBoxStyle, marginTop: "10px" }}>
-                                      <div style={sectionTitleStyle}>Comments</div>
-                                      {comments.length === 0 ? (
-                                        <p style={{ margin: 0, color: "#6b7280" }}>No comments yet.</p>
-                                      ) : (
-                                        <div style={{ display: "grid", gap: "10px" }}>
-                                          {comments.map((c) => (
-                                            <div
-                                              key={c.id}
-                                              style={{
-                                                border: "1px solid #F5E7C6",
-                                                borderRadius: "12px",
-                                                padding: "12px",
-                                                backgroundColor: "#FFFFFF",
-                                              }}
-                                            >
-                                              <div style={{ fontWeight: 800, color: "#14213D" }}>{c.createdBy || "Unknown"}</div>
-                                              <div style={{ marginTop: "6px", color: "#374151", fontSize: "14px", fontWeight: 400, lineHeight: 1.45 }}>
-                                                {c.content}
-                                              </div>
-                                              <div style={{ marginTop: "8px", color: "#6b7280", fontSize: "12px" }}>{formatDate(c.createdAt)}</div>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                </td>
-                              </tr>
-                            )}
                           </React.Fragment>
                         );
                       })}
@@ -1813,6 +1788,124 @@ export default function AdminTicketDashboard() {
                 onClick={submitRejection}
               >
                 Confirm rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {commentsModalPayload && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ticket-comments-modal-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 2020,
+            backgroundColor: "rgba(15, 23, 42, 0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeCommentsModal();
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 440,
+              maxHeight: "min(520px, 85vh)",
+              display: "flex",
+              flexDirection: "column",
+              backgroundColor: "#fff",
+              borderRadius: 14,
+              border: "1px solid #e5e7eb",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.2)",
+              overflow: "hidden",
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: "14px 16px",
+                borderBottom: "1px solid #F5E7C6",
+                backgroundColor: "#FAF3E1",
+                flexShrink: 0,
+              }}
+            >
+              <div id="ticket-comments-modal-title" style={{ fontSize: 16, fontWeight: 900, color: "#14213D" }}>
+                Ticket details
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", marginTop: 4, lineHeight: 1.4 }}>
+                {commentsModalPayload.ticket.issueTitle || "Ticket"}
+                {commentsModalPayload.ticket.category ? (
+                  <>
+                    {" "}
+                    · <span style={{ color: "#14213D" }}>{commentsModalPayload.ticket.category}</span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+            <div style={{ padding: 16, overflowY: "auto", flex: "1 1 auto", minHeight: 0 }}>
+              {(commentsModalPayload.ticket.status || "").toUpperCase() === "REJECTED" &&
+                commentsModalPayload.ticket.rejectionReason && (
+                  <div
+                    style={{
+                      marginBottom: 14,
+                      border: "1px solid #F5E7C6",
+                      borderRadius: 12,
+                      padding: "12px",
+                      backgroundColor: "#fff5f5",
+                    }}
+                  >
+                    <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#991b1b", letterSpacing: "0.04em" }}>
+                      Rejection reason
+                    </div>
+                    <div style={{ marginTop: 6, color: "#374151", fontSize: 14, fontWeight: 500, lineHeight: 1.45 }}>
+                      {commentsModalPayload.ticket.rejectionReason}
+                    </div>
+                  </div>
+                )}
+              <div style={sectionTitleStyle}>Comments</div>
+              {commentsModalPayload.comments.length === 0 ? (
+                <p style={{ margin: 0, color: "#6b7280" }}>No comments yet.</p>
+              ) : (
+                <div style={{ display: "grid", gap: "10px" }}>
+                  {commentsModalPayload.comments.map((c) => (
+                    <div
+                      key={c.id}
+                      style={{
+                        border: "1px solid #F5E7C6",
+                        borderRadius: "12px",
+                        padding: "12px",
+                        backgroundColor: "#FAF3E1",
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, color: "#14213D" }}>{c.createdBy || "Unknown"}</div>
+                      <div style={{ marginTop: "6px", color: "#374151", fontSize: "14px", fontWeight: 400, lineHeight: 1.45 }}>
+                        {c.content}
+                      </div>
+                      <div style={{ marginTop: "8px", color: "#6b7280", fontSize: "12px" }}>{formatDate(c.createdAt)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div
+              style={{
+                padding: "12px 14px",
+                borderTop: "1px solid #F5E7C6",
+                display: "flex",
+                justifyContent: "flex-end",
+                flexShrink: 0,
+                backgroundColor: "#fff",
+              }}
+            >
+              <button type="button" style={{ ...buttonStyle, backgroundColor: "#6b7280", padding: "10px 14px" }} onClick={closeCommentsModal}>
+                Close
               </button>
             </div>
           </div>
