@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAuthToken } from "../../api/http";
-import { ACCOUNT_PATH, CREATE_TICKET_PATH, rememberPostLoginPath } from "../../utils/authRedirect";
+import { ACCOUNT_PATH } from "../../utils/authRedirect";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../../utils/campusUserStorage";
 
 function displayName(user) {
@@ -54,7 +53,6 @@ const Navbar = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const dropdownWrapperRef = useRef(null);
   const profileMenuRef = useRef(null);
-  const [showSupportDeskMenu, setShowSupportDeskMenu] = useState(false);
 
   useEffect(() => {
     const onUserStorage = () => setUserRevision((n) => n + 1);
@@ -71,7 +69,6 @@ const Navbar = () => {
       if (dropdownWrapperRef.current && !dropdownWrapperRef.current.contains(t)) {
         setShowDropdown(false);
         setPinnedDropdown(false);
-        setShowSupportDeskMenu(false);
       }
       if (profileMenuRef.current && !profileMenuRef.current.contains(t)) {
         setShowProfileMenu(false);
@@ -321,47 +318,15 @@ const Navbar = () => {
                 style={dropdownItemStyle}
                 onMouseEnter={(e) => handleDropdownItemHover(e, true)}
                 onMouseLeave={(e) => handleDropdownItemHover(e, false)}
-                onClick={() => {
-                  setShowSupportDeskMenu((prev) => !prev);
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowDropdown(false);
+                  setPinnedDropdown(false);
+                  navigate("/tickets/create");
                 }}
               >
                 Support Desk
               </a>
-              {showSupportDeskMenu && (
-                <div style={{ padding: "4px 0 0 16px" }}>
-                  <a
-                    href="/tickets/create"
-                    style={dropdownItemStyle}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setShowDropdown(false);
-                      setPinnedDropdown(false);
-                      setShowSupportDeskMenu(false);
-                      if (!getAuthToken()) {
-                        rememberPostLoginPath(CREATE_TICKET_PATH);
-                        navigate("/signin", { state: { from: CREATE_TICKET_PATH } });
-                      } else {
-                        navigate(CREATE_TICKET_PATH);
-                      }
-                    }}
-                  >
-                    Create Ticket
-                  </a>
-                  <a
-                    href="/my-tickets"
-                    style={dropdownItemStyle}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setShowDropdown(false);
-                      setPinnedDropdown(false);
-                      setShowSupportDeskMenu(false);
-                      navigate("/my-tickets");
-                    }}
-                  >
-                    My Tickets
-                  </a>
-                </div>
-              )}
             </div>
           )}
         </div>
