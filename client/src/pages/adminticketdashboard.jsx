@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAdminTicketList } from "../api/adminticket";
+import { acceptAdminTicket, getAdminTicketList } from "../api/adminticket";
 import { listTechnicians } from "../api/adminTechnicians";
 import { technicianCategoryLabel } from "../constants/technicianCategories";
 
@@ -209,13 +209,17 @@ const getStoredDecisions = () => {
   }
 };
 
-const storeDecision = (ticketId, status, rejectionReason = "") => {
+const storeDecision = (ticketId, status, rejectionReason = "", assignedTechnicianName = "") => {
   const current = getStoredDecisions();
-  current[ticketId] = {
+  const entry = {
     status,
     rejectionReason: rejectionReason || "",
     updatedAt: new Date().toISOString(),
   };
+  if (status === "ACCEPTED" && assignedTechnicianName) {
+    entry.assignedTechnicianName = assignedTechnicianName;
+  }
+  current[ticketId] = entry;
   localStorage.setItem(DECISIONS_STORAGE_KEY, JSON.stringify(current));
 };
 
@@ -247,13 +251,20 @@ const applyStoredDecision = (item, decisions) => {
   if (!ticketId) return item;
   const decision = decisions[ticketId];
   if (!decision?.status) return item;
+  const st = (decision.status || "").toUpperCase();
+  const ticket = {
+    ...item.ticket,
+    status: decision.status,
+    rejectionReason: decision.rejectionReason || "",
+  };
+  if (st === "REJECTED") {
+    delete ticket.assignedTechnicianName;
+  } else if (st === "ACCEPTED" && decision.assignedTechnicianName) {
+    ticket.assignedTechnicianName = decision.assignedTechnicianName;
+  }
   return {
     ...item,
-    ticket: {
-      ...item.ticket,
-      status: decision.status,
-      rejectionReason: decision.rejectionReason || "",
-    },
+    ticket,
   };
 };
 
@@ -287,23 +298,49 @@ const TICKET_CATEGORY_TO_TECHNICIAN = {
   "Other": "GENERAL",
 };
 
+function normalizedTechnicianCategory(tech) {
+  const c = tech?.technicianCategory;
+  if (c == null || String(c).trim() === "") return "GENERAL";
+  return String(c).toUpperCase();
+}
+
+/** Only technicians whose specialty equals the mapped enum for this ticket category (no fallback lists). */
 function suitableTechniciansForTicket(allTechnicians, ticketCategory) {
   const list = Array.isArray(allTechnicians) ? allTechnicians : [];
-  const target = (TICKET_CATEGORY_TO_TECHNICIAN[ticketCategory] || "GENERAL").toUpperCase();
-  let matched = list.filter((t) => {
-    const techCat = String(t.technicianCategory || "GENERAL").toUpperCase();
-    return techCat === target;
-  });
-  if (matched.length === 0 && target !== "GENERAL") {
-    matched = list.filter((t) => String(t.technicianCategory || "GENERAL").toUpperCase() === "GENERAL");
+  const mapped = TICKET_CATEGORY_TO_TECHNICIAN[ticketCategory];
+  if (mapped == null) {
+    return [];
   }
-  if (matched.length === 0) {
-    matched = [...list];
+  const target = String(mapped).toUpperCase();
+  return list
+    .filter((t) => normalizedTechnicianCategory(t) === target)
+    .sort((a, b) => {
+      const av = (x) => (x && typeof x.technicianAvailable === "boolean" && x.technicianAvailable === false ? 0 : 1);
+      return av(b) - av(a);
+    });
+}
+
+function technicianKey(tech) {
+  if (!tech) return "";
+  if (tech.id != null && String(tech.id).trim() !== "") return String(tech.id);
+  return String(tech.email || "");
+}
+
+function technicianDisplayName(tech) {
+  if (!tech) return "";
+  const n = `${(tech.firstName || "").trim()} ${(tech.lastName || "").trim()}`.trim();
+  return n || tech.email || "Technician";
+}
+
+function humanizeAcceptTicketError(message) {
+  const m = String(message || "");
+  if (/\b404\b/.test(m)) {
+    return "The server could not accept this ticket (404). Rebuild and restart the backend (latest code), use the dev server on port 8081 with Vite proxy, and stay signed in as admin.";
   }
-  return matched.sort((a, b) => {
-    const av = (x) => (x && typeof x.technicianAvailable === "boolean" && x.technicianAvailable === false ? 0 : 1);
-    return av(b) - av(a);
-  });
+  if (/\b403\b|Forbidden/i.test(m)) {
+    return "Only an admin can accept tickets. Sign in with an admin account and try again.";
+  }
+  return m;
 }
 
 function getProgressInfo(status, commentsCount) {
@@ -349,6 +386,10 @@ export default function AdminTicketDashboard() {
   const [acceptPanelTechnicians, setAcceptPanelTechnicians] = useState([]);
   const [acceptPanelLoading, setAcceptPanelLoading] = useState(false);
   const [acceptPanelError, setAcceptPanelError] = useState("");
+  /** Why the list is empty: none-registered | no-match | unknown-category | "" */
+  const [acceptPanelEmptyHint, setAcceptPanelEmptyHint] = useState("");
+  const [acceptSelectedTechnicianKey, setAcceptSelectedTechnicianKey] = useState("");
+  const [acceptConfirming, setAcceptConfirming] = useState(false);
   const [extraBarCollapsed, setExtraBarCollapsed] = useState(false);
   const [extraBarMenu, setExtraBarMenu] = useState("Ticket Management");
 
@@ -419,7 +460,7 @@ export default function AdminTicketDashboard() {
     window.location.href = "/";
   };
 
-  const handleTicketDecision = (ticketId, decision, reason = "") => {
+  const handleTicketDecision = (ticketId, decision, reason = "", assignedTechnicianName = "") => {
     setTickets((prev) =>
       (Array.isArray(prev) ? prev : []).map((item) => {
         if (item?.ticket?.id !== ticketId) return item;
@@ -428,7 +469,17 @@ export default function AdminTicketDashboard() {
           status: decision,
           rejectionReason: decision === "REJECTED" ? reason : "",
         };
-        storeDecision(ticketId, decision, decision === "REJECTED" ? reason : "");
+        if (decision === "ACCEPTED" && assignedTechnicianName) {
+          nextTicket.assignedTechnicianName = assignedTechnicianName;
+        } else {
+          delete nextTicket.assignedTechnicianName;
+        }
+        storeDecision(
+          ticketId,
+          decision,
+          decision === "REJECTED" ? reason : "",
+          decision === "ACCEPTED" ? assignedTechnicianName : ""
+        );
         pushUserNotification(nextTicket, decision, reason);
         return {
           ...item,
@@ -441,6 +492,7 @@ export default function AdminTicketDashboard() {
   const openRejectionForm = (ticketId) => {
     setAcceptModalTicket(null);
     setAcceptPanelTechnicians([]);
+    setAcceptPanelEmptyHint("");
     setAcceptPanelError("");
     setRejectingTicketId(ticketId);
     setRejectionReason("");
@@ -460,10 +512,26 @@ export default function AdminTicketDashboard() {
     });
     setAcceptPanelLoading(true);
     setAcceptPanelError("");
+    setAcceptPanelEmptyHint("");
     setAcceptPanelTechnicians([]);
+    setAcceptSelectedTechnicianKey("");
     try {
       const all = await listTechnicians();
-      setAcceptPanelTechnicians(suitableTechniciansForTicket(all, ticket.category));
+      const cat = ticket.category || "";
+      const suitable = suitableTechniciansForTicket(all, cat);
+      setAcceptPanelTechnicians(suitable);
+      if (suitable.length > 0) {
+        setAcceptSelectedTechnicianKey(technicianKey(suitable[0]));
+      }
+      if (suitable.length === 0) {
+        if (!Array.isArray(all) || all.length === 0) {
+          setAcceptPanelEmptyHint("none-registered");
+        } else if (TICKET_CATEGORY_TO_TECHNICIAN[cat] == null) {
+          setAcceptPanelEmptyHint("unknown-category");
+        } else {
+          setAcceptPanelEmptyHint("no-match");
+        }
+      }
     } catch (err) {
       setAcceptPanelError(err?.message || "Could not load technicians.");
     } finally {
@@ -474,13 +542,48 @@ export default function AdminTicketDashboard() {
   const closeAcceptPanel = () => {
     setAcceptModalTicket(null);
     setAcceptPanelTechnicians([]);
+    setAcceptPanelEmptyHint("");
     setAcceptPanelError("");
+    setAcceptSelectedTechnicianKey("");
   };
 
-  const confirmAcceptTicket = () => {
+  const confirmAcceptTicket = async () => {
     if (!acceptModalTicket?.id) return;
-    handleTicketDecision(acceptModalTicket.id, "ACCEPTED");
-    closeAcceptPanel();
+    const tech = acceptPanelTechnicians.find((t) => technicianKey(t) === acceptSelectedTechnicianKey);
+    const name = tech ? technicianDisplayName(tech) : "";
+    if (!tech || !name) return;
+    const ticketId = acceptModalTicket.id;
+    setAcceptConfirming(true);
+    setAcceptPanelError("");
+    try {
+      const wrap = await acceptAdminTicket(ticketId, {
+        technicianId: technicianKey(tech),
+        technicianName: name,
+      });
+      const serverTicket = wrap?.ticket;
+      const serverComments = wrap?.comments;
+      setTickets((prev) =>
+        (Array.isArray(prev) ? prev : []).map((item) => {
+          if (item?.ticket?.id !== ticketId) return item;
+          const nextTicket = serverTicket
+            ? { ...item.ticket, ...serverTicket }
+            : { ...item.ticket, status: "ACCEPTED", assignedTechnicianName: name };
+          const assignee = nextTicket.assignedTechnicianName || name;
+          storeDecision(ticketId, "ACCEPTED", "", assignee);
+          pushUserNotification(nextTicket, "ACCEPTED", "");
+          return {
+            ...item,
+            ticket: nextTicket,
+            comments: Array.isArray(serverComments) ? serverComments : item.comments,
+          };
+        })
+      );
+      closeAcceptPanel();
+    } catch (err) {
+      setAcceptPanelError(err?.message || "Could not save acceptance. Check admin login and server.");
+    } finally {
+      setAcceptConfirming(false);
+    }
   };
 
   const submitRejection = (ticketId) => {
@@ -1265,17 +1368,18 @@ export default function AdminTicketDashboard() {
 
               {!loading && !error && filteredAndSortedTickets.length > 0 && (
                 <div style={{ border: "1px solid #F5E7C6", borderRadius: "12px", overflowX: "auto", backgroundColor: "#FFFFFF" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "980px", tableLayout: "fixed" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1060px", tableLayout: "fixed" }}>
                     <thead>
                       <tr style={{ backgroundColor: "#FAF3E1" }}>
-                        <th style={{ width: "18%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Ticket</th>
-                        <th style={{ width: "15%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Reported By</th>
-                        <th style={{ width: "10%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Status</th>
+                        <th style={{ width: "16%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Ticket</th>
+                        <th style={{ width: "14%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Reported By</th>
+                        <th style={{ width: "9%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Status</th>
                         <th style={{ width: "8%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Priority</th>
-                        <th style={{ width: "12%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Progress</th>
-                        <th style={{ width: "11%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Created</th>
-                        <th style={{ width: "14%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Rejection Reason</th>
-                        <th style={{ width: "12%", textAlign: "right", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Actions</th>
+                        <th style={{ width: "11%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Progress</th>
+                        <th style={{ width: "11%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Assigned to</th>
+                        <th style={{ width: "10%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Created</th>
+                        <th style={{ width: "13%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Rejection Reason</th>
+                        <th style={{ width: "8%", textAlign: "right", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1327,6 +1431,9 @@ export default function AdminTicketDashboard() {
                                   <div style={{ width: `${progress.percent}%`, height: "100%", backgroundColor: progress.color }} />
                                 </div>
                               </td>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top", color: "#374151", fontSize: "12px", wordBreak: "break-word" }}>
+                                {ticket.assignedTechnicianName || "—"}
+                              </td>
                               <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top", color: "#6b7280", fontSize: "12px" }}>
                                 {formatDate(ticket.createdAt)}
                               </td>
@@ -1337,14 +1444,12 @@ export default function AdminTicketDashboard() {
                               </td>
                               <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top" }}>
                                 <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
-                                  {(ticket.status || "").toUpperCase() !== "REJECTED" && !isRejecting && (
+                                  {(ticket.status || "").toUpperCase() === "OPEN" && !isRejecting && (
                                     <button
                                       type="button"
                                       style={{ ...buttonStyle, backgroundColor: "#2e7d32", minWidth: "74px", padding: "8px 10px", fontSize: "12px" }}
                                       onClick={() => openAcceptPanel(ticket)}
-                                      disabled={
-                                        (ticket.status || "").toUpperCase() === "ACCEPTED" || acceptModalTicket != null
-                                      }
+                                      disabled={acceptModalTicket != null}
                                     >
                                       Accept
                                     </button>
@@ -1370,7 +1475,7 @@ export default function AdminTicketDashboard() {
 
                             {(isOpen || isRejecting) && (
                               <tr>
-                                <td colSpan={8} style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", backgroundColor: "#FAF3E1" }}>
+                                <td colSpan={9} style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", backgroundColor: "#FAF3E1" }}>
                                   {isRejecting && (
                                     <div style={{ ...commentBoxStyle, marginTop: "10px" }}>
                                       <div style={{ color: "#222222", fontSize: "14px", fontWeight: 700, marginBottom: "8px" }}>Add Rejection Reason</div>
@@ -1515,18 +1620,44 @@ export default function AdminTicketDashboard() {
             </div>
             <div style={{ padding: 14, overflowY: "auto", flex: 1, minHeight: 0 }}>
               <div style={{ color: "#6b7280", fontSize: 12, marginBottom: 10, lineHeight: 1.45 }}>
-                Specialists for this category (with fallbacks if none match).
+                Select a technician to assign. Only technicians whose specialty matches this ticket’s category are listed.
               </div>
+              {acceptModalTicket?.category && TICKET_CATEGORY_TO_TECHNICIAN[acceptModalTicket.category] != null && (
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#14213D", marginBottom: 10 }}>
+                  Required specialty:{" "}
+                  {technicianCategoryLabel(TICKET_CATEGORY_TO_TECHNICIAN[acceptModalTicket.category])}
+                </div>
+              )}
               {acceptPanelLoading && <p style={{ margin: 0, color: "#6b7280" }}>Loading technicians…</p>}
-              {acceptPanelError && (
-                <div style={{ color: "#d32f2f", fontSize: "13px", fontWeight: 600, marginBottom: "8px" }}>{acceptPanelError}</div>
-              )}
-              {!acceptPanelLoading && !acceptPanelError && acceptPanelTechnicians.length === 0 && (
-                <p style={{ margin: 0, color: "#6b7280", fontSize: 13 }}>No technicians registered yet.</p>
-              )}
-              {!acceptPanelLoading && !acceptPanelError && acceptPanelTechnicians.length > 0 && (
-                <div style={{ display: "grid", gap: 8 }}>
+              {!acceptPanelLoading &&
+                !acceptPanelError &&
+                acceptPanelTechnicians.length === 0 &&
+                acceptPanelEmptyHint === "none-registered" && (
+                  <p style={{ margin: 0, color: "#6b7280", fontSize: 13 }}>No technicians registered yet.</p>
+                )}
+              {!acceptPanelLoading &&
+                !acceptPanelError &&
+                acceptPanelTechnicians.length === 0 &&
+                acceptPanelEmptyHint === "no-match" && (
+                  <p style={{ margin: 0, color: "#6b7280", fontSize: 13, lineHeight: 1.45 }}>
+                    No technician has this specialty ({acceptModalTicket?.category || "—"}). Add one from the admin technician
+                    page or choose a different category on the ticket.
+                  </p>
+                )}
+              {!acceptPanelLoading &&
+                !acceptPanelError &&
+                acceptPanelTechnicians.length === 0 &&
+                acceptPanelEmptyHint === "unknown-category" && (
+                  <p style={{ margin: 0, color: "#6b7280", fontSize: 13, lineHeight: 1.45 }}>
+                    This ticket’s category is not mapped for technician assignment. Update the ticket category to a standard
+                    type (e.g. Electrical Issue, Network Issue).
+                  </p>
+                )}
+              {!acceptPanelLoading && acceptPanelTechnicians.length > 0 && (
+                <div style={{ display: "grid", gap: 8 }} role="radiogroup" aria-label="Choose technician">
                   {acceptPanelTechnicians.map((tech) => {
+                    const tKey = technicianKey(tech);
+                    const selected = acceptSelectedTechnicianKey === tKey;
                     const avail =
                       tech && typeof tech.technicianAvailable === "boolean"
                         ? tech.technicianAvailable
@@ -1540,32 +1671,60 @@ export default function AdminTicketDashboard() {
                           : "#92400e"
                         : "#6b7280";
                     return (
-                      <div
-                        key={tech.id || tech.email}
+                      <button
+                        type="button"
+                        key={tKey || tech.email}
+                        onClick={() => setAcceptSelectedTechnicianKey(tKey)}
                         style={{
-                          border: "1px solid #F5E7C6",
+                          border: selected ? "2px solid #14213D" : "1px solid #F5E7C6",
                           borderRadius: 10,
                           padding: "10px 12px",
-                          backgroundColor: "#FAF3E1",
+                          backgroundColor: selected ? "#fff" : "#FAF3E1",
                           display: "grid",
-                          gridTemplateColumns: "1fr auto",
-                          gap: 8,
+                          gridTemplateColumns: "auto 1fr auto",
+                          gap: 10,
                           alignItems: "center",
+                          cursor: "pointer",
+                          textAlign: "left",
+                          font: "inherit",
                         }}
                       >
+                        <input
+                          type="radio"
+                          name="accept-technician"
+                          checked={selected}
+                          onChange={() => setAcceptSelectedTechnicianKey(tKey)}
+                          style={{ width: 16, height: 16, accentColor: "#14213D", margin: 0 }}
+                          aria-label={`Assign to ${technicianDisplayName(tech)}`}
+                        />
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 800, color: "#14213D", fontSize: 13 }}>
-                            {`${(tech.firstName || "").trim()} ${(tech.lastName || "").trim()}`.trim() || tech.email || "Technician"}
-                          </div>
+                          <div style={{ fontWeight: 800, color: "#14213D", fontSize: 13 }}>{technicianDisplayName(tech)}</div>
                           <div style={{ marginTop: 2, fontSize: 12, color: "#374151", wordBreak: "break-word" }}>{tech.email || "—"}</div>
                           <div style={{ marginTop: 4, fontSize: 11, color: "#6b7280" }}>
                             {technicianCategoryLabel(tech.technicianCategory)}
                           </div>
                         </div>
                         <div style={{ fontSize: 11, fontWeight: 700, color: availColor, textAlign: "right", whiteSpace: "nowrap" }}>{avail}</div>
-                      </div>
+                      </button>
                     );
                   })}
+                </div>
+              )}
+              {acceptPanelError && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    backgroundColor: "#ffebee",
+                    border: "1px solid #ffcdd2",
+                    color: "#c62828",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {humanizeAcceptTicketError(acceptPanelError)}
                 </div>
               )}
             </div>
@@ -1587,9 +1746,15 @@ export default function AdminTicketDashboard() {
                 type="button"
                 style={{ ...buttonStyle, backgroundColor: "#2e7d32", padding: "10px 14px" }}
                 onClick={confirmAcceptTicket}
-                disabled={(acceptModalTicket.status || "").toUpperCase() === "ACCEPTED"}
+                disabled={
+                  acceptPanelLoading ||
+                  acceptConfirming ||
+                  (acceptModalTicket.status || "").toUpperCase() === "ACCEPTED" ||
+                  acceptPanelTechnicians.length === 0 ||
+                  !acceptSelectedTechnicianKey
+                }
               >
-                Confirm accept
+                {acceptConfirming ? "Saving…" : "Confirm accept"}
               </button>
             </div>
           </div>

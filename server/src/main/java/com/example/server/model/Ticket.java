@@ -23,6 +23,9 @@ public class Ticket {
     private String priority;
     private List<String> attachments = new ArrayList<>();
     private String status;
+    /** User id (Mongo) or email fallback for the assigned technician. */
+    private String assignedTechnicianId;
+    private String assignedTechnicianName;
     private String createdBy;
     private Instant createdAt;
 
@@ -111,6 +114,22 @@ public class Ticket {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getAssignedTechnicianId() {
+        return assignedTechnicianId;
+    }
+
+    public void setAssignedTechnicianId(String assignedTechnicianId) {
+        this.assignedTechnicianId = assignedTechnicianId;
+    }
+
+    public String getAssignedTechnicianName() {
+        return assignedTechnicianName;
+    }
+
+    public void setAssignedTechnicianName(String assignedTechnicianName) {
+        this.assignedTechnicianName = assignedTechnicianName;
     }
 
     public String getCreatedBy() {

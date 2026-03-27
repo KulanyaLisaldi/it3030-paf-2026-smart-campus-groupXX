@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class AdminTicketService {
@@ -32,6 +33,17 @@ public class AdminTicketService {
         }
 
         return result;
+    }
+
+    public Optional<AdminTicketWithComments> acceptTicket(String ticketId, String technicianId, String technicianName) {
+        return ticketRepo.findById(ticketId).map(ticket -> {
+            ticket.setStatus("ACCEPTED");
+            ticket.setAssignedTechnicianId(technicianId);
+            ticket.setAssignedTechnicianName(technicianName);
+            Ticket saved = ticketRepo.save(ticket);
+            List<TicketComment> comments = commentRepo.findByTicketIdOrderByCreatedAtDesc(ticketId);
+            return new AdminTicketWithComments(saved, comments);
+        });
     }
 }
 
