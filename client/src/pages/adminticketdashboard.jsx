@@ -379,7 +379,7 @@ export default function AdminTicketDashboard() {
   const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("DATE_DESC");
   const [activeMenuItem, setActiveMenuItem] = useState("Dashboard");
-  const [rejectingTicketId, setRejectingTicketId] = useState("");
+  const [rejectModalTicket, setRejectModalTicket] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionError, setRejectionError] = useState("");
   const [acceptModalTicket, setAcceptModalTicket] = useState(null);
@@ -489,19 +489,26 @@ export default function AdminTicketDashboard() {
     );
   };
 
-  const openRejectionForm = (ticketId) => {
+  const closeRejectModal = () => {
+    setRejectModalTicket(null);
+    setRejectionReason("");
+    setRejectionError("");
+  };
+
+  const openRejectionForm = (ticket) => {
+    if (!ticket?.id) return;
     setAcceptModalTicket(null);
     setAcceptPanelTechnicians([]);
     setAcceptPanelEmptyHint("");
     setAcceptPanelError("");
-    setRejectingTicketId(ticketId);
+    setRejectModalTicket({ id: ticket.id, issueTitle: ticket.issueTitle || "" });
     setRejectionReason("");
     setRejectionError("");
   };
 
   const openAcceptPanel = async (ticket) => {
     if (!ticket?.id) return;
-    setRejectingTicketId("");
+    setRejectModalTicket(null);
     setRejectionReason("");
     setRejectionError("");
     setAcceptModalTicket({
@@ -586,7 +593,9 @@ export default function AdminTicketDashboard() {
     }
   };
 
-  const submitRejection = (ticketId) => {
+  const submitRejection = () => {
+    if (!rejectModalTicket?.id) return;
+    const ticketId = rejectModalTicket.id;
     const reason = rejectionReason.trim();
     if (!reason) {
       setRejectionError("Rejection reason is required.");
@@ -602,9 +611,7 @@ export default function AdminTicketDashboard() {
     }
 
     handleTicketDecision(ticketId, "REJECTED", reason);
-    setRejectingTicketId("");
-    setRejectionReason("");
-    setRejectionError("");
+    closeRejectModal();
   };
 
   const filteredAndSortedTickets = useMemo(() => {
@@ -1388,7 +1395,7 @@ export default function AdminTicketDashboard() {
                         const comments = item.comments || [];
                         const progress = getProgressInfo(ticket.status, comments.length);
                         const isOpen = !!openTicketIds[ticket.id];
-                        const isRejecting = rejectingTicketId === ticket.id;
+                        const statusU = (ticket.status || "").toUpperCase();
 
                         return (
                           <React.Fragment key={ticket.id}>
@@ -1444,24 +1451,26 @@ export default function AdminTicketDashboard() {
                               </td>
                               <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top" }}>
                                 <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
-                                  {(ticket.status || "").toUpperCase() === "OPEN" && !isRejecting && (
+                                  {statusU === "OPEN" && (
                                     <button
                                       type="button"
                                       style={{ ...buttonStyle, backgroundColor: "#2e7d32", minWidth: "74px", padding: "8px 10px", fontSize: "12px" }}
                                       onClick={() => openAcceptPanel(ticket)}
-                                      disabled={acceptModalTicket != null}
+                                      disabled={acceptModalTicket != null || rejectModalTicket != null}
                                     >
                                       Accept
                                     </button>
                                   )}
-                                  <button
-                                    type="button"
-                                    style={{ ...buttonStyle, backgroundColor: "#d32f2f", minWidth: "74px", padding: "8px 10px", fontSize: "12px" }}
-                                    onClick={() => openRejectionForm(ticket.id)}
-                                    disabled={(ticket.status || "").toUpperCase() === "REJECTED"}
-                                  >
-                                    Reject
-                                  </button>
+                                  {statusU === "OPEN" && (
+                                    <button
+                                      type="button"
+                                      style={{ ...buttonStyle, backgroundColor: "#d32f2f", minWidth: "74px", padding: "8px 10px", fontSize: "12px" }}
+                                      onClick={() => openRejectionForm(ticket)}
+                                      disabled={rejectModalTicket != null || acceptModalTicket != null}
+                                    >
+                                      Reject
+                                    </button>
+                                  )}
                                   <button
                                     type="button"
                                     style={{ ...buttonStyle, minWidth: "96px", padding: "8px 10px", fontSize: "12px" }}
@@ -1473,54 +1482,9 @@ export default function AdminTicketDashboard() {
                               </td>
                             </tr>
 
-                            {(isOpen || isRejecting) && (
+                            {isOpen && (
                               <tr>
                                 <td colSpan={9} style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", backgroundColor: "#FAF3E1" }}>
-                                  {isRejecting && (
-                                    <div style={{ ...commentBoxStyle, marginTop: "10px" }}>
-                                      <div style={{ color: "#222222", fontSize: "14px", fontWeight: 700, marginBottom: "8px" }}>Add Rejection Reason</div>
-                                      <textarea
-                                        value={rejectionReason}
-                                        onChange={(e) => setRejectionReason(e.target.value)}
-                                        placeholder="Enter rejection reason"
-                                        style={{
-                                          width: "100%",
-                                          minHeight: "84px",
-                                          resize: "vertical",
-                                          border: "2px solid #F5E7C6",
-                                          borderRadius: "8px",
-                                          padding: "10px 12px",
-                                          fontSize: "14px",
-                                          outline: "none",
-                                          boxSizing: "border-box",
-                                          backgroundColor: "#FFFFFF",
-                                        }}
-                                      />
-                                      {rejectionError && <div style={{ marginTop: "8px", color: "#d32f2f", fontSize: "13px", fontWeight: 600 }}>{rejectionError}</div>}
-                                      <div style={{ marginTop: "10px", display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                                        <button
-                                          type="button"
-                                          style={{ ...buttonStyle, backgroundColor: "#6b7280", minWidth: "96px" }}
-                                          onClick={() => {
-                                            setRejectingTicketId("");
-                                            setRejectionReason("");
-                                            setRejectionError("");
-                                          }}
-                                        >
-                                          Cancel
-                                        </button>
-                                        <button
-                                          type="button"
-                                          style={{ ...buttonStyle, backgroundColor: "#d32f2f", minWidth: "96px" }}
-                                          onClick={() => submitRejection(ticket.id)}
-                                        >
-                                          Save Reject
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {isOpen && (
                                     <div style={{ ...commentBoxStyle, marginTop: "10px" }}>
                                       <div style={sectionTitleStyle}>Comments</div>
                                       {comments.length === 0 ? (
@@ -1547,7 +1511,6 @@ export default function AdminTicketDashboard() {
                                         </div>
                                       )}
                                     </div>
-                                  )}
                                 </td>
                               </tr>
                             )}
@@ -1755,6 +1718,105 @@ export default function AdminTicketDashboard() {
                 }
               >
                 {acceptConfirming ? "Saving…" : "Confirm accept"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rejectModalTicket && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reject-ticket-modal-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 2100,
+            backgroundColor: "rgba(15, 23, 42, 0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeRejectModal();
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 400,
+              display: "flex",
+              flexDirection: "column",
+              backgroundColor: "#fff",
+              borderRadius: 14,
+              border: "1px solid #e5e7eb",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.2)",
+              overflow: "hidden",
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: "14px 16px",
+                borderBottom: "1px solid #F5E7C6",
+                backgroundColor: "#FAF3E1",
+              }}
+            >
+              <div id="reject-ticket-modal-title" style={{ fontSize: 16, fontWeight: 900, color: "#14213D" }}>
+                Reject ticket
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", marginTop: 4, lineHeight: 1.4 }}>
+                {rejectModalTicket.issueTitle || "Ticket"}
+              </div>
+            </div>
+            <div style={{ padding: 16 }}>
+              <label htmlFor="reject-reason-textarea" style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 8 }}>
+                Rejection reason
+              </label>
+              <textarea
+                id="reject-reason-textarea"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Enter rejection reason (letters and numbers only)"
+                rows={4}
+                style={{
+                  width: "100%",
+                  minHeight: "88px",
+                  resize: "vertical",
+                  border: "2px solid #F5E7C6",
+                  borderRadius: "8px",
+                  padding: "10px 12px",
+                  fontSize: "14px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                  backgroundColor: "#FFFFFF",
+                }}
+              />
+              {rejectionError && (
+                <div style={{ marginTop: "10px", color: "#d32f2f", fontSize: "13px", fontWeight: 600 }}>{rejectionError}</div>
+              )}
+            </div>
+            <div
+              style={{
+                padding: "12px 14px",
+                borderTop: "1px solid #F5E7C6",
+                display: "flex",
+                gap: 8,
+                justifyContent: "flex-end",
+                backgroundColor: "#fff",
+              }}
+            >
+              <button type="button" style={{ ...buttonStyle, backgroundColor: "#6b7280", padding: "10px 14px" }} onClick={closeRejectModal}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={{ ...buttonStyle, backgroundColor: "#d32f2f", padding: "10px 14px" }}
+                onClick={submitRejection}
+              >
+                Confirm rejection
               </button>
             </div>
           </div>
