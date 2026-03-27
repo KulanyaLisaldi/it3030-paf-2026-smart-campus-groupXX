@@ -77,7 +77,7 @@ const Hero = () => {
             <div className="bg-white rounded-lg p-6">
               <div className="text-4xl mb-4">🏛️</div>
               <h3 className="text-xl font-semibold text-dark-text mb-2">Facility Booking</h3>
-              <p className="text-dark-text">Reserve rooms, labs, and equipment with ease</p>
+              <p className="text-dark-text">Reserve rooms, labs, lecture halls and equipment with ease</p>
             </div>
 
             <div className="bg-white rounded-lg p-6">
