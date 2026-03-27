@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAdminTicketList } from "../api/adminticket";
+import { listTechnicians } from "../api/adminTechnicians";
+import { technicianCategoryLabel } from "../constants/technicianCategories";
 
 const ADMIN_SIDEBAR_ITEMS = ["Dashboard", "Tickets", "Charts", "Reports"];
 
@@ -274,6 +276,36 @@ function formatDate(value) {
   }
 }
 
+/** Maps ticket form categories to server technician specialty enums. */
+const TICKET_CATEGORY_TO_TECHNICIAN = {
+  "Electrical Issue": "ELECTRICAL",
+  "Network Issue": "NETWORK",
+  "Equipment Issue": "IT_SUPPORT",
+  "Software Issue": "IT_SUPPORT",
+  "Facility Issue": "FACILITIES",
+  "Maintenance Issue": "MAINTENANCE",
+  "Other": "GENERAL",
+};
+
+function suitableTechniciansForTicket(allTechnicians, ticketCategory) {
+  const list = Array.isArray(allTechnicians) ? allTechnicians : [];
+  const target = (TICKET_CATEGORY_TO_TECHNICIAN[ticketCategory] || "GENERAL").toUpperCase();
+  let matched = list.filter((t) => {
+    const techCat = String(t.technicianCategory || "GENERAL").toUpperCase();
+    return techCat === target;
+  });
+  if (matched.length === 0 && target !== "GENERAL") {
+    matched = list.filter((t) => String(t.technicianCategory || "GENERAL").toUpperCase() === "GENERAL");
+  }
+  if (matched.length === 0) {
+    matched = [...list];
+  }
+  return matched.sort((a, b) => {
+    const av = (x) => (x && typeof x.technicianAvailable === "boolean" && x.technicianAvailable === false ? 0 : 1);
+    return av(b) - av(a);
+  });
+}
+
 function getProgressInfo(status, commentsCount) {
   const normalizedStatus = (status || "").toUpperCase();
   if (normalizedStatus === "RESOLVED") {
@@ -313,6 +345,10 @@ export default function AdminTicketDashboard() {
   const [rejectingTicketId, setRejectingTicketId] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionError, setRejectionError] = useState("");
+  const [acceptModalTicket, setAcceptModalTicket] = useState(null);
+  const [acceptPanelTechnicians, setAcceptPanelTechnicians] = useState([]);
+  const [acceptPanelLoading, setAcceptPanelLoading] = useState(false);
+  const [acceptPanelError, setAcceptPanelError] = useState("");
   const [extraBarCollapsed, setExtraBarCollapsed] = useState(false);
   const [extraBarMenu, setExtraBarMenu] = useState("Ticket Management");
 
@@ -403,9 +439,48 @@ export default function AdminTicketDashboard() {
   };
 
   const openRejectionForm = (ticketId) => {
+    setAcceptModalTicket(null);
+    setAcceptPanelTechnicians([]);
+    setAcceptPanelError("");
     setRejectingTicketId(ticketId);
     setRejectionReason("");
     setRejectionError("");
+  };
+
+  const openAcceptPanel = async (ticket) => {
+    if (!ticket?.id) return;
+    setRejectingTicketId("");
+    setRejectionReason("");
+    setRejectionError("");
+    setAcceptModalTicket({
+      id: ticket.id,
+      issueTitle: ticket.issueTitle || "",
+      category: ticket.category || "",
+      status: ticket.status || "",
+    });
+    setAcceptPanelLoading(true);
+    setAcceptPanelError("");
+    setAcceptPanelTechnicians([]);
+    try {
+      const all = await listTechnicians();
+      setAcceptPanelTechnicians(suitableTechniciansForTicket(all, ticket.category));
+    } catch (err) {
+      setAcceptPanelError(err?.message || "Could not load technicians.");
+    } finally {
+      setAcceptPanelLoading(false);
+    }
+  };
+
+  const closeAcceptPanel = () => {
+    setAcceptModalTicket(null);
+    setAcceptPanelTechnicians([]);
+    setAcceptPanelError("");
+  };
+
+  const confirmAcceptTicket = () => {
+    if (!acceptModalTicket?.id) return;
+    handleTicketDecision(acceptModalTicket.id, "ACCEPTED");
+    closeAcceptPanel();
   };
 
   const submitRejection = (ticketId) => {
@@ -1266,8 +1341,10 @@ export default function AdminTicketDashboard() {
                                     <button
                                       type="button"
                                       style={{ ...buttonStyle, backgroundColor: "#2e7d32", minWidth: "74px", padding: "8px 10px", fontSize: "12px" }}
-                                      onClick={() => handleTicketDecision(ticket.id, "ACCEPTED")}
-                                      disabled={(ticket.status || "").toUpperCase() === "ACCEPTED"}
+                                      onClick={() => openAcceptPanel(ticket)}
+                                      disabled={
+                                        (ticket.status || "").toUpperCase() === "ACCEPTED" || acceptModalTicket != null
+                                      }
                                     >
                                       Accept
                                     </button>
@@ -1380,6 +1457,144 @@ export default function AdminTicketDashboard() {
           </div>
         )}
       </section>
+
+      {acceptModalTicket && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="accept-tech-modal-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 2000,
+            backgroundColor: "rgba(15, 23, 42, 0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeAcceptPanel();
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 440,
+              maxHeight: "min(520px, 85vh)",
+              display: "flex",
+              flexDirection: "column",
+              backgroundColor: "#fff",
+              borderRadius: 14,
+              border: "1px solid #e5e7eb",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.2)",
+              overflow: "hidden",
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: "14px 16px",
+                borderBottom: "1px solid #F5E7C6",
+                backgroundColor: "#FAF3E1",
+                flexShrink: 0,
+              }}
+            >
+              <div id="accept-tech-modal-title" style={{ fontSize: 16, fontWeight: 900, color: "#14213D" }}>
+                Suitable technicians
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", marginTop: 4, lineHeight: 1.4 }}>
+                {acceptModalTicket.issueTitle || "Ticket"}
+                {acceptModalTicket.category ? (
+                  <>
+                    {" "}
+                    · <span style={{ color: "#14213D" }}>{acceptModalTicket.category}</span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+            <div style={{ padding: 14, overflowY: "auto", flex: 1, minHeight: 0 }}>
+              <div style={{ color: "#6b7280", fontSize: 12, marginBottom: 10, lineHeight: 1.45 }}>
+                Specialists for this category (with fallbacks if none match).
+              </div>
+              {acceptPanelLoading && <p style={{ margin: 0, color: "#6b7280" }}>Loading technicians…</p>}
+              {acceptPanelError && (
+                <div style={{ color: "#d32f2f", fontSize: "13px", fontWeight: 600, marginBottom: "8px" }}>{acceptPanelError}</div>
+              )}
+              {!acceptPanelLoading && !acceptPanelError && acceptPanelTechnicians.length === 0 && (
+                <p style={{ margin: 0, color: "#6b7280", fontSize: 13 }}>No technicians registered yet.</p>
+              )}
+              {!acceptPanelLoading && !acceptPanelError && acceptPanelTechnicians.length > 0 && (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {acceptPanelTechnicians.map((tech) => {
+                    const avail =
+                      tech && typeof tech.technicianAvailable === "boolean"
+                        ? tech.technicianAvailable
+                          ? "Available"
+                          : "Unavailable"
+                        : "—";
+                    const availColor =
+                      tech && typeof tech.technicianAvailable === "boolean"
+                        ? tech.technicianAvailable
+                          ? "#2e7d32"
+                          : "#92400e"
+                        : "#6b7280";
+                    return (
+                      <div
+                        key={tech.id || tech.email}
+                        style={{
+                          border: "1px solid #F5E7C6",
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                          backgroundColor: "#FAF3E1",
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto",
+                          gap: 8,
+                          alignItems: "center",
+                        }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 800, color: "#14213D", fontSize: 13 }}>
+                            {`${(tech.firstName || "").trim()} ${(tech.lastName || "").trim()}`.trim() || tech.email || "Technician"}
+                          </div>
+                          <div style={{ marginTop: 2, fontSize: 12, color: "#374151", wordBreak: "break-word" }}>{tech.email || "—"}</div>
+                          <div style={{ marginTop: 4, fontSize: 11, color: "#6b7280" }}>
+                            {technicianCategoryLabel(tech.technicianCategory)}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: availColor, textAlign: "right", whiteSpace: "nowrap" }}>{avail}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div
+              style={{
+                padding: "12px 14px",
+                borderTop: "1px solid #F5E7C6",
+                display: "flex",
+                gap: 8,
+                justifyContent: "flex-end",
+                flexShrink: 0,
+                backgroundColor: "#fff",
+              }}
+            >
+              <button type="button" style={{ ...buttonStyle, backgroundColor: "#6b7280", padding: "10px 14px" }} onClick={closeAcceptPanel}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={{ ...buttonStyle, backgroundColor: "#2e7d32", padding: "10px 14px" }}
+                onClick={confirmAcceptTicket}
+                disabled={(acceptModalTicket.status || "").toUpperCase() === "ACCEPTED"}
+              >
+                Confirm accept
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

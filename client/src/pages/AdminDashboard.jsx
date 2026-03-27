@@ -2,7 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createTechnician } from "../api/adminTechnicians";
 import { getAuthToken } from "../api/http";
-import { DEFAULT_TECHNICIAN_CATEGORY, TECHNICIAN_CATEGORIES } from "../constants/technicianCategories";
+import {
+  DEFAULT_TECHNICIAN_CATEGORY,
+  TECHNICIAN_CATEGORIES,
+  toApiTechnicianCategory,
+} from "../constants/technicianCategories";
 import { removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../api/auth";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import AdminUsersTable from "../components/admin/AdminUsersTable.jsx";
@@ -283,7 +287,7 @@ export default function AdminDashboard() {
         email: email.trim(),
         phoneNumber: phoneNumber.trim(),
         password,
-        category,
+        category: toApiTechnicianCategory(category),
       });
       setMessage("Technician created. They can sign in with email and password on the main Sign In page.");
       setUsersTableRev((n) => n + 1);

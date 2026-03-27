@@ -1,7 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createTechnician, listTechnicians } from "../api/adminTechnicians";
-import { DEFAULT_TECHNICIAN_CATEGORY, TECHNICIAN_CATEGORIES } from "../constants/technicianCategories";
+import {
+  DEFAULT_TECHNICIAN_CATEGORY,
+  TECHNICIAN_CATEGORIES,
+  technicianCategoryLabel,
+  toApiTechnicianCategory,
+} from "../constants/technicianCategories";
 import { removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../api/auth";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import PasswordInput from "../components/PasswordInput.jsx";
@@ -95,12 +100,6 @@ function getStoredUser() {
   } catch {
     return null;
   }
-}
-
-function technicianCategoryLabel(value) {
-  if (value == null || value === "") return "—";
-  const found = TECHNICIAN_CATEGORIES.find((c) => c.value === value);
-  return found ? found.label : String(value);
 }
 
 function userDisplayInitial(user) {
@@ -749,7 +748,7 @@ function AdminTechnicianForm() {
         email: techEmail.trim(),
         phoneNumber: techPhone.trim(),
         password: techPassword,
-        category: techCategory,
+        category: toApiTechnicianCategory(techCategory),
       });
       setTechMessage("Technician created. They can sign in with email and password.");
       setTechFirstName("");
