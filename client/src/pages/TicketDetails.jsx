@@ -466,6 +466,22 @@ export default function TicketDetails() {
               <div style={{ marginTop: "10px", color: "#374151", fontSize: "14px", fontWeight: 400, lineHeight: 1.5 }}>
                 {ticketDetails.ticket.description}
               </div>
+              {(ticketDetails.ticket.status || "").toUpperCase() === "RESOLVED" && (ticketDetails.ticket.resolutionDetails || "").trim() && (
+                <div
+                  style={{
+                    marginTop: "10px",
+                    border: "1px solid #c8e6c9",
+                    borderRadius: "10px",
+                    padding: "10px 12px",
+                    backgroundColor: "#f1f8e9",
+                  }}
+                >
+                  <div style={{ color: "#14213D", fontSize: "12px", fontWeight: 800, textTransform: "uppercase" }}>Resolution details</div>
+                  <div style={{ marginTop: "6px", color: "#374151", fontSize: "14px", fontWeight: 500, lineHeight: 1.45 }}>
+                    {ticketDetails.ticket.resolutionDetails}
+                  </div>
+                </div>
+              )}
               {(ticketDetails.ticket.status || "").toUpperCase() === "REJECTED" && ticketDetails.ticket.rejectionReason && (
                 <div
                   style={{

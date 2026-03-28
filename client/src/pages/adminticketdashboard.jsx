@@ -1415,6 +1415,23 @@ export default function AdminTicketDashboard() {
                                 <div style={{ marginTop: "6px", color: "#6b7280", fontSize: "12px", lineHeight: 1.4 }}>
                                   {ticket.description || "No description provided."}
                                 </div>
+                                {statusU === "RESOLVED" && (ticket.resolutionDetails || "").trim() && (
+                                  <div
+                                    style={{
+                                      marginTop: "8px",
+                                      padding: "8px 10px",
+                                      borderRadius: "8px",
+                                      border: "1px solid #c8e6c9",
+                                      backgroundColor: "#f1f8e9",
+                                      color: "#374151",
+                                      fontSize: "12px",
+                                      lineHeight: 1.45,
+                                    }}
+                                  >
+                                    <span style={{ fontWeight: 800, color: "#14213D" }}>Resolution: </span>
+                                    {ticket.resolutionDetails}
+                                  </div>
+                                )}
                               </td>
                               <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top", color: "#374151", fontSize: "13px", wordBreak: "break-word" }}>
                                 <div style={{ fontWeight: 700, color: "#222222" }}>{ticket.fullName || "N/A"}</div>
@@ -1866,6 +1883,25 @@ export default function AdminTicketDashboard() {
                     </div>
                     <div style={{ marginTop: 6, color: "#374151", fontSize: 14, fontWeight: 500, lineHeight: 1.45 }}>
                       {commentsModalPayload.ticket.rejectionReason}
+                    </div>
+                  </div>
+                )}
+              {(commentsModalPayload.ticket.status || "").toUpperCase() === "RESOLVED" &&
+                (commentsModalPayload.ticket.resolutionDetails || "").trim() && (
+                  <div
+                    style={{
+                      marginBottom: 14,
+                      border: "1px solid #c8e6c9",
+                      borderRadius: 12,
+                      padding: "12px",
+                      backgroundColor: "#f1f8e9",
+                    }}
+                  >
+                    <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", color: "#14213D", letterSpacing: "0.04em" }}>
+                      Resolution details
+                    </div>
+                    <div style={{ marginTop: 6, color: "#374151", fontSize: 14, fontWeight: 500, lineHeight: 1.45 }}>
+                      {commentsModalPayload.ticket.resolutionDetails}
                     </div>
                   </div>
                 )}

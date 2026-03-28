@@ -28,6 +28,7 @@ public class Ticket {
     private String assignedTechnicianName;
     private String createdBy;
     private Instant createdAt;
+    private String resolutionDetails;
 
     public Ticket() {
     }
@@ -146,5 +147,13 @@ public class Ticket {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getResolutionDetails() {
+        return resolutionDetails;
+    }
+
+    public void setResolutionDetails(String resolutionDetails) {
+        this.resolutionDetails = resolutionDetails;
     }
 }

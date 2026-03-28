@@ -164,6 +164,10 @@ function TechnicianWorkspace() {
   const [assignedError, setAssignedError] = useState("");
   const [progressBusyId, setProgressBusyId] = useState("");
 
+  const [resolvePanelTicketId, setResolvePanelTicketId] = useState(null);
+  const [resolutionDraftByTicketId, setResolutionDraftByTicketId] = useState({});
+  const [resolveFormError, setResolveFormError] = useState("");
+
   const [ticketDetailModalId, setTicketDetailModalId] = useState(null);
   const [ticketDetailModalData, setTicketDetailModalData] = useState(null);
   const [ticketDetailModalLoading, setTicketDetailModalLoading] = useState(false);
@@ -251,24 +255,57 @@ function TechnicianWorkspace() {
     loadTicketDetailsForModal(ticketId);
   };
 
-  const handleTicketProgress = async (ticketId, nextStatus) => {
+  const handleTicketProgress = async (ticketId, nextStatus, options = {}) => {
     if (!ticketId) return;
+    const opts = typeof options === "function" ? { onSuccess: options } : options;
+    const { onSuccess, resolutionDetails } = opts;
     setProgressBusyId(ticketId);
     setAssignedError("");
     try {
-      const res = await updateTechnicianTicketProgress(ticketId, nextStatus);
+      const res = await updateTechnicianTicketProgress(ticketId, nextStatus, resolutionDetails);
       const updated = res?.ticket;
       if (updated?.id) {
         setAssignedTickets((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
         if (ticketDetailModalId === ticketId) {
           await loadTicketDetailsForModal(ticketId);
         }
+        if (typeof onSuccess === "function") onSuccess(updated);
       }
     } catch (e) {
       setAssignedError(e?.message || "Could not update progress.");
     } finally {
       setProgressBusyId("");
     }
+  };
+
+  const openResolvePanel = (ticketId) => {
+    setResolveFormError("");
+    setResolvePanelTicketId(ticketId);
+  };
+
+  const cancelResolvePanel = () => {
+    setResolvePanelTicketId(null);
+    setResolveFormError("");
+  };
+
+  const confirmResolveTicket = async (ticketId) => {
+    const text = (resolutionDraftByTicketId[ticketId] || "").trim();
+    if (!text) {
+      setResolveFormError("Please add resolution details before marking this ticket resolved.");
+      return;
+    }
+    setResolveFormError("");
+    await handleTicketProgress(ticketId, "RESOLVED", {
+      resolutionDetails: text,
+      onSuccess: () => {
+        setResolvePanelTicketId(null);
+        setResolutionDraftByTicketId((prev) => {
+          const next = { ...prev };
+          delete next[ticketId];
+          return next;
+        });
+      },
+    });
   };
 
   const serverPhone = (techUser?.phoneNumber || "").trim();
@@ -627,7 +664,7 @@ function TechnicianWorkspace() {
                               cursor: busy ? "wait" : "pointer",
                             }}
                             disabled={busy}
-                            onClick={() => handleTicketProgress(t.id, "RESOLVED")}
+                            onClick={() => openResolvePanel(t.id)}
                           >
                             Mark resolved
                           </button>
@@ -645,7 +682,7 @@ function TechnicianWorkspace() {
                             cursor: busy ? "wait" : "pointer",
                           }}
                           disabled={busy}
-                          onClick={() => handleTicketProgress(t.id, "RESOLVED")}
+                          onClick={() => openResolvePanel(t.id)}
                         >
                           Mark resolved
                         </button>
@@ -654,6 +691,23 @@ function TechnicianWorkspace() {
                         <span style={{ fontSize: "13px", fontWeight: 700, color: "#2e7d32" }}>Completed</span>
                       )}
                     </div>
+                    {st === "RESOLVED" && (t.resolutionDetails || "").trim() && (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          padding: "12px 14px",
+                          borderRadius: 10,
+                          border: "1px solid #c8e6c9",
+                          backgroundColor: "#f1f8e9",
+                          fontSize: "13px",
+                          color: "#374151",
+                          lineHeight: 1.45,
+                        }}
+                      >
+                        <span style={{ fontWeight: 800, color: "#14213D" }}>Resolution: </span>
+                        {t.resolutionDetails}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -663,6 +717,120 @@ function TechnicianWorkspace() {
 
         <div style={{ flex: 1, minHeight: 12 }} aria-hidden />
       </div>
+
+      {resolvePanelTicketId && (() => {
+        const resolveTicket = assignedTickets.find((x) => x.id === resolvePanelTicketId);
+        const resolveBusy = progressBusyId === resolvePanelTicketId;
+        return (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tech-resolve-modal-title"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1110,
+              backgroundColor: "rgba(15, 23, 42, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 16,
+            }}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget && !resolveBusy) cancelResolvePanel();
+            }}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: 420,
+                backgroundColor: "#fff",
+                borderRadius: 14,
+                border: "1px solid #F5E7C6",
+                boxShadow: "0 24px 64px rgba(0,0,0,0.2)",
+                overflow: "hidden",
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div
+                style={{
+                  padding: "14px 16px",
+                  borderBottom: "1px solid #F5E7C6",
+                  backgroundColor: "#FAF3E1",
+                }}
+              >
+                <div id="tech-resolve-modal-title" style={{ fontSize: 16, fontWeight: 900, color: "#14213D" }}>
+                  Mark resolved
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", marginTop: 4, lineHeight: 1.35 }}>
+                  {resolveTicket?.issueTitle || "Ticket"}
+                </div>
+              </div>
+              <div style={{ padding: 16 }}>
+                <label
+                  htmlFor="tech-resolve-textarea"
+                  style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#14213D", marginBottom: 8 }}
+                >
+                  Resolution details
+                </label>
+                <textarea
+                  id="tech-resolve-textarea"
+                  rows={4}
+                  value={resolutionDraftByTicketId[resolvePanelTicketId] ?? ""}
+                  onChange={(e) => {
+                    setResolutionDraftByTicketId((prev) => ({ ...prev, [resolvePanelTicketId]: e.target.value }));
+                    setResolveFormError("");
+                  }}
+                  placeholder="Describe what was fixed or verified…"
+                  style={{
+                    ...selectStyle,
+                    width: "100%",
+                    resize: "vertical",
+                    minHeight: 88,
+                    fontFamily: "inherit",
+                    lineHeight: 1.45,
+                  }}
+                />
+                {resolveFormError && (
+                  <p style={{ margin: "8px 0 0 0", color: "#c62828", fontSize: "12px", fontWeight: 600 }}>{resolveFormError}</p>
+                )}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14, justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    style={{
+                      ...buttonStyle,
+                      backgroundColor: "#fff",
+                      color: "#14213D",
+                      border: "1px solid #F5E7C6",
+                      padding: "10px 14px",
+                      fontSize: "13px",
+                    }}
+                    disabled={resolveBusy}
+                    onClick={cancelResolvePanel}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      ...buttonStyle,
+                      backgroundColor: "#2e7d32",
+                      padding: "10px 14px",
+                      fontSize: "13px",
+                      opacity: resolveBusy ? 0.7 : 1,
+                      cursor: resolveBusy ? "wait" : "pointer",
+                    }}
+                    disabled={resolveBusy}
+                    onClick={() => confirmResolveTicket(resolvePanelTicketId)}
+                  >
+                    {resolveBusy ? "Saving…" : "Confirm resolution"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {profileModalOpen && (
         <div
@@ -1094,6 +1262,23 @@ function TechnicianWorkspace() {
                     >
                       {tk.description || "—"}
                     </div>
+                    {(tk.status || "").toUpperCase() === "RESOLVED" && (tk.resolutionDetails || "").trim() && (
+                      <div
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 12,
+                          border: "1px solid #c8e6c9",
+                          backgroundColor: "#f1f8e9",
+                          color: "#374151",
+                          fontSize: "14px",
+                          lineHeight: 1.45,
+                          marginBottom: 14,
+                        }}
+                      >
+                        <div style={{ fontSize: "12px", fontWeight: 800, color: "#14213D", marginBottom: 6 }}>Resolution details</div>
+                        {tk.resolutionDetails}
+                      </div>
+                    )}
 
                     <div style={{ ...sectionTitleStyle, color: "#14213D" }}>Attachments</div>
                     {attachments.length === 0 ? (

@@ -281,6 +281,22 @@ export default function MyTickets() {
                     </p>
 
                     <div style={{ ...descriptionBoxStyle, fontSize: "14px", fontWeight: 400 }}>{ticket.description}</div>
+                    {(ticket.status || "").toUpperCase() === "RESOLVED" && (ticket.resolutionDetails || "").trim() && (
+                      <div
+                        style={{
+                          ...descriptionBoxStyle,
+                          marginTop: "8px",
+                          border: "1px solid #c8e6c9",
+                          backgroundColor: "#f1f8e9",
+                          fontSize: "13px",
+                          fontWeight: 500,
+                          color: "#374151",
+                        }}
+                      >
+                        <span style={{ fontWeight: 800, color: "#14213D" }}>Resolution: </span>
+                        {ticket.resolutionDetails}
+                      </div>
+                    )}
                     {(ticket.status || "").toUpperCase() === "REJECTED" && ticket.rejectionReason && (
                       <div style={{ ...descriptionBoxStyle, marginTop: "8px", color: "#d32f2f", fontSize: "13px", fontWeight: 600 }}>
                         Rejection Reason: {ticket.rejectionReason}

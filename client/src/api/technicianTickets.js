@@ -11,13 +11,18 @@ export async function getTechnicianAssignedTickets() {
 
 /**
  * Updates ticket status to IN_PROGRESS or RESOLVED. Server enforces assignment and valid transitions.
+ * For RESOLVED, the server requires resolutionDetails.
  * @param {string} ticketId
  * @param {"IN_PROGRESS"|"RESOLVED"} status
+ * @param {string} [resolutionDetails]
  */
-export async function updateTechnicianTicketProgress(ticketId, status) {
+export async function updateTechnicianTicketProgress(ticketId, status, resolutionDetails) {
   const id = encodeURIComponent(ticketId);
   const url = `/api/technician/tickets/${id}/progress`;
   const body = { status };
+  if (resolutionDetails != null && String(resolutionDetails).trim() !== "") {
+    body.resolutionDetails = String(resolutionDetails).trim();
+  }
   try {
     return await apiPatch(url, body);
   } catch {

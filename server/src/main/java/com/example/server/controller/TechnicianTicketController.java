@@ -61,7 +61,12 @@ public class TechnicianTicketController {
         UpdateTicketProgressRequest body,
         Authentication authentication
     ) {
-        Ticket updated = technicianTicketService.updateProgress(id, body.getStatus(), authentication.getName());
+        Ticket updated = technicianTicketService.updateProgress(
+            id,
+            body.getStatus(),
+            authentication.getName(),
+            body.getResolutionDetails()
+        );
         return Map.of("message", "Progress updated", "ticket", updated);
     }
 }

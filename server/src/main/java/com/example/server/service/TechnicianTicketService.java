@@ -48,7 +48,7 @@ public class TechnicianTicketService {
             .toList();
     }
 
-    public Ticket updateProgress(String ticketId, String newStatusRaw, String technicianUserId) {
+    public Ticket updateProgress(String ticketId, String newStatusRaw, String technicianUserId, String resolutionDetailsRaw) {
         if (technicianUserId == null || technicianUserId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authenticated");
         }
@@ -65,6 +65,13 @@ public class TechnicianTicketService {
                 HttpStatus.BAD_REQUEST,
                 "Cannot change status from " + current + " to " + next
             );
+        }
+        if ("RESOLVED".equals(next)) {
+            String details = resolutionDetailsRaw == null ? "" : resolutionDetailsRaw.trim();
+            if (details.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Resolution details are required when marking a ticket resolved");
+            }
+            ticket.setResolutionDetails(details);
         }
         ticket.setStatus(next);
         return ticketRepo.save(ticket);
