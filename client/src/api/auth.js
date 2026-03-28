@@ -12,6 +12,11 @@ export function updateProfilePhone(payload) {
   return apiPatch("/api/auth/profile", payload);
 }
 
+/** @param {boolean} available - true = available, false = unavailable (technicians only) */
+export function updateTechnicianAvailability(available) {
+  return apiPatch("/api/auth/profile/technician-availability", { available });
+}
+
 /** @param {FormData} formData — must include field name `file` */
 export function uploadProfileAvatar(formData) {
   return apiPostFormData("/api/auth/profile/avatar", formData);

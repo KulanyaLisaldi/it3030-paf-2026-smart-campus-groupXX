@@ -11,6 +11,8 @@ public class AuthUserResponse {
     private String profileImageUrl;
     /** {@link com.example.server.model.TechnicianCategory} name for technicians; null otherwise. */
     private String technicianCategory;
+    /** For technicians: true = available, false = unavailable; null for other roles or unspecified. */
+    private Boolean technicianAvailable;
 
     public AuthUserResponse() {
     }
@@ -23,7 +25,8 @@ public class AuthUserResponse {
         String phoneNumber,
         String role,
         String profileImageUrl,
-        String technicianCategory
+        String technicianCategory,
+        Boolean technicianAvailable
     ) {
         this.id = id;
         this.firstName = firstName;
@@ -33,6 +36,7 @@ public class AuthUserResponse {
         this.role = role;
         this.profileImageUrl = profileImageUrl;
         this.technicianCategory = technicianCategory;
+        this.technicianAvailable = technicianAvailable;
     }
 
     public String getId() {
@@ -69,5 +73,13 @@ public class AuthUserResponse {
 
     public void setTechnicianCategory(String technicianCategory) {
         this.technicianCategory = technicianCategory;
+    }
+
+    public Boolean getTechnicianAvailable() {
+        return technicianAvailable;
+    }
+
+    public void setTechnicianAvailable(Boolean technicianAvailable) {
+        this.technicianAvailable = technicianAvailable;
     }
 }

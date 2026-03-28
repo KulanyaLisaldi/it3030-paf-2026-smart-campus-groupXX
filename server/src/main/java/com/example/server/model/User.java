@@ -28,6 +28,12 @@ public class User {
     /** Set for {@link UserRole#TECHNICIAN} when created by admin; null for other roles or legacy users. */
     private TechnicianCategory technicianCategory;
 
+    /**
+     * For technicians: if null or true, available for assignments; false = unavailable.
+     * Ignored for non-technician roles.
+     */
+    private Boolean technicianAvailable;
+
     private Instant createdAt;
 
     /** If true, user can't sign in (email/password, Google OAuth, or JWT). */
@@ -146,6 +152,14 @@ public class User {
 
     public void setTechnicianCategory(TechnicianCategory technicianCategory) {
         this.technicianCategory = technicianCategory;
+    }
+
+    public Boolean getTechnicianAvailable() {
+        return technicianAvailable;
+    }
+
+    public void setTechnicianAvailable(Boolean technicianAvailable) {
+        this.technicianAvailable = technicianAvailable;
     }
 
     /** Effective role for authorization (never null). */

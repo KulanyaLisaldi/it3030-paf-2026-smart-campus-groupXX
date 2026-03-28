@@ -7,7 +7,13 @@ import {
   technicianCategoryLabel,
   toApiTechnicianCategory,
 } from "../constants/technicianCategories";
-import { removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../api/auth";
+import {
+  fetchCurrentUser,
+  removeProfileAvatar,
+  updateProfilePhone,
+  updateTechnicianAvailability,
+  uploadProfileAvatar,
+} from "../api/auth";
 import { getTechnicianAssignedTickets, updateTechnicianTicketProgress } from "../api/technicianTickets";
 import { getTicketDetails } from "../api/tickets";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
@@ -173,6 +179,28 @@ function TechnicianWorkspace() {
   const [ticketDetailModalLoading, setTicketDetailModalLoading] = useState(false);
   const [ticketDetailModalError, setTicketDetailModalError] = useState("");
 
+  const [availabilityBusy, setAvailabilityBusy] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState("");
+
+  const isTechnicianAvailable = techUser?.technicianAvailable !== false;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const u = await fetchCurrentUser();
+        if (!cancelled && u?.id) {
+          persistCampusUser(u);
+        }
+      } catch {
+        // signed-out or network; keep cached campus user
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     const onUserUpdated = () => setUserRev((n) => n + 1);
     window.addEventListener(CAMPUS_USER_UPDATED, onUserUpdated);
@@ -225,6 +253,69 @@ function TechnicianWorkspace() {
     persistCampusUser(null);
     localStorage.removeItem("smartCampusAuthToken");
     navigate("/signin", { replace: true });
+  };
+
+  const handleAvailabilityChange = async (nextAvailable) => {
+    setAvailabilityBusy(true);
+    setAvailabilityError("");
+    try {
+      const updated = await updateTechnicianAvailability(nextAvailable);
+      persistCampusUser(updated);
+    } catch (e) {
+      setAvailabilityError(e?.message || "Could not update availability.");
+    } finally {
+      setAvailabilityBusy(false);
+    }
+  };
+
+  const renderDashboardAvailabilityRadioGroup = () => {
+    const wrapStyle = { gridColumn: "1 / -1", marginTop: 4, paddingTop: 14, borderTop: "1px solid #F5E7C6" };
+    const legendStyle = { fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: 8, padding: 0 };
+    const labelStyle = {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      fontWeight: 600,
+      fontSize: 13,
+      color: "#222222",
+      cursor: availabilityBusy ? "wait" : "pointer",
+    };
+
+    return (
+      <fieldset style={{ border: "none", margin: 0, padding: 0, ...wrapStyle }}>
+        <legend style={legendStyle}>Availability</legend>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }} role="radiogroup" aria-label="Technician availability">
+          <label style={labelStyle}>
+            <input
+              type="radio"
+              name="tech-dash-availability"
+              checked={isTechnicianAvailable}
+              onChange={() => handleAvailabilityChange(true)}
+              disabled={availabilityBusy}
+              style={{ width: 18, height: 18, accentColor: "#2e7d32", cursor: availabilityBusy ? "wait" : "pointer" }}
+            />
+            Available
+          </label>
+          <label style={labelStyle}>
+            <input
+              type="radio"
+              name="tech-dash-availability"
+              checked={!isTechnicianAvailable}
+              onChange={() => handleAvailabilityChange(false)}
+              disabled={availabilityBusy}
+              style={{ width: 18, height: 18, accentColor: "#6b7280", cursor: availabilityBusy ? "wait" : "pointer" }}
+            />
+            Unavailable
+          </label>
+        </div>
+        <p style={{ margin: "10px 0 0 0", fontSize: "12px", color: "#6b7280", lineHeight: 1.45, maxWidth: 520 }}>
+          Set whether you are available for new assignments. This is saved to your account.
+        </p>
+        {availabilityError && (
+          <p style={{ margin: "8px 0 0 0", color: "#c62828", fontSize: "12px", fontWeight: 600 }}>{availabilityError}</p>
+        )}
+      </fieldset>
+    );
   };
 
   const closeTicketDetailModal = () => {
@@ -383,6 +474,27 @@ function TechnicianWorkspace() {
                 Ticket assignment and maintenance workflows can plug in here.
               </span>
             </p>
+            <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: "12px", fontWeight: 700, color: "#6b7280" }}>Availability:</span>
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "4px 10px",
+                  borderRadius: "999px",
+                  fontSize: "12px",
+                  fontWeight: 800,
+                  backgroundColor: isTechnicianAvailable ? "#e8f5e9" : "#f3f4f6",
+                  color: isTechnicianAvailable ? "#2e7d32" : "#6b7280",
+                  border: `1px solid ${isTechnicianAvailable ? "#c8e6c9" : "#e5e7eb"}`,
+                }}
+              >
+                {isTechnicianAvailable ? "Available" : "Unavailable"}
+              </span>
+            </div>
+            {availabilityError && (
+              <p style={{ margin: "8px 0 0 0", color: "#c62828", fontSize: "12px", fontWeight: 600 }}>{availabilityError}</p>
+            )}
           </div>
 
           <div style={{ position: "relative", flexShrink: 0 }} ref={profileRef}>
@@ -567,6 +679,7 @@ function TechnicianWorkspace() {
                   <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "4px" }}>Phone</div>
                   <div style={{ fontSize: "15px", fontWeight: 600, color: "#222222" }}>{(techUser?.phoneNumber || "").trim() || "—"}</div>
                 </div>
+                {renderDashboardAvailabilityRadioGroup()}
               </div>
             </div>
           </div>

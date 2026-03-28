@@ -12,11 +12,12 @@ import com.example.server.repository.TicketCommentRepo;
 import com.example.server.repository.TicketRepo;
 import com.example.server.repository.UserRepo;
 import com.example.server.security.JwtService;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
-
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -246,6 +247,19 @@ public class AuthService {
         });
     }
 
+    public Optional<AuthUserResponse> updateTechnicianAvailability(String userId, boolean available) {
+        Optional<User> maybe = userRepo.findById(userId);
+        if (maybe.isEmpty()) {
+            return Optional.empty();
+        }
+        User user = maybe.get();
+        if (user.getEffectiveRole() != UserRole.TECHNICIAN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only technicians can update availability");
+        }
+        user.setTechnicianAvailable(available);
+        return Optional.of(toUserResponse(userRepo.save(user)));
+    }
+
     public Optional<AuthUserResponse> updateProfileAvatar(String userId, MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Image file is required");
@@ -322,6 +336,10 @@ public class AuthService {
 
     private AuthUserResponse toUserResponse(User user) {
         String category = user.getTechnicianCategory() != null ? user.getTechnicianCategory().name() : null;
+        Boolean technicianAvailable = null;
+        if (user.getEffectiveRole() == UserRole.TECHNICIAN) {
+            technicianAvailable = user.getTechnicianAvailable() == null || user.getTechnicianAvailable();
+        }
         return new AuthUserResponse(
             user.getId(),
             user.getFirstName(),
@@ -330,7 +348,8 @@ public class AuthService {
             user.getPhoneNumber(),
             user.getEffectiveRole().name(),
             user.getProfileImageUrl(),
-            category
+            category,
+            technicianAvailable
         );
     }
 }
