@@ -310,19 +310,30 @@ function normalizedTechnicianCategory(tech) {
   return String(c).toUpperCase();
 }
 
-/** Only technicians whose specialty equals the mapped enum for this ticket category (no fallback lists). */
-function suitableTechniciansForTicket(allTechnicians, ticketCategory) {
+/** Technicians whose stored specialty matches this ticket category (ignores availability). */
+function techniciansMatchingTicketCategory(allTechnicians, ticketCategory) {
   const list = Array.isArray(allTechnicians) ? allTechnicians : [];
   const mapped = TICKET_CATEGORY_TO_TECHNICIAN[ticketCategory];
-  if (mapped == null) {
-    return [];
-  }
+  if (mapped == null) return [];
   const target = String(mapped).toUpperCase();
-  return list
-    .filter((t) => normalizedTechnicianCategory(t) === target)
+  return list.filter((t) => normalizedTechnicianCategory(t) === target);
+}
+
+/** True = can receive new assignments; false = marked unavailable; null/undefined = treat as available. */
+function isTechnicianAvailableForAssignment(tech) {
+  return tech == null || tech.technicianAvailable !== false;
+}
+
+/**
+ * Technicians suitable to assign: same specialty as ticket category and currently available.
+ */
+function suitableTechniciansForTicket(allTechnicians, ticketCategory) {
+  return techniciansMatchingTicketCategory(allTechnicians, ticketCategory)
+    .filter((t) => isTechnicianAvailableForAssignment(t))
     .sort((a, b) => {
-      const av = (x) => (x && typeof x.technicianAvailable === "boolean" && x.technicianAvailable === false ? 0 : 1);
-      return av(b) - av(a);
+      const ea = String(a?.email || "").toLowerCase();
+      const eb = String(b?.email || "").toLowerCase();
+      return ea.localeCompare(eb);
     });
 }
 
@@ -561,6 +572,7 @@ export default function AdminTicketDashboard() {
       const all = await listTechnicians();
       const cat = ticket.category || "";
       const suitable = suitableTechniciansForTicket(all, cat);
+      const matchedByCategory = techniciansMatchingTicketCategory(all, cat);
       setAcceptPanelTechnicians(suitable);
       if (suitable.length > 0) {
         setAcceptSelectedTechnicianKey(technicianKey(suitable[0]));
@@ -570,8 +582,10 @@ export default function AdminTicketDashboard() {
           setAcceptPanelEmptyHint("none-registered");
         } else if (TICKET_CATEGORY_TO_TECHNICIAN[cat] == null) {
           setAcceptPanelEmptyHint("unknown-category");
-        } else {
+        } else if (matchedByCategory.length === 0) {
           setAcceptPanelEmptyHint("no-match");
+        } else {
+          setAcceptPanelEmptyHint("all-unavailable");
         }
       }
     } catch (err) {
@@ -1613,7 +1627,8 @@ export default function AdminTicketDashboard() {
             </div>
             <div style={{ padding: 14, overflowY: "auto", flex: 1, minHeight: 0 }}>
               <div style={{ color: "#6b7280", fontSize: 12, marginBottom: 10, lineHeight: 1.45 }}>
-                Select a technician to assign. Only technicians whose specialty matches this ticket’s category are listed.
+                Select a technician to assign. Only technicians whose <strong style={{ color: "#374151" }}>specialty matches</strong> this
+                ticket’s category and who are <strong style={{ color: "#374151" }}>marked available</strong> on their dashboard are listed.
               </div>
               {acceptModalTicket?.category && TICKET_CATEGORY_TO_TECHNICIAN[acceptModalTicket.category] != null && (
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#14213D", marginBottom: 10 }}>
@@ -1646,23 +1661,23 @@ export default function AdminTicketDashboard() {
                     type (e.g. Electrical Issue, Network Issue).
                   </p>
                 )}
+              {!acceptPanelLoading &&
+                !acceptPanelError &&
+                acceptPanelTechnicians.length === 0 &&
+                acceptPanelEmptyHint === "all-unavailable" && (
+                  <p style={{ margin: 0, color: "#92400e", fontSize: 13, lineHeight: 1.45, fontWeight: 600 }}>
+                    There are technicians with the right specialty for this ticket, but all of them are currently marked{" "}
+                    <strong>Unavailable</strong> on their technician dashboard. Ask one to switch to Available, or wait until
+                    someone is free to take assignments.
+                  </p>
+                )}
               {!acceptPanelLoading && acceptPanelTechnicians.length > 0 && (
                 <div style={{ display: "grid", gap: 8 }} role="radiogroup" aria-label="Choose technician">
                   {acceptPanelTechnicians.map((tech) => {
                     const tKey = technicianKey(tech);
                     const selected = acceptSelectedTechnicianKey === tKey;
-                    const avail =
-                      tech && typeof tech.technicianAvailable === "boolean"
-                        ? tech.technicianAvailable
-                          ? "Available"
-                          : "Unavailable"
-                        : "—";
-                    const availColor =
-                      tech && typeof tech.technicianAvailable === "boolean"
-                        ? tech.technicianAvailable
-                          ? "#2e7d32"
-                          : "#92400e"
-                        : "#6b7280";
+                    const avail = isTechnicianAvailableForAssignment(tech) ? "Available" : "Unavailable";
+                    const availColor = isTechnicianAvailableForAssignment(tech) ? "#2e7d32" : "#92400e";
                     return (
                       <button
                         type="button"
