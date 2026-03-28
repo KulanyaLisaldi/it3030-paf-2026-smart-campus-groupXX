@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { acceptAdminTicket, getAdminTicketList } from "../api/adminticket";
+import { apiDelete } from "../api/http";
 import { listTechnicians } from "../api/adminTechnicians";
 import { technicianCategoryLabel } from "../constants/technicianCategories";
 
@@ -398,6 +399,7 @@ export default function AdminTicketDashboard() {
   const [acceptConfirming, setAcceptConfirming] = useState(false);
   const [extraBarCollapsed, setExtraBarCollapsed] = useState(false);
   const [extraBarMenu, setExtraBarMenu] = useState("Ticket Management");
+  const [resolvedCloseBusyId, setResolvedCloseBusyId] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -436,6 +438,28 @@ export default function AdminTicketDashboard() {
   };
 
   const closeCommentsModal = () => setCommentsModalPayload(null);
+
+  const handleAdminCloseResolvedTicket = async (ticketId) => {
+    if (!ticketId) return;
+    const ok = window.confirm(
+      "Close and permanently delete this resolved ticket? This cannot be undone."
+    );
+    if (!ok) return;
+    setResolvedCloseBusyId(ticketId);
+    setError("");
+    try {
+      const id = encodeURIComponent(ticketId);
+      await apiDelete(`/api/tickets/${id}`);
+      setTickets((prev) =>
+        Array.isArray(prev) ? prev.filter((item) => item?.ticket?.id !== ticketId) : []
+      );
+      setCommentsModalPayload((cur) => (cur?.ticket?.id === ticketId ? null : cur));
+    } catch (err) {
+      setError(err?.message || "Could not delete ticket.");
+    } finally {
+      setResolvedCloseBusyId(null);
+    }
+  };
 
   const handleViewChange = (view) => {
     setActiveView(view);
@@ -1490,6 +1514,24 @@ export default function AdminTicketDashboard() {
                                       disabled={rejectModalTicket != null || acceptModalTicket != null}
                                     >
                                       Reject
+                                    </button>
+                                  )}
+                                  {statusU === "RESOLVED" && (
+                                    <button
+                                      type="button"
+                                      style={{
+                                        ...buttonStyle,
+                                        backgroundColor: "#6b7280",
+                                        minWidth: "74px",
+                                        padding: "8px 10px",
+                                        fontSize: "12px",
+                                        opacity: resolvedCloseBusyId === ticket.id ? 0.75 : 1,
+                                        cursor: resolvedCloseBusyId === ticket.id ? "wait" : "pointer",
+                                      }}
+                                      disabled={resolvedCloseBusyId === ticket.id}
+                                      onClick={() => handleAdminCloseResolvedTicket(ticket.id)}
+                                    >
+                                      {resolvedCloseBusyId === ticket.id ? "Closing…" : "Close"}
                                     </button>
                                   )}
                                   <button
