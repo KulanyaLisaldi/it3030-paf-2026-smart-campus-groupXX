@@ -1,20 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getTechnicianAssignedTickets } from "../api/technicianTickets";
 import { getAuthToken } from "../api/http";
-import { readCampusUser } from "../utils/campusUserStorage";
+import { persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import { appFontFamily } from "../utils/appFont";
-
-const pageStyle = {
-  minHeight: "100vh",
-  backgroundColor: "#FFFFFF",
-  padding: "clamp(16px, 3vw, 28px) clamp(14px, 3vw, 24px)",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  fontFamily: appFontFamily,
-  boxSizing: "border-box",
-};
 
 const shellStyle = {
   width: "100%",
@@ -58,6 +47,222 @@ function technicianWelcomeName(user) {
   const em = (user.email || "").trim();
   if (em && em.includes("@")) return em.split("@")[0];
   return "Technician";
+}
+
+function techSidebarNavRowStyle(active) {
+  return {
+    width: "100%",
+    textAlign: "left",
+    padding: "11px 16px",
+    margin: "2px 8px",
+    borderRadius: "10px",
+    border: "none",
+    background: active ? "rgba(250, 129, 18, 0.22)" : "transparent",
+    color: active ? "#fb923c" : "#cbd5e1",
+    fontSize: "14px",
+    fontWeight: 600,
+    cursor: "pointer",
+    boxSizing: "border-box",
+    borderLeft: active ? "3px solid #FA8112" : "3px solid transparent",
+  };
+}
+
+function techSidebarInitial(user) {
+  if (!user) return "T";
+  const first = (user.firstName || "").trim();
+  if (first) return first.charAt(0).toUpperCase();
+  const email = (user.email || "").trim();
+  if (email) return email.charAt(0).toUpperCase();
+  return "T";
+}
+
+const techSectionLabelStyle = {
+  fontSize: "10px",
+  fontWeight: 700,
+  letterSpacing: "0.12em",
+  color: "#94a3b8",
+  padding: "0 16px",
+  marginTop: "20px",
+  marginBottom: "8px",
+};
+
+function TechnicianAppShell({ children }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const user = readCampusUser();
+  const path = location.pathname;
+  const isTicketDashboardActive =
+    path === "/technician/tickets" || path.startsWith("/technician/tickets/");
+  const isTechnicianHomeActive =
+    path === "/technician" &&
+    location.hash !== "#technician-personal-details" &&
+    location.hash !== "#technician-assigned-tickets";
+  const isMyAssignmentActive =
+    path === "/technician" && location.hash === "#technician-assigned-tickets";
+  const isPersonalDetailsActive = path === "/technician" && location.hash === "#technician-personal-details";
+
+  const handleLogout = () => {
+    persistCampusUser(null);
+    localStorage.removeItem("smartCampusAuthToken");
+    navigate("/signin", { replace: true });
+  };
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "stretch",
+        backgroundColor: "#f1f5f9",
+        fontFamily: appFontFamily,
+        boxSizing: "border-box",
+      }}
+    >
+      <aside
+        style={{
+          width: sidebarCollapsed ? "92px" : "272px",
+          minWidth: sidebarCollapsed ? "92px" : "272px",
+          flexShrink: 0,
+          alignSelf: "stretch",
+          minHeight: "100vh",
+          transition: "width 0.2s ease, min-width 0.2s ease",
+          background: "linear-gradient(180deg, #14213D 0%, #1a2d4d 100%)",
+          color: "#e2e8f0",
+          display: "flex",
+          flexDirection: "column",
+          boxSizing: "border-box",
+          borderRight: "1px solid rgba(148, 163, 184, 0.12)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            padding: "22px 18px 18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+            {!sidebarCollapsed && (
+              <div
+                style={{
+                  width: "42px",
+                  height: "42px",
+                  borderRadius: "12px",
+                  background: "linear-gradient(135deg, #FA8112, #F5E7C6)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  fontWeight: 800,
+                  fontSize: "18px",
+                }}
+              >
+                {techSidebarInitial(user)}
+              </div>
+            )}
+            {!sidebarCollapsed && (
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: "16px", color: "#f8fafc" }}>Technician</div>
+                <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600, marginTop: "2px" }}>Smart Campus</div>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            aria-label={sidebarCollapsed ? "Open menu" : "Close menu"}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: "rgba(148, 163, 184, 0.12)",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#e2e8f0",
+              flexShrink: 0,
+            }}
+          >
+            <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>≡</span>
+          </button>
+        </div>
+
+        <nav style={{ flex: 1, padding: "4px 0" }} aria-label="Technician sections">
+          {!sidebarCollapsed && <div style={techSectionLabelStyle}>MENU</div>}
+          {!sidebarCollapsed && (
+            <>
+              <Link
+                to="/technician/tickets"
+                style={{ ...techSidebarNavRowStyle(isTicketDashboardActive), textDecoration: "none", display: "block" }}
+              >
+                Dashboard
+              </Link>
+              <Link
+                to="/technician#technician-personal-details"
+                style={{ ...techSidebarNavRowStyle(isPersonalDetailsActive), textDecoration: "none", display: "block" }}
+              >
+                Personal details
+              </Link>
+              <div style={techSectionLabelStyle}>Assign tickets</div>
+              <Link
+                to="/technician"
+                style={{ ...techSidebarNavRowStyle(isTechnicianHomeActive), textDecoration: "none", display: "block" }}
+              >
+                Assign technician
+              </Link>
+              <Link
+                to="/technician#technician-assigned-tickets"
+                style={{ ...techSidebarNavRowStyle(isMyAssignmentActive), textDecoration: "none", display: "block" }}
+              >
+                My assignment
+              </Link>
+            </>
+          )}
+        </nav>
+
+        {!sidebarCollapsed && (
+          <div style={{ padding: "12px 14px 20px", borderTop: "1px solid rgba(148, 163, 184, 0.15)" }}>
+            <button
+              type="button"
+              onClick={handleLogout}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                borderRadius: "10px",
+                border: "1px solid rgba(248, 113, 113, 0.35)",
+                background: "rgba(127, 29, 29, 0.35)",
+                color: "#fecaca",
+                fontWeight: 700,
+                fontSize: "14px",
+                cursor: "pointer",
+              }}
+            >
+              Logout
+            </button>
+          </div>
+        )}
+      </aside>
+
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
+          padding: "clamp(16px, 3vw, 28px) clamp(14px, 3vw, 24px)",
+          boxSizing: "border-box",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export default function TechnicianTicketDashboard() {
@@ -228,8 +433,8 @@ export default function TechnicianTicketDashboard() {
   }
 
   return (
-    <div style={pageStyle}>
-      <div style={shellStyle}>
+    <TechnicianAppShell>
+      <div style={{ ...shellStyle, width: "100%", maxWidth: "1180px", margin: "0 auto" }}>
         <div
           style={{
             display: "flex",
@@ -253,26 +458,6 @@ export default function TechnicianTicketDashboard() {
               Status overview, priority, and where your field work is concentrated.
             </p>
           </div>
-          <Link
-            to="/technician"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 16px",
-              borderRadius: "10px",
-              border: "1px solid #E8E4DC",
-              backgroundColor: "#FFFFFF",
-              color: "#14213D",
-              fontWeight: 800,
-              fontSize: "13px",
-              textDecoration: "none",
-              flexShrink: 0,
-              boxShadow: "0 2px 8px rgba(20, 33, 61, 0.05)",
-            }}
-          >
-            ← Back to main dashboard
-          </Link>
         </div>
 
         {error ? (
@@ -525,6 +710,6 @@ export default function TechnicianTicketDashboard() {
           </div>
         )}
       </div>
-    </div>
+    </TechnicianAppShell>
   );
 }

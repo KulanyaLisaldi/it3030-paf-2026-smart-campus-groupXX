@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createTechnician, listTechnicians } from "../api/adminTechnicians";
 import {
   DEFAULT_TECHNICIAN_CATEGORY,
@@ -49,14 +49,6 @@ const containerStyle = {
   boxShadow: "0 14px 32px rgba(0, 0, 0, 0.08)",
   padding: "28px",
   flexShrink: 0,
-};
-
-const technicianPageOuterStyle = {
-  ...pageStyleBase,
-  justifyContent: "flex-start",
-  alignItems: "stretch",
-  width: "100%",
-  padding: "20px clamp(16px, 4vw, 32px)",
 };
 
 const technicianCardStyle = {
@@ -215,8 +207,225 @@ const techTimelineMetricsRowStyle = {
   borderBottom: "none",
 };
 
+function techShellNavRowStyle(active) {
+  return {
+    width: "100%",
+    textAlign: "left",
+    padding: "11px 16px",
+    margin: "2px 8px",
+    borderRadius: "10px",
+    border: "none",
+    background: active ? "rgba(250, 129, 18, 0.22)" : "transparent",
+    color: active ? "#fb923c" : "#cbd5e1",
+    fontSize: "14px",
+    fontWeight: 600,
+    cursor: "pointer",
+    boxSizing: "border-box",
+    borderLeft: active ? "3px solid #FA8112" : "3px solid transparent",
+  };
+}
+
+function techShellInitial(user) {
+  if (!user) return "T";
+  const first = (user.firstName || "").trim();
+  if (first) return first.charAt(0).toUpperCase();
+  const email = (user.email || "").trim();
+  if (email) return email.charAt(0).toUpperCase();
+  return "T";
+}
+
+const techShellSectionLabelStyle = {
+  fontSize: "10px",
+  fontWeight: 700,
+  letterSpacing: "0.12em",
+  color: "#94a3b8",
+  padding: "0 16px",
+  marginTop: "20px",
+  marginBottom: "8px",
+};
+
+function TechnicianAppShell({ children }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const user = readCampusUser();
+  const path = location.pathname;
+  const isTicketDashboardActive =
+    path === "/technician/tickets" || path.startsWith("/technician/tickets/");
+  const isTechnicianHomeActive =
+    path === "/technician" &&
+    location.hash !== "#technician-personal-details" &&
+    location.hash !== "#technician-assigned-tickets";
+  const isMyAssignmentActive =
+    path === "/technician" && location.hash === "#technician-assigned-tickets";
+  const isPersonalDetailsActive = path === "/technician" && location.hash === "#technician-personal-details";
+
+  const handleLogout = () => {
+    persistCampusUser(null);
+    localStorage.removeItem("smartCampusAuthToken");
+    navigate("/signin", { replace: true });
+  };
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "stretch",
+        backgroundColor: "#f1f5f9",
+        fontFamily: techFontUi,
+        boxSizing: "border-box",
+      }}
+    >
+      <aside
+        style={{
+          width: sidebarCollapsed ? "92px" : "272px",
+          minWidth: sidebarCollapsed ? "92px" : "272px",
+          flexShrink: 0,
+          alignSelf: "stretch",
+          minHeight: "100vh",
+          transition: "width 0.2s ease, min-width 0.2s ease",
+          background: "linear-gradient(180deg, #14213D 0%, #1a2d4d 100%)",
+          color: "#e2e8f0",
+          display: "flex",
+          flexDirection: "column",
+          boxSizing: "border-box",
+          borderRight: "1px solid rgba(148, 163, 184, 0.12)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            padding: "22px 18px 18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+            {!sidebarCollapsed && (
+              <div
+                style={{
+                  width: "42px",
+                  height: "42px",
+                  borderRadius: "12px",
+                  background: "linear-gradient(135deg, #FA8112, #F5E7C6)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  fontWeight: 800,
+                  fontSize: "18px",
+                }}
+              >
+                {techShellInitial(user)}
+              </div>
+            )}
+            {!sidebarCollapsed && (
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: "16px", color: "#f8fafc" }}>Technician</div>
+                <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600, marginTop: "2px" }}>Smart Campus</div>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            aria-label={sidebarCollapsed ? "Open menu" : "Close menu"}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: "rgba(148, 163, 184, 0.12)",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#e2e8f0",
+              flexShrink: 0,
+            }}
+          >
+            <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>≡</span>
+          </button>
+        </div>
+
+        <nav style={{ flex: 1, padding: "4px 0" }} aria-label="Technician sections">
+          {!sidebarCollapsed && <div style={techShellSectionLabelStyle}>MENU</div>}
+          {!sidebarCollapsed && (
+            <>
+              <Link
+                to="/technician/tickets"
+                style={{ ...techShellNavRowStyle(isTicketDashboardActive), textDecoration: "none", display: "block" }}
+              >
+                Dashboard
+              </Link>
+              <Link
+                to="/technician#technician-personal-details"
+                style={{ ...techShellNavRowStyle(isPersonalDetailsActive), textDecoration: "none", display: "block" }}
+              >
+                Personal details
+              </Link>
+              <div style={techShellSectionLabelStyle}>Assign tickets</div>
+              <Link
+                to="/technician"
+                style={{ ...techShellNavRowStyle(isTechnicianHomeActive), textDecoration: "none", display: "block" }}
+              >
+                Assign technician
+              </Link>
+              <Link
+                to="/technician#technician-assigned-tickets"
+                style={{ ...techShellNavRowStyle(isMyAssignmentActive), textDecoration: "none", display: "block" }}
+              >
+                My assignment
+              </Link>
+            </>
+          )}
+        </nav>
+
+        {!sidebarCollapsed && (
+          <div style={{ padding: "12px 14px 20px", borderTop: "1px solid rgba(148, 163, 184, 0.15)" }}>
+            <button
+              type="button"
+              onClick={handleLogout}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                borderRadius: "10px",
+                border: "1px solid rgba(248, 113, 113, 0.35)",
+                background: "rgba(127, 29, 29, 0.35)",
+                color: "#fecaca",
+                fontWeight: 700,
+                fontSize: "14px",
+                cursor: "pointer",
+              }}
+            >
+              Logout
+            </button>
+          </div>
+        )}
+      </aside>
+
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
+          padding: "20px clamp(16px, 4vw, 32px)",
+          boxSizing: "border-box",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function TechnicianWorkspace() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [userRev, setUserRev] = useState(0);
   const techUser = useMemo(() => readCampusUser(), [userRev]);
   const name = (techUser?.firstName || techUser?.email || "Technician").trim();
@@ -270,6 +479,21 @@ function TechnicianWorkspace() {
       cancelled = true;
     };
   }, []);
+
+  // Deep-linking: sidebar targets within this page.
+  useEffect(() => {
+    const map = {
+      "#technician-personal-details": "technician-personal-details",
+      "#technician-assigned-tickets": "technician-assigned-tickets",
+    };
+    const elId = map[location.hash];
+    if (!elId) return;
+    const t = setTimeout(() => {
+      const el = document.getElementById(elId);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [location.hash]);
 
   useEffect(() => {
     const onUserUpdated = () => setUserRev((n) => n + 1);
@@ -587,25 +811,6 @@ function TechnicianWorkspace() {
             {availabilityError && (
               <p style={{ margin: "8px 0 0 0", color: "#c62828", fontSize: "12px", fontWeight: 600 }}>{availabilityError}</p>
             )}
-            <div style={{ marginTop: 12 }}>
-              <Link
-                to="/technician/tickets"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  fontSize: "13px",
-                  fontWeight: 800,
-                  color: "#FA8112",
-                  textDecoration: "none",
-                  borderBottom: "2px solid rgba(250, 129, 18, 0.35)",
-                  paddingBottom: 2,
-                }}
-              >
-                Ticket charts &amp; analytics
-                <span aria-hidden="true">→</span>
-              </Link>
-            </div>
           </div>
 
           <div style={{ position: "relative", flexShrink: 0 }} ref={profileRef}>
@@ -751,6 +956,7 @@ function TechnicianWorkspace() {
             </div>
             <div style={{ minWidth: 0 }}>
               <div
+                id="technician-personal-details"
                 style={{
                   fontSize: "13px",
                   fontWeight: 800,
@@ -808,7 +1014,10 @@ function TechnicianWorkspace() {
             boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
           }}
         >
-          <div style={{ ...sectionTitleStyle, fontSize: "17px", color: "#14213D", marginBottom: "12px" }}>
+          <div
+            id="technician-assigned-tickets"
+            style={{ ...sectionTitleStyle, fontSize: "17px", color: "#14213D", marginBottom: "12px" }}
+          >
             My assigned tickets
           </div>
           <p style={{ margin: "0 0 14px 0", color: "#6b7280", fontSize: "13px", lineHeight: 1.45 }}>
@@ -2068,16 +2277,20 @@ export default function TechnicianDashboard() {
   const user = useMemo(() => getStoredUser(), []);
   const isTechnician = (user?.role || "").toUpperCase() === "TECHNICIAN";
 
+  if (isTechnician) {
+    return (
+      <TechnicianAppShell>
+        <section style={technicianCardStyle}>
+          <TechnicianWorkspace />
+        </section>
+      </TechnicianAppShell>
+    );
+  }
+
   return (
-    <div style={isTechnician ? technicianPageOuterStyle : { ...pageStyleBase, justifyContent: "flex-start" }}>
-      <section
-        style={
-          isTechnician
-            ? technicianCardStyle
-            : { ...containerStyle, maxWidth: "980px", margin: "0 auto" }
-        }
-      >
-        {isTechnician ? <TechnicianWorkspace /> : <AdminTechnicianForm />}
+    <div style={{ ...pageStyleBase, justifyContent: "flex-start" }}>
+      <section style={{ ...containerStyle, maxWidth: "980px", margin: "0 auto" }}>
+        <AdminTechnicianForm />
       </section>
     </div>
   );
