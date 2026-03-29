@@ -10,6 +10,7 @@ import {
 } from "../api/tickets";
 import { technicianCategoryLabel } from "../constants/technicianCategories";
 import TicketTechnicianChat from "../components/TicketTechnicianChat.jsx";
+import { appFontFamily } from "../utils/appFont";
 
 const pageStyle = {
   minHeight: "100vh",
@@ -18,6 +19,7 @@ const pageStyle = {
   padding: "28px 16px",
   display: "flex",
   justifyContent: "center",
+  fontFamily: appFontFamily,
 };
 
 const containerStyle = {
@@ -27,6 +29,7 @@ const containerStyle = {
   borderRadius: "12px",
   boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
   padding: "18px",
+  fontFamily: appFontFamily,
 };
 
 const headerStyle = {
@@ -56,6 +59,7 @@ const buttonStyle = {
   padding: "12px 18px",
   fontSize: "14px",
   fontWeight: 600,
+  fontFamily: appFontFamily,
   lineHeight: 1,
   display: "inline-flex",
   alignItems: "center",
@@ -104,6 +108,7 @@ const textareaStyle = {
   borderRadius: "10px",
   padding: "10px 12px",
   fontSize: "14px",
+  fontFamily: appFontFamily,
   outline: "none",
   boxSizing: "border-box",
 };
@@ -114,6 +119,7 @@ const inputStyle = {
   borderRadius: "10px",
   padding: "10px 12px",
   fontSize: "14px",
+  fontFamily: appFontFamily,
   outline: "none",
   boxSizing: "border-box",
 };

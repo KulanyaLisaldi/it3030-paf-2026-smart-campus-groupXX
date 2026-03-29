@@ -4,6 +4,7 @@ import { getMyTickets } from "../api/tickets";
 import { getAuthToken } from "../api/http";
 import { CREATE_TICKET_PATH, rememberPostLoginPath } from "../utils/authRedirect";
 import { formatDurationSeconds, formatTicketInstant } from "../utils/slaFormat";
+import { appFontFamily } from "../utils/appFont";
 
 const pageStyle = {
   minHeight: "100vh",
@@ -12,6 +13,7 @@ const pageStyle = {
   padding: "28px 16px",
   display: "flex",
   justifyContent: "center",
+  fontFamily: appFontFamily,
 };
 
 const cardStyle = {
@@ -80,17 +82,13 @@ const descriptionBoxStyle = {
   lineHeight: 1.45,
 };
 
-/** Matches index.css / rest of app: system-ui stack */
-const fontUi =
-  'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-
 const timelinePanelStyle = {
   marginTop: "16px",
   borderRadius: "12px",
   border: "1px solid #F5E7C6",
   backgroundColor: "#FFFFFF",
   overflow: "hidden",
-  fontFamily: fontUi,
+  fontFamily: appFontFamily,
 };
 
 const timelineHeaderBarStyle = {

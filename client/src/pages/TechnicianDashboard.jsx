@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { createTechnician, listTechnicians } from "../api/adminTechnicians";
 import {
   DEFAULT_TECHNICIAN_CATEGORY,
@@ -20,6 +20,7 @@ import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils
 import PasswordInput from "../components/PasswordInput.jsx";
 import TicketTechnicianChat from "../components/TicketTechnicianChat.jsx";
 import { formatDurationSeconds, formatTicketInstant } from "../utils/slaFormat";
+import { appFontFamily as techFontUi } from "../utils/appFont";
 
 const PHONE_PATTERN = /^[0-9+\-()\s]{7,20}$/;
 
@@ -36,6 +37,7 @@ const pageStyleBase = {
   flexDirection: "column",
   alignItems: "center",
   boxSizing: "border-box",
+  fontFamily: techFontUi,
 };
 
 const containerStyle = {
@@ -59,13 +61,14 @@ const technicianPageOuterStyle = {
 
 const technicianCardStyle = {
   ...containerStyle,
-  maxWidth: "min(960px, 100%)",
+  maxWidth: "min(1280px, 100%)",
   width: "100%",
   margin: "0 auto",
   minHeight: "calc(100vh - 40px)",
   display: "flex",
   flexDirection: "column",
   boxSizing: "border-box",
+  fontFamily: techFontUi,
 };
 
 const selectStyle = {
@@ -74,6 +77,7 @@ const selectStyle = {
   padding: "10px 12px",
   fontSize: "14px",
   fontWeight: 600,
+  fontFamily: techFontUi,
   color: "#222222",
   backgroundColor: "#FFFFFF",
   outline: "none",
@@ -89,6 +93,7 @@ const buttonStyle = {
   padding: "12px 18px",
   fontSize: "14px",
   fontWeight: 600,
+  fontFamily: techFontUi,
   lineHeight: 1,
   display: "inline-flex",
   alignItems: "center",
@@ -150,7 +155,6 @@ function formatModalDate(value) {
 }
 
 /** Same layout as My Tickets timeline panel */
-const techFontUi = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 const techTimelinePanelStyle = {
   marginTop: "12px",
   marginBottom: "12px",
@@ -583,6 +587,25 @@ function TechnicianWorkspace() {
             {availabilityError && (
               <p style={{ margin: "8px 0 0 0", color: "#c62828", fontSize: "12px", fontWeight: 600 }}>{availabilityError}</p>
             )}
+            <div style={{ marginTop: 12 }}>
+              <Link
+                to="/technician/tickets"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: "13px",
+                  fontWeight: 800,
+                  color: "#FA8112",
+                  textDecoration: "none",
+                  borderBottom: "2px solid rgba(250, 129, 18, 0.35)",
+                  paddingBottom: 2,
+                }}
+              >
+                Ticket charts &amp; analytics
+                <span aria-hidden="true">→</span>
+              </Link>
+            </div>
           </div>
 
           <div style={{ position: "relative", flexShrink: 0 }} ref={profileRef}>

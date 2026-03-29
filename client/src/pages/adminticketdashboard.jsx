@@ -5,6 +5,7 @@ import { apiDelete } from "../api/http";
 import { listTechnicians } from "../api/adminTechnicians";
 import { technicianCategoryLabel } from "../constants/technicianCategories";
 import { formatDurationSeconds } from "../utils/slaFormat";
+import { appFontFamily } from "../utils/appFont";
 
 const ADMIN_SIDEBAR_ITEMS = ["Dashboard", "Tickets", "Charts", "Reports"];
 
@@ -15,6 +16,7 @@ const pageStyle = {
   padding: "28px 16px",
   display: "flex",
   justifyContent: "center",
+  fontFamily: appFontFamily,
 };
 
 const containerStyle = {
@@ -25,6 +27,7 @@ const containerStyle = {
   border: "1px solid #F5E7C6",
   boxShadow: "0 14px 32px rgba(0, 0, 0, 0.08)",
   padding: "22px",
+  fontFamily: appFontFamily,
 };
 
 const headerStyle = {
@@ -62,6 +65,7 @@ const buttonStyle = {
   padding: "12px 18px",
   fontSize: "14px",
   fontWeight: 600,
+  fontFamily: appFontFamily,
   lineHeight: 1,
   display: "inline-flex",
   alignItems: "center",
@@ -120,6 +124,7 @@ const selectStyle = {
   padding: "10px 12px",
   fontSize: "14px",
   fontWeight: 600,
+  fontFamily: appFontFamily,
   color: "#222222",
   backgroundColor: "#FFFFFF",
   outline: "none",
