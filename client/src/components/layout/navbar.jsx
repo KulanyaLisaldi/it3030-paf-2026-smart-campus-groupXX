@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { setAuthToken } from "../../api/http";
 import { ACCOUNT_PATH } from "../../utils/authRedirect";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../../utils/campusUserStorage";
 
@@ -196,10 +197,15 @@ const Navbar = () => {
 
   const handleLogout = () => {
     persistCampusUser(null);
-    localStorage.removeItem("smartCampusAuthToken");
+    setAuthToken(null);
+    try {
+      sessionStorage.removeItem("smartCampus_postLoginPath");
+    } catch {
+      /* ignore */
+    }
     setShowProfileMenu(false);
     setLogoutTick((n) => n + 1);
-    navigate("/", { replace: true });
+    navigate("/signin", { replace: true });
   };
 
   const handleManageAccount = () => {
@@ -343,7 +349,11 @@ const Navbar = () => {
 
       <div style={rightContainerStyle}>
         {isLoggedIn && user ? (
-          <div ref={profileMenuRef} style={{ position: "relative" }}>
+          <div
+            ref={profileMenuRef}
+            style={{ position: "relative" }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
               aria-expanded={showProfileMenu}
