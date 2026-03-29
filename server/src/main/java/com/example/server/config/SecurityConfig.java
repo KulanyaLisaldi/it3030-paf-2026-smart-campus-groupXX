@@ -63,6 +63,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/tickets").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/tickets/my").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/tickets/technician/assigned").hasRole("TECHNICIAN")
+                .requestMatchers(HttpMethod.GET, "/api/tickets/*/chat").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/tickets/*/chat").authenticated()
                 .requestMatchers("/api/tickets/**", "/uploads/**").permitAll()
                 .anyRequest().permitAll()
             )

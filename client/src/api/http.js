@@ -33,8 +33,23 @@ async function request(path, options) {
   if (!res.ok) {
     const messageFromJson = payload && typeof payload === "object" ? payload.message : "";
     const messageFromText = typeof payload === "string" ? payload : "";
-    const message = messageFromJson || messageFromText || `${options.method} ${path} failed: ${res.status}`;
-    throw new Error(message);
+    let message = messageFromJson || messageFromText;
+    if (!message) {
+      if (res.status === 404) {
+        message = `${options.method} ${path} failed: 404`;
+      } else if (res.status === 401) {
+        message = `${options.method} ${path} failed: 401`;
+      } else if (res.status === 403) {
+        message = `${options.method} ${path} failed: 403`;
+      } else {
+        message = `${options.method} ${path} failed: ${res.status}`;
+      }
+    }
+    const err = new Error(message);
+    err.status = res.status;
+    err.path = path;
+    err.method = options.method;
+    throw err;
   }
 
   return payload;

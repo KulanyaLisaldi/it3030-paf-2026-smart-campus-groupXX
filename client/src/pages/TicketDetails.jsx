@@ -9,6 +9,7 @@ import {
   updateTicketComment,
 } from "../api/tickets";
 import { technicianCategoryLabel } from "../constants/technicianCategories";
+import TicketTechnicianChat from "../components/TicketTechnicianChat.jsx";
 
 const pageStyle = {
   minHeight: "100vh",
@@ -196,6 +197,7 @@ export default function TicketDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const user = useMemo(() => getCurrentUser(), []);
+  const viewerChatRole = (user?.role || "").toUpperCase() === "TECHNICIAN" ? "TECHNICIAN" : "USER";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -220,6 +222,7 @@ export default function TicketDetails() {
   });
   const [commentEditingId, setCommentEditingId] = useState("");
   const [editingCommentText, setEditingCommentText] = useState("");
+  const [chatPopupOpen, setChatPopupOpen] = useState(false);
 
   const handleButtonHover = (event, isHover) => {
     event.target.style.backgroundColor = isHover ? "#E66A0A" : "#FA8112";
@@ -253,6 +256,20 @@ export default function TicketDetails() {
 
     load();
   }, [id]);
+
+  useEffect(() => {
+    if (!chatPopupOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") setChatPopupOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [chatPopupOpen]);
 
   const attachmentsRaw = ticketDetails?.ticket?.attachments || [];
   // Be defensive: Mongo list should return an array, but handle comma-separated string too.
@@ -403,6 +420,8 @@ export default function TicketDetails() {
       setActionError(err.message || "Failed to delete comment.");
     }
   };
+
+  const hasTechAssignment = Boolean((ticketDetails?.ticket?.assignedTechnicianId || "").trim());
 
   return (
     <div style={pageStyle}>
@@ -613,6 +632,155 @@ export default function TicketDetails() {
                 </div>
               )}
             </div>
+
+            <div style={cardStyle}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+                  <div style={sectionTitleStyle}>Messages</div>
+                  <p style={{ margin: "6px 0 0 0", color: "#6b7280", fontSize: "13px", lineHeight: 1.45 }}>
+                    Private WhatsApp-style chat with{" "}
+                    {viewerChatRole === "USER" ? "your assigned technician" : "the ticket reporter"}. Open the window
+                    when you want to talk.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={!hasTechAssignment}
+                  onClick={() => setChatPopupOpen(true)}
+                  style={{
+                    ...buttonStyle,
+                    flexShrink: 0,
+                    backgroundColor: hasTechAssignment ? "#128C7E" : "#d1d5db",
+                    cursor: hasTechAssignment ? "pointer" : "not-allowed",
+                    display: "inline-flex",
+                    gap: "8px",
+                    alignItems: "center",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!hasTechAssignment) return;
+                    e.currentTarget.style.backgroundColor = "#0f7a6e";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!hasTechAssignment) return;
+                    e.currentTarget.style.backgroundColor = "#128C7E";
+                  }}
+                >
+                  <span aria-hidden="true" style={{ fontSize: "16px" }}>
+                    💬
+                  </span>
+                  Open chat
+                </button>
+              </div>
+              {!hasTechAssignment && (
+                <p style={{ margin: "12px 0 0 0", color: "#6b7280", fontSize: "13px" }}>
+                  Chat unlocks after an administrator assigns a technician to this ticket.
+                </p>
+              )}
+            </div>
+
+            {chatPopupOpen && (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="ticket-chat-popup-title"
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 1400,
+                  backgroundColor: "rgba(15, 23, 42, 0.5)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "16px",
+                  boxSizing: "border-box",
+                }}
+                onMouseDown={(e) => {
+                  if (e.target === e.currentTarget) setChatPopupOpen(false);
+                }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    maxWidth: "380px",
+                    maxHeight: "min(92vh, 560px)",
+                    display: "flex",
+                    flexDirection: "column",
+                    backgroundColor: "#FFFFFF",
+                    borderRadius: "16px",
+                    boxShadow: "0 24px 48px rgba(0, 0, 0, 0.22)",
+                    overflow: "hidden",
+                    border: "1px solid #e5e7eb",
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      padding: "12px 14px",
+                      borderBottom: "1px solid #e5e7eb",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "10px",
+                      backgroundColor: "#FAF3E1",
+                    }}
+                  >
+                    <div id="ticket-chat-popup-title" style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: "16px", color: "#14213D", lineHeight: 1.2 }}>
+                        Ticket messages
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#6b7280", fontWeight: 600, marginTop: "2px" }}>
+                        {viewerChatRole === "USER"
+                          ? ticketDetails.assignedTechnician?.displayName ||
+                            ticketDetails.ticket.assignedTechnicianName ||
+                            "Technician"
+                          : ticketDetails.ticket.fullName || "Reporter"}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setChatPopupOpen(false)}
+                      style={{
+                        border: "1px solid #e5e7eb",
+                        background: "#FFFFFF",
+                        borderRadius: "10px",
+                        padding: "8px 14px",
+                        fontWeight: 700,
+                        fontSize: "13px",
+                        cursor: "pointer",
+                        color: "#14213D",
+                        flexShrink: 0,
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <div style={{ padding: "10px", flex: 1, minHeight: 0, overflow: "hidden", backgroundColor: "#f3f4f6" }}>
+                    <TicketTechnicianChat
+                      ticketId={id}
+                      viewerRole={viewerChatRole}
+                      peerName={
+                        viewerChatRole === "USER"
+                          ? ticketDetails.assignedTechnician?.displayName ||
+                            ticketDetails.ticket.assignedTechnicianName ||
+                            "Technician"
+                          : ticketDetails.ticket.fullName || ticketDetails.ticket.email || "Reporter"
+                      }
+                      hasAssignment={hasTechAssignment}
+                      height={380}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div style={cardStyle}>
               <div style={sectionTitleStyle}>Comments</div>

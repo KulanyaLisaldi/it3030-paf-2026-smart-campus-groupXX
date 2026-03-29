@@ -8,6 +8,7 @@ import com.example.server.dto.auth.UpdateProfileRequest;
 import com.example.server.model.Ticket;
 import com.example.server.model.User;
 import com.example.server.model.UserRole;
+import com.example.server.repository.TicketChatRepo;
 import com.example.server.repository.TicketCommentRepo;
 import com.example.server.repository.TicketRepo;
 import com.example.server.repository.UserRepo;
@@ -37,6 +38,7 @@ public class AuthService {
     private final UserRepo userRepo;
     private final TicketRepo ticketRepo;
     private final TicketCommentRepo ticketCommentRepo;
+    private final TicketChatRepo ticketChatRepo;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
@@ -44,12 +46,14 @@ public class AuthService {
         UserRepo userRepo,
         TicketRepo ticketRepo,
         TicketCommentRepo ticketCommentRepo,
+        TicketChatRepo ticketChatRepo,
         PasswordEncoder passwordEncoder,
         JwtService jwtService
     ) {
         this.userRepo = userRepo;
         this.ticketRepo = ticketRepo;
         this.ticketCommentRepo = ticketCommentRepo;
+        this.ticketChatRepo = ticketChatRepo;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
     }
@@ -328,6 +332,7 @@ public class AuthService {
         List<Ticket> tickets = ticketRepo.findByCreatedByOrderByCreatedAtDesc(userId);
         for (Ticket t : tickets) {
             ticketCommentRepo.deleteByTicketId(t.getId());
+            ticketChatRepo.deleteByTicketId(t.getId());
             ticketRepo.deleteById(t.getId());
         }
         userRepo.deleteById(userId);

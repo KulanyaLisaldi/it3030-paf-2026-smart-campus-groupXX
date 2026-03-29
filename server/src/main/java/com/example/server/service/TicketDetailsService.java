@@ -7,6 +7,7 @@ import com.example.server.dto.ticket.UpdateTicketCommentRequest;
 import com.example.server.model.Ticket;
 import com.example.server.model.TicketComment;
 import com.example.server.model.User;
+import com.example.server.repository.TicketChatRepo;
 import com.example.server.repository.TicketCommentRepo;
 import com.example.server.repository.TicketRepo;
 import com.example.server.repository.UserRepo;
@@ -22,11 +23,13 @@ public class TicketDetailsService {
 
     private final TicketRepo ticketRepo;
     private final TicketCommentRepo commentRepo;
+    private final TicketChatRepo ticketChatRepo;
     private final UserRepo userRepo;
 
-    public TicketDetailsService(TicketRepo ticketRepo, TicketCommentRepo commentRepo, UserRepo userRepo) {
+    public TicketDetailsService(TicketRepo ticketRepo, TicketCommentRepo commentRepo, TicketChatRepo ticketChatRepo, UserRepo userRepo) {
         this.ticketRepo = ticketRepo;
         this.commentRepo = commentRepo;
+        this.ticketChatRepo = ticketChatRepo;
         this.userRepo = userRepo;
     }
 
@@ -157,6 +160,7 @@ public class TicketDetailsService {
         }
 
         commentRepo.deleteByTicketId(ticketId);
+        ticketChatRepo.deleteByTicketId(ticketId);
         ticketRepo.deleteById(ticketId);
         return true;
     }

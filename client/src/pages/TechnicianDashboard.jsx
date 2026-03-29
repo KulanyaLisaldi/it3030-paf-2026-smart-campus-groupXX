@@ -18,6 +18,7 @@ import { getTechnicianAssignedTickets, updateTechnicianTicketProgress } from "..
 import { getTicketDetails } from "../api/tickets";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import PasswordInput from "../components/PasswordInput.jsx";
+import TicketTechnicianChat from "../components/TicketTechnicianChat.jsx";
 
 const PHONE_PATTERN = /^[0-9+\-()\s]{7,20}$/;
 
@@ -1426,6 +1427,19 @@ function TechnicianWorkspace() {
                         ))}
                       </div>
                     )}
+
+                    <div style={{ ...sectionTitleStyle, color: "#14213D", marginTop: 4 }}>Messages</div>
+                    <p style={{ margin: "0 0 10px 0", color: "#6b7280", fontSize: "13px", lineHeight: 1.45 }}>
+                      Chat with the ticket reporter. Messages are private to this ticket.
+                    </p>
+                    <div style={{ marginBottom: 14 }}>
+                      <TicketTechnicianChat
+                        ticketId={ticketDetailModalId}
+                        viewerRole="TECHNICIAN"
+                        peerName={tk.fullName || tk.email || "Reporter"}
+                        hasAssignment={Boolean((tk.assignedTechnicianId || "").trim())}
+                      />
+                    </div>
 
                     <div style={{ ...sectionTitleStyle, color: "#14213D" }}>Comments</div>
                     {comments.length === 0 ? (
