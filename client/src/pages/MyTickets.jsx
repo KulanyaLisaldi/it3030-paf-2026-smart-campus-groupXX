@@ -80,6 +80,76 @@ const descriptionBoxStyle = {
   lineHeight: 1.45,
 };
 
+/** Matches index.css / rest of app: system-ui stack */
+const fontUi =
+  'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+
+const timelinePanelStyle = {
+  marginTop: "16px",
+  borderRadius: "12px",
+  border: "1px solid #F5E7C6",
+  backgroundColor: "#FFFFFF",
+  overflow: "hidden",
+  fontFamily: fontUi,
+};
+
+const timelineHeaderBarStyle = {
+  padding: "11px 16px",
+  backgroundColor: "#FAF3E1",
+  fontSize: "11px",
+  fontWeight: 700,
+  letterSpacing: "0.07em",
+  textTransform: "uppercase",
+  color: "#14213D",
+};
+
+const timelineHeaderButtonStyle = {
+  ...timelineHeaderBarStyle,
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "10px",
+  cursor: "pointer",
+  border: "none",
+  fontFamily: "inherit",
+  textAlign: "left",
+  boxSizing: "border-box",
+};
+
+const timelineRowStyle = {
+  display: "grid",
+  /** Label may wrap; value column stays one line (dates, durations). */
+  gridTemplateColumns: "minmax(0, 1fr) max-content",
+  gap: "8px 16px",
+  alignItems: "center",
+  padding: "10px 16px",
+  fontSize: "13px",
+  borderBottom: "1px solid #f0ebe0",
+};
+
+const timelineLabelStyle = {
+  color: "#6b7280",
+  fontWeight: 600,
+  lineHeight: 1.4,
+  minWidth: 0,
+};
+
+const timelineValueStyle = {
+  color: "#374151",
+  fontWeight: 600,
+  textAlign: "right",
+  lineHeight: 1.35,
+  whiteSpace: "nowrap",
+  justifySelf: "end",
+};
+
+const timelineMetricsRowStyle = {
+  ...timelineRowStyle,
+  backgroundColor: "#faf9f6",
+  borderBottom: "none",
+};
+
 function getProgressInfo(status) {
   const normalizedStatus = (status || "").toUpperCase();
   if (normalizedStatus === "RESOLVED") {
@@ -116,6 +186,8 @@ export default function MyTickets() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  /** ticket id → false means collapsed; missing/undefined means expanded */
+  const [timelineExpandedById, setTimelineExpandedById] = useState({});
 
   const handleButtonHover = (event, isHover) => {
     event.target.style.backgroundColor = isHover ? "#E66A0A" : "#FA8112";
@@ -206,6 +278,7 @@ export default function MyTickets() {
             {tickets.map((ticket) => (
               (() => {
                 const progress = getProgressInfo(ticket.status);
+                const timelineExpanded = timelineExpandedById[ticket.id] !== false;
                 return (
                   <article
                     key={ticket.id}
@@ -304,67 +377,115 @@ export default function MyTickets() {
                       </div>
                     )}
 
-                    <div
-                      role="region"
-                      aria-label="Timeline and service metrics"
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        marginTop: "14px",
-                        padding: "14px 16px",
-                        borderRadius: "10px",
-                        border: "1px solid #e2e8f0",
-                        backgroundColor: "#f8fafc",
-                      }}
-                    >
-                      <div
+                    <div onClick={(e) => e.stopPropagation()} style={timelinePanelStyle}>
+                      <button
+                        type="button"
+                        id={`timeline-toggle-${ticket.id}`}
+                        aria-expanded={timelineExpanded}
+                        aria-controls={`timeline-body-${ticket.id}`}
                         style={{
-                          fontSize: "12px",
-                          fontWeight: 800,
-                          color: "#14213D",
-                          marginBottom: "12px",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.04em",
+                          ...timelineHeaderButtonStyle,
+                          borderBottom: timelineExpanded ? "1px solid #F5E7C6" : "none",
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTimelineExpandedById((prev) => ({
+                            ...prev,
+                            [ticket.id]: !(prev[ticket.id] !== false),
+                          }));
                         }}
                       >
-                        Timeline and service metrics
-                      </div>
-                      <div style={{ display: "grid", gap: "10px", fontSize: "13px", color: "#374151" }}>
-                        <div>
-                          <span style={{ fontWeight: 700, color: "#222", display: "block", marginBottom: "2px" }}>Ticket created at</span>
-                          <span style={{ fontWeight: 600 }}>{formatTicketInstant(ticket.createdAt)}</span>
+                        <span>Timeline and service metrics</span>
+                        <span
+                          aria-hidden
+                          style={{
+                            fontSize: "11px",
+                            color: "#14213D",
+                            fontWeight: 800,
+                            lineHeight: 1,
+                            flexShrink: 0,
+                            width: "22px",
+                            height: "22px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "6px",
+                            border: "1px solid #F5E7C6",
+                            backgroundColor: "#FFFFFF",
+                          }}
+                          title={timelineExpanded ? "Collapse" : "Expand"}
+                        >
+                          {timelineExpanded ? "−" : "+"}
+                        </span>
+                      </button>
+
+                      {timelineExpanded && (
+                        <div id={`timeline-body-${ticket.id}`} role="region" aria-label="Timeline and service metrics">
+                          <div style={{ ...timelineRowStyle, borderBottom: "1px solid #f0ebe0" }}>
+                            <span style={timelineLabelStyle}>Ticket created at</span>
+                            <span style={timelineValueStyle}>{formatTicketInstant(ticket.createdAt)}</span>
+                          </div>
+                          <div style={{ ...timelineRowStyle, borderBottom: "1px solid #f0ebe0" }}>
+                            <span style={timelineLabelStyle}>Technician assigned at</span>
+                            <span style={timelineValueStyle}>{formatTicketInstant(ticket.technicianAssignedAt)}</span>
+                          </div>
+                          <div style={{ ...timelineRowStyle, borderBottom: "none" }}>
+                            <span style={timelineLabelStyle}>Ticket resolved at</span>
+                            <span style={timelineValueStyle}>{formatTicketInstant(ticket.resolvedAt)}</span>
+                          </div>
+
+                          <div
+                            style={{
+                              borderTop: "1px solid #F5E7C6",
+                              backgroundColor: "#faf9f6",
+                            }}
+                          >
+                            <div
+                              style={{
+                                ...timelineMetricsRowStyle,
+                                borderBottom: "1px solid #f0ebe0",
+                              }}
+                            >
+                              <div style={{ minWidth: 0 }}>
+                                <span style={{ fontWeight: 700, color: "#14213D", fontSize: "13px" }}>TFR</span>
+                                <span
+                                  style={{
+                                    display: "block",
+                                    marginTop: "2px",
+                                    fontSize: "11px",
+                                    fontWeight: 500,
+                                    color: "#9ca3af",
+                                  }}
+                                >
+                                  Time to first response
+                                </span>
+                              </div>
+                              <span style={{ ...timelineValueStyle, color: "#14213D", fontSize: "14px" }}>
+                                {formatDurationSeconds(ticket.timeToFirstResponseSeconds)}
+                              </span>
+                            </div>
+                            <div style={{ ...timelineMetricsRowStyle, backgroundColor: "#faf9f6" }}>
+                              <div style={{ minWidth: 0 }}>
+                                <span style={{ fontWeight: 700, color: "#14213D", fontSize: "13px" }}>TTR</span>
+                                <span
+                                  style={{
+                                    display: "block",
+                                    marginTop: "2px",
+                                    fontSize: "11px",
+                                    fontWeight: 500,
+                                    color: "#9ca3af",
+                                  }}
+                                >
+                                  Time to resolution
+                                </span>
+                              </div>
+                              <span style={{ ...timelineValueStyle, color: "#14213D", fontSize: "14px" }}>
+                                {formatDurationSeconds(ticket.timeToResolutionSeconds)}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <span style={{ fontWeight: 700, color: "#222", display: "block", marginBottom: "2px" }}>Technician assigned at</span>
-                          <span style={{ fontWeight: 600 }}>{formatTicketInstant(ticket.technicianAssignedAt)}</span>
-                        </div>
-                        <div>
-                          <span style={{ fontWeight: 700, color: "#222", display: "block", marginBottom: "2px" }}>Ticket resolved at</span>
-                          <span style={{ fontWeight: 600 }}>{formatTicketInstant(ticket.resolvedAt)}</span>
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          marginTop: "14px",
-                          paddingTop: "14px",
-                          borderTop: "1px solid #e2e8f0",
-                          display: "grid",
-                          gap: "8px",
-                          fontSize: "13px",
-                          color: "#374151",
-                        }}
-                      >
-                        <div>
-                          <span style={{ fontWeight: 700, color: "#222" }}>TFR</span> (time to first response):{" "}
-                          <span style={{ fontWeight: 600 }}>{formatDurationSeconds(ticket.timeToFirstResponseSeconds)}</span>
-                        </div>
-                        <div>
-                          <span style={{ fontWeight: 700, color: "#222" }}>TTR</span> (time to resolution):{" "}
-                          <span style={{ fontWeight: 600 }}>{formatDurationSeconds(ticket.timeToResolutionSeconds)}</span>
-                        </div>
-                      </div>
-                      <p style={{ margin: "12px 0 0 0", fontSize: "11px", color: "#64748b", lineHeight: 1.45 }}>
-                        TFR measures from ticket creation until the first response (technician assignment, first comment, or first chat message). TTR measures from ticket creation until the ticket is marked resolved.
-                      </p>
+                      )}
                     </div>
                   </article>
                 );
