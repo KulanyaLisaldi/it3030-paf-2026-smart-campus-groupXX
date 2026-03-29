@@ -100,6 +100,53 @@ const sectionTitleStyle = {
   marginBottom: "8px",
 };
 
+const TECH_TICKET_STATUS_FILTER_OPTIONS = [
+  { value: "ALL", label: "All statuses" },
+  { value: "IN_PROGRESS", label: "In progress" },
+  { value: "RESOLVED", label: "Resolved" },
+];
+
+const TECH_TICKET_PRIORITY_FILTER_OPTIONS = [
+  { value: "ALL", label: "All priorities" },
+  { value: "High", label: "High" },
+  { value: "Medium", label: "Medium" },
+  { value: "Low", label: "Low" },
+];
+
+const techTicketFilterBarStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "10px",
+  alignItems: "center",
+  marginBottom: "12px",
+  padding: "14px",
+  border: "1px solid #F5E7C6",
+  borderRadius: "12px",
+  backgroundColor: "#FFFFFF",
+  boxShadow: "0 4px 12px rgba(20, 33, 61, 0.04)",
+};
+
+const techTicketFilterSelectStyle = {
+  border: "2px solid #F5E7C6",
+  borderRadius: "10px",
+  padding: "10px 12px",
+  fontSize: "14px",
+  fontWeight: 600,
+  fontFamily: techFontUi,
+  color: "#222222",
+  backgroundColor: "#FFFFFF",
+  outline: "none",
+  minWidth: "158px",
+  boxSizing: "border-box",
+  width: "auto",
+};
+
+const techTicketFilterSearchStyle = {
+  ...techTicketFilterSelectStyle,
+  flex: "1 1 220px",
+  minWidth: "200px",
+};
+
 function getStoredUser() {
   try {
     const raw = localStorage.getItem("smartCampusUser");
@@ -617,6 +664,9 @@ function TechnicianWorkspace() {
   const [assignedTickets, setAssignedTickets] = useState([]);
   const [assignedLoading, setAssignedLoading] = useState(false);
   const [assignedError, setAssignedError] = useState("");
+  const [techTicketStatusFilter, setTechTicketStatusFilter] = useState("ALL");
+  const [techTicketPriorityFilter, setTechTicketPriorityFilter] = useState("ALL");
+  const [techTicketSearch, setTechTicketSearch] = useState("");
   const [progressBusyId, setProgressBusyId] = useState("");
 
   const [resolvePanelTicketId, setResolvePanelTicketId] = useState(null);
@@ -634,6 +684,30 @@ function TechnicianWorkspace() {
   const [availabilityError, setAvailabilityError] = useState("");
 
   const isTechnicianAvailable = techUser?.technicianAvailable !== false;
+
+  const filteredAssignedTickets = useMemo(() => {
+    const q = techTicketSearch.trim().toLowerCase();
+    return assignedTickets.filter((t) => {
+      if (techTicketStatusFilter !== "ALL" && (t.status || "").toUpperCase() !== techTicketStatusFilter) return false;
+      if (techTicketPriorityFilter !== "ALL" && (t.priority || "") !== techTicketPriorityFilter) return false;
+      if (q) {
+        const hay = `${t.issueTitle || ""} ${t.description || ""} ${t.category || ""} ${t.resourceLocation || ""} ${t.fullName || ""} ${t.email || ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [assignedTickets, techTicketStatusFilter, techTicketPriorityFilter, techTicketSearch]);
+
+  const techTicketFiltersActive =
+    techTicketStatusFilter !== "ALL" ||
+    techTicketPriorityFilter !== "ALL" ||
+    techTicketSearch.trim() !== "";
+
+  const clearTechTicketFilters = () => {
+    setTechTicketStatusFilter("ALL");
+    setTechTicketPriorityFilter("ALL");
+    setTechTicketSearch("");
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -1053,9 +1127,75 @@ function TechnicianWorkspace() {
           {!assignedLoading && !assignedError && assignedTickets.length === 0 && (
             <p style={{ margin: 0, color: "#6b7280", fontSize: "14px" }}>No assigned tickets yet.</p>
           )}
-          {!assignedLoading && assignedTickets.length > 0 && (
+          {!assignedLoading && !assignedError && assignedTickets.length > 0 && (
+            <div style={techTicketFilterBarStyle}>
+              <select
+                style={techTicketFilterSelectStyle}
+                value={techTicketStatusFilter}
+                onChange={(e) => setTechTicketStatusFilter(e.target.value)}
+                aria-label="Filter by status"
+              >
+                {TECH_TICKET_STATUS_FILTER_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                style={techTicketFilterSelectStyle}
+                value={techTicketPriorityFilter}
+                onChange={(e) => setTechTicketPriorityFilter(e.target.value)}
+                aria-label="Filter by priority"
+              >
+                {TECH_TICKET_PRIORITY_FILTER_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="search"
+                style={techTicketFilterSearchStyle}
+                value={techTicketSearch}
+                onChange={(e) => setTechTicketSearch(e.target.value)}
+                placeholder="Search title, reporter, location…"
+                aria-label="Search assigned tickets"
+              />
+              {techTicketFiltersActive && (
+                <button
+                  type="button"
+                  onClick={clearTechTicketFilters}
+                  style={{
+                    border: "2px solid #F5E7C6",
+                    borderRadius: "10px",
+                    padding: "10px 14px",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    fontFamily: techFontUi,
+                    backgroundColor: "#FFFFFF",
+                    color: "#14213D",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+          {!assignedLoading && !assignedError && assignedTickets.length > 0 && (
+            <p style={{ margin: "0 0 12px 0", color: "#6b7280", fontSize: "13px", fontWeight: 600 }}>
+              Showing {filteredAssignedTickets.length} of {assignedTickets.length} ticket{assignedTickets.length === 1 ? "" : "s"}
+            </p>
+          )}
+          {!assignedLoading && !assignedError && assignedTickets.length > 0 && filteredAssignedTickets.length === 0 && (
+            <p style={{ margin: "0 0 8px 0", color: "#374151", fontSize: "14px", fontWeight: 600 }}>
+              No tickets match your filters.
+            </p>
+          )}
+          {!assignedLoading && assignedTickets.length > 0 && filteredAssignedTickets.length > 0 && (
             <div style={{ display: "grid", gap: "12px" }}>
-              {assignedTickets.map((t) => {
+              {filteredAssignedTickets.map((t) => {
                 const st = (t.status || "").toUpperCase();
                 const busy = progressBusyId === t.id;
                 return (
