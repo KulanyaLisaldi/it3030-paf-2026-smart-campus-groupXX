@@ -179,6 +179,7 @@ function TechnicianWorkspace() {
   const [ticketDetailModalData, setTicketDetailModalData] = useState(null);
   const [ticketDetailModalLoading, setTicketDetailModalLoading] = useState(false);
   const [ticketDetailModalError, setTicketDetailModalError] = useState("");
+  const [techChatPopupOpen, setTechChatPopupOpen] = useState(false);
 
   const [availabilityBusy, setAvailabilityBusy] = useState(false);
   const [availabilityError, setAvailabilityError] = useState("");
@@ -207,6 +208,20 @@ function TechnicianWorkspace() {
     window.addEventListener(CAMPUS_USER_UPDATED, onUserUpdated);
     return () => window.removeEventListener(CAMPUS_USER_UPDATED, onUserUpdated);
   }, []);
+
+  useEffect(() => {
+    if (!techChatPopupOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") setTechChatPopupOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [techChatPopupOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -320,6 +335,7 @@ function TechnicianWorkspace() {
   };
 
   const closeTicketDetailModal = () => {
+    setTechChatPopupOpen(false);
     setTicketDetailModalId(null);
     setTicketDetailModalData(null);
     setTicketDetailModalError("");
@@ -1288,6 +1304,7 @@ function TechnicianWorkspace() {
               )}
               {!ticketDetailModalLoading && !ticketDetailModalError && ticketDetailModalData?.ticket && (() => {
                 const tk = ticketDetailModalData.ticket;
+                const hasTechAssignment = Boolean((tk.assignedTechnicianId || "").trim());
                 const assignee = ticketDetailModalData.assignedTechnician;
                 const comments = ticketDetailModalData.comments || [];
                 const attachments = normalizeTicketAttachments(tk.attachments);
@@ -1428,17 +1445,65 @@ function TechnicianWorkspace() {
                       </div>
                     )}
 
-                    <div style={{ ...sectionTitleStyle, color: "#14213D", marginTop: 4 }}>Messages</div>
-                    <p style={{ margin: "0 0 10px 0", color: "#6b7280", fontSize: "13px", lineHeight: 1.45 }}>
-                      Chat with the ticket reporter. Messages are private to this ticket.
-                    </p>
-                    <div style={{ marginBottom: 14 }}>
-                      <TicketTechnicianChat
-                        ticketId={ticketDetailModalId}
-                        viewerRole="TECHNICIAN"
-                        peerName={tk.fullName || tk.email || "Reporter"}
-                        hasAssignment={Boolean((tk.assignedTechnicianId || "").trim())}
-                      />
+                    <div
+                      style={{
+                        marginTop: 4,
+                        marginBottom: 14,
+                        padding: "12px 14px",
+                        borderRadius: 12,
+                        border: "1px solid #F5E7C6",
+                        backgroundColor: "#FFFFFF",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        gap: 12,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+                        <div style={{ ...sectionTitleStyle, color: "#14213D", marginBottom: 6 }}>Messages</div>
+                        <p style={{ margin: 0, color: "#6b7280", fontSize: "13px", lineHeight: 1.45 }}>
+                          Private WhatsApp-style chat with the ticket reporter. Open the window when you want to talk.
+                        </p>
+                        {!hasTechAssignment && (
+                          <p style={{ margin: "10px 0 0 0", color: "#6b7280", fontSize: "13px" }}>
+                            Chat is unavailable until this ticket has an assigned technician on file.
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={!hasTechAssignment}
+                        onClick={() => setTechChatPopupOpen(true)}
+                        style={{
+                          flexShrink: 0,
+                          backgroundColor: hasTechAssignment ? "#128C7E" : "#d1d5db",
+                          color: "#FFFFFF",
+                          border: "none",
+                          borderRadius: 8,
+                          padding: "12px 18px",
+                          fontSize: 14,
+                          fontWeight: 600,
+                          cursor: hasTechAssignment ? "pointer" : "not-allowed",
+                          display: "inline-flex",
+                          gap: 8,
+                          alignItems: "center",
+                          lineHeight: 1,
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!hasTechAssignment) return;
+                          e.currentTarget.style.backgroundColor = "#0f7a6e";
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!hasTechAssignment) return;
+                          e.currentTarget.style.backgroundColor = "#128C7E";
+                        }}
+                      >
+                        <span aria-hidden="true" style={{ fontSize: 16 }}>
+                          💬
+                        </span>
+                        Open chat
+                      </button>
                     </div>
 
                     <div style={{ ...sectionTitleStyle, color: "#14213D" }}>Comments</div>
@@ -1466,6 +1531,90 @@ function TechnicianWorkspace() {
                   </>
                 );
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {techChatPopupOpen && ticketDetailModalId && ticketDetailModalData?.ticket && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tech-ticket-chat-popup-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1500,
+            backgroundColor: "rgba(15, 23, 42, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            boxSizing: "border-box",
+          }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setTechChatPopupOpen(false);
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 380,
+              maxHeight: "min(92vh, 560px)",
+              display: "flex",
+              flexDirection: "column",
+              backgroundColor: "#FFFFFF",
+              borderRadius: 16,
+              boxShadow: "0 24px 48px rgba(0, 0, 0, 0.22)",
+              overflow: "hidden",
+              border: "1px solid #e5e7eb",
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                flexShrink: 0,
+                padding: "12px 14px",
+                borderBottom: "1px solid #e5e7eb",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 10,
+                backgroundColor: "#FAF3E1",
+              }}
+            >
+              <div id="tech-ticket-chat-popup-title" style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: 16, color: "#14213D", lineHeight: 1.2 }}>Ticket messages</div>
+                <div style={{ fontSize: 12, color: "#6b7280", fontWeight: 600, marginTop: 2 }}>
+                  {ticketDetailModalData.ticket.fullName || ticketDetailModalData.ticket.email || "Reporter"}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTechChatPopupOpen(false)}
+                style={{
+                  border: "1px solid #e5e7eb",
+                  background: "#FFFFFF",
+                  borderRadius: 10,
+                  padding: "8px 14px",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  color: "#14213D",
+                  flexShrink: 0,
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <div style={{ padding: 10, flex: 1, minHeight: 0, overflow: "hidden", backgroundColor: "#f3f4f6" }}>
+              <TicketTechnicianChat
+                ticketId={ticketDetailModalId}
+                viewerRole="TECHNICIAN"
+                peerName={ticketDetailModalData.ticket.fullName || ticketDetailModalData.ticket.email || "Reporter"}
+                hasAssignment={Boolean((ticketDetailModalData.ticket.assignedTechnicianId || "").trim())}
+                height={380}
+              />
             </div>
           </div>
         </div>
