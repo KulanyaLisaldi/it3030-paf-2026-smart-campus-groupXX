@@ -25,12 +25,20 @@ public class TicketDetailsService {
     private final TicketCommentRepo commentRepo;
     private final TicketChatRepo ticketChatRepo;
     private final UserRepo userRepo;
+    private final TicketMetricsService ticketMetricsService;
 
-    public TicketDetailsService(TicketRepo ticketRepo, TicketCommentRepo commentRepo, TicketChatRepo ticketChatRepo, UserRepo userRepo) {
+    public TicketDetailsService(
+        TicketRepo ticketRepo,
+        TicketCommentRepo commentRepo,
+        TicketChatRepo ticketChatRepo,
+        UserRepo userRepo,
+        TicketMetricsService ticketMetricsService
+    ) {
         this.ticketRepo = ticketRepo;
         this.commentRepo = commentRepo;
         this.ticketChatRepo = ticketChatRepo;
         this.userRepo = userRepo;
+        this.ticketMetricsService = ticketMetricsService;
     }
 
     public Optional<TicketDetailsResponse> getTicketDetails(String ticketId) {
@@ -109,7 +117,9 @@ public class TicketDetailsService {
         comment.setCreatedBy(request.getCreatedBy().trim());
         comment.setCreatedAt(Instant.now());
 
-        return Optional.of(commentRepo.save(comment));
+        TicketComment saved = commentRepo.save(comment);
+        ticketMetricsService.recordFirstResponseIfBlank(ticketId);
+        return Optional.of(saved);
     }
 
     public Optional<TicketComment> updateComment(String ticketId, String commentId, UpdateTicketCommentRequest request) {

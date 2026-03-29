@@ -8,6 +8,7 @@ import com.example.server.repository.TicketRepo;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -40,6 +41,13 @@ public class AdminTicketService {
             ticket.setStatus("ACCEPTED");
             ticket.setAssignedTechnicianId(technicianId);
             ticket.setAssignedTechnicianName(technicianName);
+            Instant assignInstant = Instant.now();
+            if (ticket.getTechnicianAssignedAt() == null) {
+                ticket.setTechnicianAssignedAt(assignInstant);
+            }
+            if (ticket.getFirstResponseAt() == null) {
+                ticket.setFirstResponseAt(assignInstant);
+            }
             Ticket saved = ticketRepo.save(ticket);
             List<TicketComment> comments = commentRepo.findByTicketIdOrderByCreatedAtDesc(ticketId);
             return new AdminTicketWithComments(saved, comments);

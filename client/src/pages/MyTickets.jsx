@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { getMyTickets } from "../api/tickets";
 import { getAuthToken } from "../api/http";
 import { CREATE_TICKET_PATH, rememberPostLoginPath } from "../utils/authRedirect";
+import { formatDurationSeconds, formatTicketInstant } from "../utils/slaFormat";
 
 const pageStyle = {
   minHeight: "100vh",
@@ -302,6 +303,69 @@ export default function MyTickets() {
                         Rejection Reason: {ticket.rejectionReason}
                       </div>
                     )}
+
+                    <div
+                      role="region"
+                      aria-label="Timeline and service metrics"
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        marginTop: "14px",
+                        padding: "14px 16px",
+                        borderRadius: "10px",
+                        border: "1px solid #e2e8f0",
+                        backgroundColor: "#f8fafc",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 800,
+                          color: "#14213D",
+                          marginBottom: "12px",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        Timeline and service metrics
+                      </div>
+                      <div style={{ display: "grid", gap: "10px", fontSize: "13px", color: "#374151" }}>
+                        <div>
+                          <span style={{ fontWeight: 700, color: "#222", display: "block", marginBottom: "2px" }}>Ticket created at</span>
+                          <span style={{ fontWeight: 600 }}>{formatTicketInstant(ticket.createdAt)}</span>
+                        </div>
+                        <div>
+                          <span style={{ fontWeight: 700, color: "#222", display: "block", marginBottom: "2px" }}>Technician assigned at</span>
+                          <span style={{ fontWeight: 600 }}>{formatTicketInstant(ticket.technicianAssignedAt)}</span>
+                        </div>
+                        <div>
+                          <span style={{ fontWeight: 700, color: "#222", display: "block", marginBottom: "2px" }}>Ticket resolved at</span>
+                          <span style={{ fontWeight: 600 }}>{formatTicketInstant(ticket.resolvedAt)}</span>
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          marginTop: "14px",
+                          paddingTop: "14px",
+                          borderTop: "1px solid #e2e8f0",
+                          display: "grid",
+                          gap: "8px",
+                          fontSize: "13px",
+                          color: "#374151",
+                        }}
+                      >
+                        <div>
+                          <span style={{ fontWeight: 700, color: "#222" }}>TFR</span> (time to first response):{" "}
+                          <span style={{ fontWeight: 600 }}>{formatDurationSeconds(ticket.timeToFirstResponseSeconds)}</span>
+                        </div>
+                        <div>
+                          <span style={{ fontWeight: 700, color: "#222" }}>TTR</span> (time to resolution):{" "}
+                          <span style={{ fontWeight: 600 }}>{formatDurationSeconds(ticket.timeToResolutionSeconds)}</span>
+                        </div>
+                      </div>
+                      <p style={{ margin: "12px 0 0 0", fontSize: "11px", color: "#64748b", lineHeight: 1.45 }}>
+                        TFR measures from ticket creation until the first response (technician assignment, first comment, or first chat message). TTR measures from ticket creation until the ticket is marked resolved.
+                      </p>
+                    </div>
                   </article>
                 );
               })()

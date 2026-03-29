@@ -26,11 +26,18 @@ public class TicketChatService {
     private final TicketRepo ticketRepo;
     private final TicketChatRepo chatRepo;
     private final UserRepo userRepo;
+    private final TicketMetricsService ticketMetricsService;
 
-    public TicketChatService(TicketRepo ticketRepo, TicketChatRepo chatRepo, UserRepo userRepo) {
+    public TicketChatService(
+        TicketRepo ticketRepo,
+        TicketChatRepo chatRepo,
+        UserRepo userRepo,
+        TicketMetricsService ticketMetricsService
+    ) {
         this.ticketRepo = ticketRepo;
         this.chatRepo = chatRepo;
         this.userRepo = userRepo;
+        this.ticketMetricsService = ticketMetricsService;
     }
 
     public List<TicketChatMessage> listMessages(String ticketId, Authentication authentication) {
@@ -61,7 +68,9 @@ public class TicketChatService {
         msg.setSenderDisplayName(resolveDisplayName(role, ticket, senderUser));
         msg.setBody(body);
         msg.setCreatedAt(Instant.now());
-        return chatRepo.save(msg);
+        TicketChatMessage saved = chatRepo.save(msg);
+        ticketMetricsService.recordFirstResponseIfBlank(ticketId);
+        return saved;
     }
 
     private void assertTicketHasAssignment(Ticket ticket) {

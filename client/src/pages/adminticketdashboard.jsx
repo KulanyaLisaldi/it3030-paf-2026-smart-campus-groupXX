@@ -4,6 +4,7 @@ import { acceptAdminTicket, getAdminTicketList } from "../api/adminticket";
 import { apiDelete } from "../api/http";
 import { listTechnicians } from "../api/adminTechnicians";
 import { technicianCategoryLabel } from "../constants/technicianCategories";
+import { formatDurationSeconds } from "../utils/slaFormat";
 
 const ADMIN_SIDEBAR_ITEMS = ["Dashboard", "Tickets", "Charts", "Reports"];
 
@@ -1424,17 +1425,19 @@ export default function AdminTicketDashboard() {
 
               {!loading && !error && filteredAndSortedTickets.length > 0 && (
                 <div style={{ border: "1px solid #F5E7C6", borderRadius: "12px", overflowX: "auto", backgroundColor: "#FFFFFF" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1020px", tableLayout: "fixed" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1180px", tableLayout: "fixed" }}>
                     <thead>
                       <tr style={{ backgroundColor: "#FAF3E1" }}>
-                        <th style={{ width: "18%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Ticket</th>
-                        <th style={{ width: "15%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Reported By</th>
-                        <th style={{ width: "12%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Status</th>
-                        <th style={{ width: "10%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Priority</th>
-                        <th style={{ width: "11%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Progress</th>
-                        <th style={{ width: "12%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Assigned to</th>
-                        <th style={{ width: "11%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Created</th>
-                        <th style={{ width: "11%", textAlign: "right", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Actions</th>
+                        <th style={{ width: "16%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Ticket</th>
+                        <th style={{ width: "13%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Reported By</th>
+                        <th style={{ width: "10%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Status</th>
+                        <th style={{ width: "9%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Priority</th>
+                        <th style={{ width: "10%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Progress</th>
+                        <th style={{ width: "10%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Assigned to</th>
+                        <th style={{ width: "9%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Created</th>
+                        <th style={{ width: "8%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "12px" }} title="Time to first response">TFR</th>
+                        <th style={{ width: "8%", textAlign: "left", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "12px" }} title="Time to resolution">TTR</th>
+                        <th style={{ width: "7%", textAlign: "right", padding: "12px", borderBottom: "1px solid #F5E7C6", color: "#374151", fontSize: "13px" }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1507,6 +1510,12 @@ export default function AdminTicketDashboard() {
                               </td>
                               <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top", color: "#6b7280", fontSize: "12px" }}>
                                 {formatDate(ticket.createdAt)}
+                              </td>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top", color: "#374151", fontSize: "12px", fontWeight: 600 }}>
+                                {formatDurationSeconds(ticket.timeToFirstResponseSeconds)}
+                              </td>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top", color: "#374151", fontSize: "12px", fontWeight: 600 }}>
+                                {formatDurationSeconds(ticket.timeToResolutionSeconds)}
                               </td>
                               <td style={{ padding: "12px", borderBottom: "1px solid #F5E7C6", verticalAlign: "top" }}>
                                 <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>

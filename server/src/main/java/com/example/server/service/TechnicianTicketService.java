@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -72,6 +73,9 @@ public class TechnicianTicketService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Resolution details are required when marking a ticket resolved");
             }
             ticket.setResolutionDetails(details);
+            if (ticket.getResolvedAt() == null) {
+                ticket.setResolvedAt(Instant.now());
+            }
         }
         ticket.setStatus(next);
         return ticketRepo.save(ticket);

@@ -19,6 +19,7 @@ import { getTicketDetails } from "../api/tickets";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import PasswordInput from "../components/PasswordInput.jsx";
 import TicketTechnicianChat from "../components/TicketTechnicianChat.jsx";
+import { formatDurationSeconds, formatTicketInstant } from "../utils/slaFormat";
 
 const PHONE_PATTERN = /^[0-9+\-()\s]{7,20}$/;
 
@@ -1328,6 +1329,52 @@ function TechnicianWorkspace() {
                       <span style={{ ...chip, backgroundColor: "#14213D", color: "#fff" }}>Status: {tk.status}</span>
                       <span style={{ ...chip, backgroundColor: priorityBg, color: "#fff" }}>Priority: {tk.priority}</span>
                       <span style={{ ...chip, backgroundColor: "#E5E5E5", color: "#14213D" }}>Category: {tk.category}</span>
+                    </div>
+                    <div
+                      style={{
+                        marginBottom: 12,
+                        padding: "14px 16px",
+                        borderRadius: 12,
+                        border: "1px solid #e2e8f0",
+                        backgroundColor: "#f8fafc",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 800,
+                          color: "#14213D",
+                          marginBottom: 10,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        Timeline and service metrics
+                      </div>
+                      <div style={{ display: "grid", gap: 8, fontSize: "13px", color: "#374151", marginBottom: 12 }}>
+                        <div>
+                          <span style={{ fontWeight: 700, display: "block", marginBottom: 2 }}>Ticket created at</span>
+                          <span style={{ fontWeight: 600 }}>{formatTicketInstant(tk.createdAt)}</span>
+                        </div>
+                        <div>
+                          <span style={{ fontWeight: 700, display: "block", marginBottom: 2 }}>Technician assigned at</span>
+                          <span style={{ fontWeight: 600 }}>{formatTicketInstant(tk.technicianAssignedAt)}</span>
+                        </div>
+                        <div>
+                          <span style={{ fontWeight: 700, display: "block", marginBottom: 2 }}>Ticket resolved at</span>
+                          <span style={{ fontWeight: 600 }}>{formatTicketInstant(tk.resolvedAt)}</span>
+                        </div>
+                      </div>
+                      <div style={{ paddingTop: 12, borderTop: "1px solid #e2e8f0", display: "grid", gap: 6, fontSize: "13px", color: "#374151" }}>
+                        <div>
+                          <span style={{ fontWeight: 700 }}>TFR</span> (time to first response):{" "}
+                          <span style={{ fontWeight: 600 }}>{formatDurationSeconds(tk.timeToFirstResponseSeconds)}</span>
+                        </div>
+                        <div>
+                          <span style={{ fontWeight: 700 }}>TTR</span> (time to resolution):{" "}
+                          <span style={{ fontWeight: 600 }}>{formatDurationSeconds(tk.timeToResolutionSeconds)}</span>
+                        </div>
+                      </div>
                     </div>
                     {(assignee || tk.assignedTechnicianName) && (
                       <div
