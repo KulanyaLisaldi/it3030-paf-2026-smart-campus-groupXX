@@ -1,8 +1,11 @@
 package com.example.server.model;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,8 +26,18 @@ public class Ticket {
     private String priority;
     private List<String> attachments = new ArrayList<>();
     private String status;
+    /** User id (Mongo) or email fallback for the assigned technician. */
+    private String assignedTechnicianId;
+    private String assignedTechnicianName;
     private String createdBy;
     private Instant createdAt;
+    private String resolutionDetails;
+    /** Set when the first qualifying response occurs (assignment, first comment, or first chat message). */
+    private Instant firstResponseAt;
+    /** Set when the ticket is marked RESOLVED. */
+    private Instant resolvedAt;
+    /** Set when an administrator assigns a technician (accept flow). */
+    private Instant technicianAssignedAt;
 
     public Ticket() {
     }
@@ -113,6 +126,22 @@ public class Ticket {
         this.status = status;
     }
 
+    public String getAssignedTechnicianId() {
+        return assignedTechnicianId;
+    }
+
+    public void setAssignedTechnicianId(String assignedTechnicianId) {
+        this.assignedTechnicianId = assignedTechnicianId;
+    }
+
+    public String getAssignedTechnicianName() {
+        return assignedTechnicianName;
+    }
+
+    public void setAssignedTechnicianName(String assignedTechnicianName) {
+        this.assignedTechnicianName = assignedTechnicianName;
+    }
+
     public String getCreatedBy() {
         return createdBy;
     }
@@ -127,5 +156,57 @@ public class Ticket {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getResolutionDetails() {
+        return resolutionDetails;
+    }
+
+    public void setResolutionDetails(String resolutionDetails) {
+        this.resolutionDetails = resolutionDetails;
+    }
+
+    public Instant getFirstResponseAt() {
+        return firstResponseAt;
+    }
+
+    public void setFirstResponseAt(Instant firstResponseAt) {
+        this.firstResponseAt = firstResponseAt;
+    }
+
+    public Instant getResolvedAt() {
+        return resolvedAt;
+    }
+
+    public void setResolvedAt(Instant resolvedAt) {
+        this.resolvedAt = resolvedAt;
+    }
+
+    public Instant getTechnicianAssignedAt() {
+        return technicianAssignedAt;
+    }
+
+    public void setTechnicianAssignedAt(Instant technicianAssignedAt) {
+        this.technicianAssignedAt = technicianAssignedAt;
+    }
+
+    /** Duration from ticket creation to first response (TFR). Null if no first response yet. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonGetter
+    public Long getTimeToFirstResponseSeconds() {
+        if (createdAt == null || firstResponseAt == null) {
+            return null;
+        }
+        return Duration.between(createdAt, firstResponseAt).getSeconds();
+    }
+
+    /** Duration from ticket creation to resolution (TTR). Null if not resolved yet. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonGetter
+    public Long getTimeToResolutionSeconds() {
+        if (createdAt == null || resolvedAt == null) {
+            return null;
+        }
+        return Duration.between(createdAt, resolvedAt).getSeconds();
     }
 }

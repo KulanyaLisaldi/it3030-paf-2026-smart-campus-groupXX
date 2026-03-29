@@ -26,7 +26,7 @@ export function navigateAfterAuth(user, navigate) {
     return;
   }
   if (role === "TECHNICIAN") {
-    navigate("/technician", { replace: true });
+    navigate("/technician/tickets", { replace: true });
     return;
   }
   navigate("/", { replace: true });
@@ -34,7 +34,7 @@ export function navigateAfterAuth(user, navigate) {
 
 /**
  * After successful login: campus users may return to a stored path (e.g. Create Ticket).
- * Admin and technician always go to their dashboards — never to Create Ticket from that flow.
+ * Admin and technician always go to their home surfaces (admin console, technician ticket dashboard) — never to Create Ticket from that flow.
  * @param {NavigateFunction} navigate
  * @param {unknown} locationState — `useLocation().state`
  */

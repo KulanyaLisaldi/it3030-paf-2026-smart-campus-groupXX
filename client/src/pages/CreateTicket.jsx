@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { createTicket } from "../api/tickets";
 import { getAuthToken } from "../api/http";
 import { CREATE_TICKET_PATH, rememberPostLoginPath } from "../utils/authRedirect";
+import { appFontFamily } from "../utils/appFont";
 
 const CATEGORY_OPTIONS = [
   "Electrical Issue",
@@ -47,6 +48,7 @@ const pageStyle = {
   display: "flex",
   justifyContent: "center",
   padding: "28px 16px",
+  fontFamily: appFontFamily,
 };
 
 const formCardStyle = {
@@ -56,6 +58,7 @@ const formCardStyle = {
   borderRadius: "12px",
   boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
   padding: "24px",
+  fontFamily: appFontFamily,
 };
 
 const sectionStyle = {
@@ -97,6 +100,7 @@ const inputStyle = {
   borderRadius: "8px",
   padding: "10px 12px",
   fontSize: "14px",
+  fontFamily: appFontFamily,
   outline: "none",
   boxSizing: "border-box",
 };
@@ -119,6 +123,7 @@ const buttonStyle = {
   borderRadius: "8px",
   padding: "12px 18px",
   fontWeight: 600,
+  fontFamily: appFontFamily,
   cursor: "pointer",
 };
 

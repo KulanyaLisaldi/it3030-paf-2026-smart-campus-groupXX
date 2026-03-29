@@ -8,15 +8,17 @@ import com.example.server.dto.auth.UpdateProfileRequest;
 import com.example.server.model.Ticket;
 import com.example.server.model.User;
 import com.example.server.model.UserRole;
+import com.example.server.repository.TicketChatRepo;
 import com.example.server.repository.TicketCommentRepo;
 import com.example.server.repository.TicketRepo;
 import com.example.server.repository.UserRepo;
 import com.example.server.security.JwtService;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
-
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,6 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -35,6 +38,7 @@ public class AuthService {
     private final UserRepo userRepo;
     private final TicketRepo ticketRepo;
     private final TicketCommentRepo ticketCommentRepo;
+    private final TicketChatRepo ticketChatRepo;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
@@ -42,12 +46,14 @@ public class AuthService {
         UserRepo userRepo,
         TicketRepo ticketRepo,
         TicketCommentRepo ticketCommentRepo,
+        TicketChatRepo ticketChatRepo,
         PasswordEncoder passwordEncoder,
         JwtService jwtService
     ) {
         this.userRepo = userRepo;
         this.ticketRepo = ticketRepo;
         this.ticketCommentRepo = ticketCommentRepo;
+        this.ticketChatRepo = ticketChatRepo;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
     }
@@ -110,6 +116,15 @@ public class AuthService {
         user.setTechnicianCategory(request.getCategory());
         User saved = userRepo.save(user);
         return toUserResponse(saved);
+    }
+
+    public List<AuthUserResponse> listTechnicians() {
+        return userRepo.findByRole(UserRole.TECHNICIAN).stream()
+            .sorted(Comparator
+                .comparing(User::getLastName, Comparator.nullsFirst(String.CASE_INSENSITIVE_ORDER))
+                .thenComparing(User::getFirstName, Comparator.nullsFirst(String.CASE_INSENSITIVE_ORDER)))
+            .map(this::toUserResponse)
+            .toList();
     }
 
     private String normalizeEmail(String email) {
@@ -236,6 +251,19 @@ public class AuthService {
         });
     }
 
+    public Optional<AuthUserResponse> updateTechnicianAvailability(String userId, boolean available) {
+        Optional<User> maybe = userRepo.findById(userId);
+        if (maybe.isEmpty()) {
+            return Optional.empty();
+        }
+        User user = maybe.get();
+        if (user.getEffectiveRole() != UserRole.TECHNICIAN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only technicians can update availability");
+        }
+        user.setTechnicianAvailable(available);
+        return Optional.of(toUserResponse(userRepo.save(user)));
+    }
+
     public Optional<AuthUserResponse> updateProfileAvatar(String userId, MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Image file is required");
@@ -304,6 +332,7 @@ public class AuthService {
         List<Ticket> tickets = ticketRepo.findByCreatedByOrderByCreatedAtDesc(userId);
         for (Ticket t : tickets) {
             ticketCommentRepo.deleteByTicketId(t.getId());
+            ticketChatRepo.deleteByTicketId(t.getId());
             ticketRepo.deleteById(t.getId());
         }
         userRepo.deleteById(userId);
@@ -312,6 +341,10 @@ public class AuthService {
 
     private AuthUserResponse toUserResponse(User user) {
         String category = user.getTechnicianCategory() != null ? user.getTechnicianCategory().name() : null;
+        Boolean technicianAvailable = null;
+        if (user.getEffectiveRole() == UserRole.TECHNICIAN) {
+            technicianAvailable = user.getTechnicianAvailable() == null || user.getTechnicianAvailable();
+        }
         return new AuthUserResponse(
             user.getId(),
             user.getFirstName(),
@@ -320,7 +353,8 @@ public class AuthService {
             user.getPhoneNumber(),
             user.getEffectiveRole().name(),
             user.getProfileImageUrl(),
-            category
+            category,
+            technicianAvailable
         );
     }
 }

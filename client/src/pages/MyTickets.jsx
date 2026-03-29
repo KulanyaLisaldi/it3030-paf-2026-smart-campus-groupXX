@@ -1,21 +1,22 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getMyTickets } from "../api/tickets";
 import { getAuthToken } from "../api/http";
-import { CREATE_TICKET_PATH, rememberPostLoginPath } from "../utils/authRedirect";
+import { formatDurationSeconds, formatTicketInstant } from "../utils/slaFormat";
+import { appFontFamily } from "../utils/appFont";
 
 const pageStyle = {
   minHeight: "100vh",
-  backgroundColor: "#FAF3E1",
-  backgroundImage: "linear-gradient(180deg, #FAF3E1 0%, #FFFFFF 70%)",
+  backgroundColor: "#FFFFFF",
   padding: "28px 16px",
   display: "flex",
   justifyContent: "center",
+  fontFamily: appFontFamily,
 };
 
 const cardStyle = {
   width: "100%",
-  maxWidth: "960px",
+  maxWidth: "1280px",
   backgroundColor: "#FFFFFF",
   borderRadius: "12px",
   boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
@@ -23,7 +24,7 @@ const cardStyle = {
 };
 
 const headerStripStyle = {
-  backgroundColor: "#FAF3E1",
+  backgroundColor: "#FFFFFF",
   color: "#222222",
   borderRadius: "12px",
   padding: "16px 16px",
@@ -79,6 +80,121 @@ const descriptionBoxStyle = {
   lineHeight: 1.45,
 };
 
+const timelinePanelStyle = {
+  marginTop: "16px",
+  borderRadius: "12px",
+  border: "1px solid #F5E7C6",
+  backgroundColor: "#FFFFFF",
+  overflow: "hidden",
+  fontFamily: appFontFamily,
+};
+
+const timelineHeaderBarStyle = {
+  padding: "11px 16px",
+  backgroundColor: "#FAF3E1",
+  fontSize: "11px",
+  fontWeight: 700,
+  letterSpacing: "0.07em",
+  textTransform: "uppercase",
+  color: "#14213D",
+};
+
+const timelineHeaderButtonStyle = {
+  ...timelineHeaderBarStyle,
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "10px",
+  cursor: "pointer",
+  border: "none",
+  fontFamily: "inherit",
+  textAlign: "left",
+  boxSizing: "border-box",
+};
+
+const timelineRowStyle = {
+  display: "grid",
+  /** Label may wrap; value column stays one line (dates, durations). */
+  gridTemplateColumns: "minmax(0, 1fr) max-content",
+  gap: "8px 16px",
+  alignItems: "center",
+  padding: "10px 16px",
+  fontSize: "13px",
+  borderBottom: "1px solid #f0ebe0",
+};
+
+const timelineLabelStyle = {
+  color: "#6b7280",
+  fontWeight: 600,
+  lineHeight: 1.4,
+  minWidth: 0,
+};
+
+const timelineValueStyle = {
+  color: "#374151",
+  fontWeight: 600,
+  textAlign: "right",
+  lineHeight: 1.35,
+  whiteSpace: "nowrap",
+  justifySelf: "end",
+};
+
+const timelineMetricsRowStyle = {
+  ...timelineRowStyle,
+  backgroundColor: "#faf9f6",
+  borderBottom: "none",
+};
+
+const STATUS_FILTER_OPTIONS = [
+  { value: "ALL", label: "All statuses" },
+  { value: "OPEN", label: "Open" },
+  { value: "ACCEPTED", label: "Accepted" },
+  { value: "IN_PROGRESS", label: "In progress" },
+  { value: "RESOLVED", label: "Resolved" },
+  { value: "REJECTED", label: "Rejected" },
+];
+
+const PRIORITY_FILTER_OPTIONS = [
+  { value: "ALL", label: "All priorities" },
+  { value: "High", label: "High" },
+  { value: "Medium", label: "Medium" },
+  { value: "Low", label: "Low" },
+];
+
+const filterBarStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "10px",
+  alignItems: "center",
+  marginTop: "12px",
+  padding: "14px",
+  border: "1px solid #F5E7C6",
+  borderRadius: "12px",
+  backgroundColor: "#FFFFFF",
+  boxShadow: "0 4px 12px rgba(20, 33, 61, 0.04)",
+};
+
+const filterSelectStyle = {
+  border: "2px solid #F5E7C6",
+  borderRadius: "10px",
+  padding: "10px 12px",
+  fontSize: "14px",
+  fontWeight: 600,
+  fontFamily: appFontFamily,
+  color: "#222222",
+  backgroundColor: "#FFFFFF",
+  outline: "none",
+  minWidth: "158px",
+  boxSizing: "border-box",
+};
+
+const filterSearchStyle = {
+  ...filterSelectStyle,
+  flex: "1 1 220px",
+  minWidth: "200px",
+};
+
 function getProgressInfo(status) {
   const normalizedStatus = (status || "").toUpperCase();
   if (normalizedStatus === "RESOLVED") {
@@ -115,9 +231,44 @@ export default function MyTickets() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [priorityFilter, setPriorityFilter] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [searchText, setSearchText] = useState("");
+  /** ticket id → false means collapsed; missing/undefined means expanded */
+  const [timelineExpandedById, setTimelineExpandedById] = useState({});
 
-  const handleButtonHover = (event, isHover) => {
-    event.target.style.backgroundColor = isHover ? "#E66A0A" : "#FA8112";
+  const categoryOptions = useMemo(() => {
+    const set = new Set();
+    tickets.forEach((t) => {
+      const c = (t.category || "").trim();
+      if (c) set.add(c);
+    });
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [tickets]);
+
+  const filteredTickets = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    return tickets.filter((t) => {
+      if (statusFilter !== "ALL" && (t.status || "").toUpperCase() !== statusFilter) return false;
+      if (priorityFilter !== "ALL" && (t.priority || "") !== priorityFilter) return false;
+      if (categoryFilter !== "ALL" && (t.category || "") !== categoryFilter) return false;
+      if (q) {
+        const hay = `${t.issueTitle || ""} ${t.description || ""} ${t.category || ""} ${t.resourceLocation || ""} ${t.assignedTechnicianName || ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [tickets, statusFilter, priorityFilter, categoryFilter, searchText]);
+
+  const filtersActive =
+    statusFilter !== "ALL" || priorityFilter !== "ALL" || categoryFilter !== "ALL" || searchText.trim() !== "";
+
+  const clearFilters = () => {
+    setStatusFilter("ALL");
+    setPriorityFilter("ALL");
+    setCategoryFilter("ALL");
+    setSearchText("");
   };
 
   useEffect(() => {
@@ -135,7 +286,7 @@ export default function MyTickets() {
         const list = Array.isArray(data) ? data : [];
         const merged = list.map((ticket) => {
           const decision = decisions[ticket?.id];
-          if (!decision?.status) return ticket;
+          if (!decision?.status || (decision.status || "").toUpperCase() !== "REJECTED") return ticket;
           return {
             ...ticket,
             status: decision.status,
@@ -158,36 +309,6 @@ export default function MyTickets() {
       <section style={cardStyle}>
         <div style={headerStripStyle}>
           <h1 style={titleStyle}>My Tickets</h1>
-
-          <button
-            type="button"
-            style={{
-              backgroundColor: "#FA8112",
-              color: "#FFFFFF",
-              border: "none",
-              borderRadius: "8px",
-              padding: "12px 18px",
-              fontSize: "14px",
-              fontWeight: 600,
-              lineHeight: 1,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-            }}
-            onMouseEnter={(event) => handleButtonHover(event, true)}
-            onMouseLeave={(event) => handleButtonHover(event, false)}
-            onClick={() => {
-              if (!getAuthToken()) {
-                rememberPostLoginPath(CREATE_TICKET_PATH);
-                navigate("/signin", { state: { from: CREATE_TICKET_PATH } });
-              } else {
-                navigate(CREATE_TICKET_PATH);
-              }
-            }}
-          >
-            Create New Ticket
-          </button>
         </div>
 
         {location.state?.createdSuccess && (
@@ -201,10 +322,76 @@ export default function MyTickets() {
         {!loading && !error && tickets.length === 0 && <p>No tickets found yet.</p>}
 
         {!loading && !error && tickets.length > 0 && (
+          <div style={filterBarStyle}>
+            <select style={filterSelectStyle} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status">
+              {STATUS_FILTER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <select style={filterSelectStyle} value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} aria-label="Filter by priority">
+              {PRIORITY_FILTER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <select style={filterSelectStyle} value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} aria-label="Filter by category">
+              <option value="ALL">All categories</option>
+              {categoryOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <input
+              type="search"
+              style={filterSearchStyle}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search title, description, location…"
+              aria-label="Search tickets"
+            />
+            {filtersActive && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                style={{
+                  border: "2px solid #F5E7C6",
+                  borderRadius: "10px",
+                  padding: "10px 14px",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  fontFamily: appFontFamily,
+                  backgroundColor: "#FFFFFF",
+                  color: "#14213D",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
+
+        {!loading && !error && tickets.length > 0 && (
+          <p style={{ margin: "10px 0 0 0", color: "#6b7280", fontSize: "13px", fontWeight: 600 }}>
+            Showing {filteredTickets.length} of {tickets.length} ticket{tickets.length === 1 ? "" : "s"}
+          </p>
+        )}
+
+        {!loading && !error && tickets.length > 0 && filteredTickets.length === 0 && (
+          <p style={{ marginTop: "14px", color: "#374151", fontWeight: 600 }}>No tickets match your filters.</p>
+        )}
+
+        {!loading && !error && tickets.length > 0 && filteredTickets.length > 0 && (
           <div style={{ display: "grid", gap: "12px", marginTop: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-            {tickets.map((ticket) => (
+            {filteredTickets.map((ticket) => (
               (() => {
                 const progress = getProgressInfo(ticket.status);
+                const timelineExpanded = timelineExpandedById[ticket.id] !== false;
                 return (
                   <article
                     key={ticket.id}
@@ -252,6 +439,12 @@ export default function MyTickets() {
                       {ticket.issueTitle}
                     </h3>
 
+                    {ticket.assignedTechnicianName && (
+                      <p style={{ margin: "8px 0 0 0", color: "#14213D", fontSize: "13px", fontWeight: 700 }}>
+                        Assigned technician: <span style={{ fontWeight: 600 }}>{ticket.assignedTechnicianName}</span>
+                      </p>
+                    )}
+
                     <div style={{ marginTop: "10px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", marginBottom: "6px" }}>
                         <div style={{ color: "#374151", fontWeight: 600, fontSize: "14px" }}>Progress: {progress.percent}%</div>
@@ -275,11 +468,138 @@ export default function MyTickets() {
                     </p>
 
                     <div style={{ ...descriptionBoxStyle, fontSize: "14px", fontWeight: 400 }}>{ticket.description}</div>
+                    {(ticket.status || "").toUpperCase() === "RESOLVED" && (ticket.resolutionDetails || "").trim() && (
+                      <div
+                        style={{
+                          ...descriptionBoxStyle,
+                          marginTop: "8px",
+                          border: "1px solid #c8e6c9",
+                          backgroundColor: "#f1f8e9",
+                          fontSize: "13px",
+                          fontWeight: 500,
+                          color: "#374151",
+                        }}
+                      >
+                        <span style={{ fontWeight: 800, color: "#14213D" }}>Resolution: </span>
+                        {ticket.resolutionDetails}
+                      </div>
+                    )}
                     {(ticket.status || "").toUpperCase() === "REJECTED" && ticket.rejectionReason && (
                       <div style={{ ...descriptionBoxStyle, marginTop: "8px", color: "#d32f2f", fontSize: "13px", fontWeight: 600 }}>
                         Rejection Reason: {ticket.rejectionReason}
                       </div>
                     )}
+
+                    <div onClick={(e) => e.stopPropagation()} style={timelinePanelStyle}>
+                      <button
+                        type="button"
+                        id={`timeline-toggle-${ticket.id}`}
+                        aria-expanded={timelineExpanded}
+                        aria-controls={`timeline-body-${ticket.id}`}
+                        style={{
+                          ...timelineHeaderButtonStyle,
+                          borderBottom: timelineExpanded ? "1px solid #F5E7C6" : "none",
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTimelineExpandedById((prev) => ({
+                            ...prev,
+                            [ticket.id]: !(prev[ticket.id] !== false),
+                          }));
+                        }}
+                      >
+                        <span>Timeline and service metrics</span>
+                        <span
+                          aria-hidden
+                          style={{
+                            fontSize: "11px",
+                            color: "#14213D",
+                            fontWeight: 800,
+                            lineHeight: 1,
+                            flexShrink: 0,
+                            width: "22px",
+                            height: "22px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "6px",
+                            border: "1px solid #F5E7C6",
+                            backgroundColor: "#FFFFFF",
+                          }}
+                          title={timelineExpanded ? "Collapse" : "Expand"}
+                        >
+                          {timelineExpanded ? "−" : "+"}
+                        </span>
+                      </button>
+
+                      {timelineExpanded && (
+                        <div id={`timeline-body-${ticket.id}`} role="region" aria-label="Timeline and service metrics">
+                          <div style={{ ...timelineRowStyle, borderBottom: "1px solid #f0ebe0" }}>
+                            <span style={timelineLabelStyle}>Ticket created at</span>
+                            <span style={timelineValueStyle}>{formatTicketInstant(ticket.createdAt)}</span>
+                          </div>
+                          <div style={{ ...timelineRowStyle, borderBottom: "1px solid #f0ebe0" }}>
+                            <span style={timelineLabelStyle}>Technician assigned at</span>
+                            <span style={timelineValueStyle}>{formatTicketInstant(ticket.technicianAssignedAt)}</span>
+                          </div>
+                          <div style={{ ...timelineRowStyle, borderBottom: "none" }}>
+                            <span style={timelineLabelStyle}>Ticket resolved at</span>
+                            <span style={timelineValueStyle}>{formatTicketInstant(ticket.resolvedAt)}</span>
+                          </div>
+
+                          <div
+                            style={{
+                              borderTop: "1px solid #F5E7C6",
+                              backgroundColor: "#faf9f6",
+                            }}
+                          >
+                            <div
+                              style={{
+                                ...timelineMetricsRowStyle,
+                                borderBottom: "1px solid #f0ebe0",
+                              }}
+                            >
+                              <div style={{ minWidth: 0 }}>
+                                <span style={{ fontWeight: 700, color: "#14213D", fontSize: "13px" }}>TFR</span>
+                                <span
+                                  style={{
+                                    display: "block",
+                                    marginTop: "2px",
+                                    fontSize: "11px",
+                                    fontWeight: 500,
+                                    color: "#9ca3af",
+                                  }}
+                                >
+                                  Time to first response
+                                </span>
+                              </div>
+                              <span style={{ ...timelineValueStyle, color: "#14213D", fontSize: "14px" }}>
+                                {formatDurationSeconds(ticket.timeToFirstResponseSeconds)}
+                              </span>
+                            </div>
+                            <div style={{ ...timelineMetricsRowStyle, backgroundColor: "#faf9f6" }}>
+                              <div style={{ minWidth: 0 }}>
+                                <span style={{ fontWeight: 700, color: "#14213D", fontSize: "13px" }}>TTR</span>
+                                <span
+                                  style={{
+                                    display: "block",
+                                    marginTop: "2px",
+                                    fontSize: "11px",
+                                    fontWeight: 500,
+                                    color: "#9ca3af",
+                                  }}
+                                >
+                                  Time to resolution
+                                </span>
+                              </div>
+                              <span style={{ ...timelineValueStyle, color: "#14213D", fontSize: "14px" }}>
+                                {formatDurationSeconds(ticket.timeToResolutionSeconds)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </article>
                 );
               })()

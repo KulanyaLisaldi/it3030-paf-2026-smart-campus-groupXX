@@ -2,6 +2,7 @@ package com.example.server.controller;
 
 import com.example.server.dto.auth.AuthUserResponse;
 import com.example.server.dto.auth.UpdateProfileRequest;
+import com.example.server.dto.auth.UpdateTechnicianAvailabilityRequest;
 import com.example.server.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.Map;
@@ -42,6 +44,24 @@ public class AccountProfileController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
         }
         return ResponseEntity.ok(updated.get());
+    }
+
+    @PatchMapping(value = "/technician-availability", consumes = "application/json")
+    public ResponseEntity<?> updateTechnicianAvailability(
+        Authentication authentication,
+        @Valid @RequestBody UpdateTechnicianAvailabilityRequest request
+    ) {
+        String userId = authentication.getName();
+        try {
+            Optional<AuthUserResponse> updated =
+                authService.updateTechnicianAvailability(userId, Boolean.TRUE.equals(request.getAvailable()));
+            if (updated.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+            }
+            return ResponseEntity.ok(updated.get());
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(Map.of("message", ex.getReason()));
+        }
     }
 
     @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

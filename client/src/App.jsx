@@ -5,6 +5,7 @@ import Home from "./pages/Home.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import OAuthCallback from "./pages/OAuthCallback.jsx";
 import TechnicianDashboard from "./pages/TechnicianDashboard.jsx";
+import TechnicianTicketDashboard from "./pages/TechnicianTicketDashboard.jsx";
 import CreateTicket from "./pages/CreateTicket.jsx";
 import MyTickets from "./pages/MyTickets.jsx";
 import TicketDetails from "./pages/TicketDetails.jsx";
@@ -19,7 +20,7 @@ function AppContent() {
     location.pathname === "/oauth/callback" ||
     location.pathname === "/adminticket" ||
     location.pathname.startsWith("/admin") ||
-    location.pathname === "/technician" ||
+    location.pathname.startsWith("/technician") ||
     location.pathname === "/account";
 
   return (
@@ -30,6 +31,7 @@ function AppContent() {
         <Route path="/signin" element={<SignIn />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/technician" element={<TechnicianDashboard />} />
+        <Route path="/technician/tickets" element={<TechnicianTicketDashboard />} />
         <Route path="/tickets/create" element={<CreateTicket />} />
         <Route path="/my-tickets" element={<MyTickets />} />
         <Route path="/tickets/:id" element={<TicketDetails />} />
