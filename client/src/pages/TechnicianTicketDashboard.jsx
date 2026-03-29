@@ -1,25 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ComposedChart,
-  Legend,
-  Line,
-  Pie,
-  PieChart,
-  PolarAngleAxis,
-  RadialBar,
-  RadialBarChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { getTechnicianAssignedTickets } from "../api/technicianTickets";
 import { getAuthToken } from "../api/http";
 import { readCampusUser } from "../utils/campusUserStorage";
@@ -27,177 +7,58 @@ import { appFontFamily } from "../utils/appFont";
 
 const pageStyle = {
   minHeight: "100vh",
-  backgroundColor: "#FAF3E1",
-  backgroundImage: "linear-gradient(180deg, #FAF3E1 0%, #FFFFFF 70%)",
-  padding: "24px 16px",
+  backgroundColor: "#FFFFFF",
+  padding: "clamp(16px, 3vw, 28px) clamp(14px, 3vw, 24px)",
   display: "flex",
-  justifyContent: "center",
+  flexDirection: "column",
+  alignItems: "center",
   fontFamily: appFontFamily,
   boxSizing: "border-box",
 };
 
 const shellStyle = {
   width: "100%",
-  maxWidth: "1280px",
+  maxWidth: "1180px",
+  margin: "0 auto",
   backgroundColor: "#FFFFFF",
   borderRadius: "14px",
-  border: "1px solid #F5E7C6",
-  boxShadow: "0 14px 32px rgba(0, 0, 0, 0.08)",
-  padding: "22px",
+  border: "1px solid #E8E4DC",
+  boxShadow: "0 8px 24px rgba(20, 33, 61, 0.06)",
+  padding: "clamp(18px, 2.5vw, 26px)",
   boxSizing: "border-box",
 };
 
 const chartCardStyle = {
-  border: "1px solid #F5E7C6",
+  border: "1px solid #E8E4DC",
   borderRadius: "12px",
-  padding: "14px 16px",
-  backgroundColor: "#FAF3E1",
-  boxShadow: "0 6px 14px rgba(20, 33, 61, 0.05)",
-  minHeight: "320px",
+  padding: "16px",
+  backgroundColor: "#FFFFFF",
+  boxShadow: "0 2px 8px rgba(20, 33, 61, 0.04)",
 };
 
 const sectionTitleStyle = {
-  fontSize: "15px",
-  fontWeight: 800,
-  color: "#14213D",
-  marginBottom: "12px",
-  letterSpacing: "-0.02em",
+  fontSize: "16px",
+  fontWeight: 700,
+  color: "#222222",
+  marginBottom: "10px",
 };
 
 const metricCardStyle = {
-  border: "1px solid #F5E7C6",
+  border: "1px solid #E8E4DC",
   borderRadius: "12px",
   padding: "12px 14px",
   backgroundColor: "#FFFFFF",
-  boxShadow: "0 6px 14px rgba(20, 33, 61, 0.05)",
+  boxShadow: "0 2px 8px rgba(20, 33, 61, 0.04)",
 };
 
-const STATUS_COLORS = {
-  OPEN: "#14213D",
-  PENDING: "#64748b",
-  ACCEPTED: "#FCA311",
-  IN_PROGRESS: "#FA8112",
-  RESOLVED: "#2e7d32",
-  REJECTED: "#d32f2f",
-  UNKNOWN: "#94a3b8",
-};
-
-const PRIORITY_COLORS = {
-  HIGH: "#d32f2f",
-  MEDIUM: "#FCA311",
-  LOW: "#2e7d32",
-};
-
-function normalizeStatus(s) {
-  return String(s || "UNKNOWN")
-    .toUpperCase()
-    .trim()
-    .replace(/\s+/g, "_");
+function technicianWelcomeName(user) {
+  if (!user) return "Technician";
+  const first = (user.firstName || "").trim();
+  if (first) return first;
+  const em = (user.email || "").trim();
+  if (em && em.includes("@")) return em.split("@")[0];
+  return "Technician";
 }
-
-function normalizePriority(p) {
-  return String(p || "UNKNOWN").toUpperCase().trim();
-}
-
-/** Last `days` calendar days, oldest first for charts. */
-function bucketCreatedByDay(tickets, days = 14) {
-  const now = new Date();
-  const buckets = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    buckets.push({
-      key,
-      label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-      count: 0,
-    });
-  }
-  const indexByKey = new Map(buckets.map((b, i) => [b.key, i]));
-  for (const t of tickets) {
-    if (!t?.createdAt) continue;
-    const day = new Date(t.createdAt).toISOString().slice(0, 10);
-    const idx = indexByKey.get(day);
-    if (idx !== undefined) buckets[idx].count += 1;
-  }
-  return buckets;
-}
-
-function aggregateTickets(tickets) {
-  const list = Array.isArray(tickets) ? tickets : [];
-  const statusCounts = {};
-  const priorityCounts = {};
-  const categoryCounts = {};
-  let acceptedOrActive = 0;
-  let resolved = 0;
-
-  for (const t of list) {
-    const st = normalizeStatus(t.status);
-    statusCounts[st] = (statusCounts[st] || 0) + 1;
-    if (st === "RESOLVED") resolved += 1;
-    else if (st === "ACCEPTED" || st === "IN_PROGRESS") acceptedOrActive += 1;
-
-    const pr = normalizePriority(t.priority);
-    if (pr && pr !== "UNKNOWN") {
-      priorityCounts[pr] = (priorityCounts[pr] || 0) + 1;
-    }
-
-    const cat = (t.category || "Uncategorized").trim() || "Uncategorized";
-    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-  }
-
-  const total = list.length;
-  const resolvedPct = total > 0 ? Math.round((resolved / total) * 100) : 0;
-
-  const statusPie = Object.entries(statusCounts)
-    .filter(([, c]) => c > 0)
-    .map(([name, value]) => ({
-      name: name.replace(/_/g, " "),
-      value,
-      color: STATUS_COLORS[name] || STATUS_COLORS.UNKNOWN,
-    }));
-
-  const priorityBar = ["HIGH", "MEDIUM", "LOW"].map((p) => ({
-    name: p,
-    count: priorityCounts[p] || 0,
-    fill: PRIORITY_COLORS[p] || "#94a3b8",
-  }));
-
-  const categoryBar = Object.entries(categoryCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-    .map(([name, count]) => ({ name: name.length > 28 ? `${name.slice(0, 26)}…` : name, count }));
-
-  const trend = bucketCreatedByDay(list, 14);
-
-  const radialProgress = [
-    {
-      name: "Resolved",
-      value: resolvedPct,
-      fill: "#2e7d32",
-    },
-  ];
-
-  return {
-    total,
-    resolved,
-    acceptedOrActive,
-    statusCounts,
-    statusPie,
-    priorityBar,
-    categoryBar,
-    trend,
-    resolvedPct,
-    radialProgress,
-  };
-}
-
-const tooltipStyle = {
-  backgroundColor: "#fff",
-  border: "1px solid #F5E7C6",
-  borderRadius: "8px",
-  fontSize: "12px",
-  fontWeight: 600,
-};
 
 export default function TechnicianTicketDashboard() {
   const navigate = useNavigate();
@@ -205,8 +66,9 @@ export default function TechnicianTicketDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const user = useMemo(() => readCampusUser(), []);
-  const isTechnician = String(user?.role || "").toUpperCase() === "TECHNICIAN";
+  const campusUser = useMemo(() => readCampusUser(), []);
+  const isTechnician = String(campusUser?.role || "").toUpperCase() === "TECHNICIAN";
+  const welcomeName = technicianWelcomeName(campusUser);
 
   useEffect(() => {
     if (!getAuthToken()) {
@@ -235,17 +97,133 @@ export default function TechnicianTicketDashboard() {
     };
   }, [navigate, isTechnician]);
 
-  const stats = useMemo(() => aggregateTickets(tickets), [tickets]);
+  const dashboardStats = useMemo(() => {
+    const data = Array.isArray(tickets) ? tickets : [];
+    const total = data.length;
+    const statusCounts = {
+      OPEN: 0,
+      ACCEPTED: 0,
+      IN_PROGRESS: 0,
+      RESOLVED: 0,
+      REJECTED: 0,
+      OTHER: 0,
+    };
+    const priorityCounts = {
+      HIGH: 0,
+      MEDIUM: 0,
+      LOW: 0,
+      OTHER: 0,
+    };
 
-  const composedData = useMemo(() => {
-    let run = 0;
-    return stats.trend.map((d) => {
-      run += d.count;
-      return { ...d, cumulative: run };
+    data.forEach((ticket) => {
+      const status = (ticket.status || "").toUpperCase();
+      const priority = (ticket.priority || "").toUpperCase();
+
+      if (statusCounts[status] !== undefined) statusCounts[status] += 1;
+      else statusCounts.OTHER += 1;
+
+      if (priorityCounts[priority] !== undefined) priorityCounts[priority] += 1;
+      else priorityCounts.OTHER += 1;
     });
-  }, [stats.trend]);
 
-  if (!isTechnician && user) {
+    return { total, statusCounts, priorityCounts };
+  }, [tickets]);
+
+  const categoryBreakdown = useMemo(() => {
+    const map = {};
+    for (const t of Array.isArray(tickets) ? tickets : []) {
+      const c = (t.category || "Uncategorized").trim() || "Uncategorized";
+      map[c] = (map[c] || 0) + 1;
+    }
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({
+        name: name.length > 34 ? `${name.slice(0, 32)}…` : name,
+        count,
+      }));
+  }, [tickets]);
+
+  const locationBreakdown = useMemo(() => {
+    const map = {};
+    for (const t of Array.isArray(tickets) ? tickets : []) {
+      const loc = (t.resourceLocation || "").trim() || "Not specified";
+      map[loc] = (map[loc] || 0) + 1;
+    }
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([name, count]) => ({
+        name: name.length > 30 ? `${name.slice(0, 28)}…` : name,
+        count,
+      }));
+  }, [tickets]);
+
+  const maxCategoryCount = Math.max(1, ...categoryBreakdown.map((x) => x.count));
+  const maxLocationCount = Math.max(1, ...locationBreakdown.map((x) => x.count));
+
+  const maxPriorityCount = Math.max(
+    1,
+    dashboardStats.priorityCounts.HIGH,
+    dashboardStats.priorityCounts.MEDIUM,
+    dashboardStats.priorityCounts.LOW,
+    dashboardStats.priorityCounts.OTHER
+  );
+
+  const inProgressCount = dashboardStats.statusCounts.IN_PROGRESS;
+  const acceptedCount = dashboardStats.statusCounts.ACCEPTED;
+
+  /** Ticket `createdAt` counts per calendar day — last 7 days (vertical bar chart). */
+  const last7DaysBars = useMemo(() => {
+    const today = new Date();
+    const days = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const d = new Date(today);
+      d.setHours(0, 0, 0, 0);
+      d.setDate(today.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      days.push({
+        key,
+        shortLabel: d.toLocaleDateString(undefined, { weekday: "short" }),
+        count: 0,
+      });
+    }
+    const map = Object.fromEntries(days.map((x) => [x.key, x]));
+    for (const t of Array.isArray(tickets) ? tickets : []) {
+      if (!t?.createdAt) continue;
+      const key = new Date(t.createdAt).toISOString().slice(0, 10);
+      if (map[key]) map[key].count += 1;
+    }
+    return days;
+  }, [tickets]);
+
+  const maxDayBarCount = Math.max(1, ...last7DaysBars.map((d) => d.count));
+
+  const statusPieGradient = useMemo(() => {
+    if (dashboardStats.total === 0) {
+      return "conic-gradient(#E5E5E5 0 100%)";
+    }
+    const total = dashboardStats.total || 1;
+    const parts = [
+      { color: "#14213D", count: dashboardStats.statusCounts.OPEN },
+      { color: "#FCA311", count: dashboardStats.statusCounts.ACCEPTED },
+      { color: "#FA8112", count: dashboardStats.statusCounts.IN_PROGRESS },
+      { color: "#2e7d32", count: dashboardStats.statusCounts.RESOLVED },
+      { color: "#d32f2f", count: dashboardStats.statusCounts.REJECTED },
+    ];
+    let current = 0;
+    const stops = parts
+      .filter((p) => p.count > 0)
+      .map((p) => {
+        const pct = (p.count / total) * 100;
+        const start = current;
+        current += pct;
+        return `${p.color} ${start}% ${current}%`;
+      })
+      .join(", ");
+    return stops ? `conic-gradient(${stops})` : "conic-gradient(#E5E5E5 0 100%)";
+  }, [dashboardStats]);
+
+  if (!isTechnician && campusUser) {
     return null;
   }
 
@@ -258,21 +236,21 @@ export default function TechnicianTicketDashboard() {
             flexWrap: "wrap",
             alignItems: "flex-start",
             justifyContent: "space-between",
-            gap: "12px",
-            marginBottom: "18px",
-            paddingBottom: "14px",
-            borderBottom: "1px solid #F5E7C6",
+            gap: "16px",
+            marginBottom: "20px",
+            paddingBottom: "16px",
+            borderBottom: "1px solid #E8E4DC",
           }}
         >
-          <div>
+          <div style={{ flex: "1 1 280px", minWidth: 0 }}>
             <div style={{ fontSize: "12px", fontWeight: 800, color: "#FA8112", letterSpacing: "0.06em", marginBottom: "4px" }}>
               TECHNICIAN ANALYTICS
             </div>
             <h1 style={{ margin: 0, fontSize: "clamp(22px, 3vw, 28px)", fontWeight: 900, color: "#14213D" }}>
               Ticket dashboard
             </h1>
-            <p style={{ margin: "6px 0 0 0", color: "#6b7280", fontSize: "13px", fontWeight: 600, maxWidth: "560px" }}>
-              Visual breakdown of your assigned tickets: status, priority, category, trends, and resolution progress.
+            <p style={{ margin: "8px 0 0 0", color: "#6b7280", fontSize: "13px", fontWeight: 600, maxWidth: "560px" }}>
+              Status overview, priority, and where your field work is concentrated.
             </p>
           </div>
           <Link
@@ -283,13 +261,14 @@ export default function TechnicianTicketDashboard() {
               gap: "8px",
               padding: "10px 16px",
               borderRadius: "10px",
-              border: "1px solid #F5E7C6",
+              border: "1px solid #E8E4DC",
               backgroundColor: "#FFFFFF",
               color: "#14213D",
               fontWeight: 800,
               fontSize: "13px",
               textDecoration: "none",
-              boxShadow: "0 4px 12px rgba(20, 33, 61, 0.06)",
+              flexShrink: 0,
+              boxShadow: "0 2px 8px rgba(20, 33, 61, 0.05)",
             }}
           >
             ← Back to main dashboard
@@ -303,221 +282,247 @@ export default function TechnicianTicketDashboard() {
         {loading ? (
           <p style={{ color: "#6b7280", fontWeight: 600 }}>Loading your ticket analytics…</p>
         ) : (
-          <>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+              width: "100%",
+            }}
+          >
+            <div
+              style={{
+                padding: "16px 18px",
+                backgroundColor: "#FFFFFF",
+                border: "1px solid #E8E4DC",
+                borderLeft: "4px solid #FA8112",
+                borderRadius: "12px",
+                boxShadow: "0 2px 8px rgba(20, 33, 61, 0.04)",
+              }}
+            >
+              <p style={{ margin: 0, lineHeight: 1.45 }}>
+                <span style={{ fontSize: "clamp(17px, 2.1vw, 22px)", fontWeight: 800, color: "#14213D" }}>
+                  Welcome back, {welcomeName}.
+                </span>{" "}
+                <span style={{ fontSize: "clamp(15px, 1.7vw, 18px)", fontWeight: 600, color: "#4b5563" }}>
+                  Here you can see status, urgency, issue type, and campus location for your assignments.
+                </span>
+              </p>
+            </div>
+
             <div
               style={{
                 display: "grid",
-                gap: "10px",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                marginBottom: "16px",
+                gap: "12px",
+                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                width: "100%",
               }}
             >
               <div style={{ ...metricCardStyle, borderLeft: "6px solid #14213D" }}>
-                <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 800, textTransform: "uppercase" }}>Assigned total</div>
-                <div style={{ color: "#14213D", fontSize: "26px", fontWeight: 900, marginTop: "4px" }}>{stats.total}</div>
-              </div>
-              <div style={{ ...metricCardStyle, borderLeft: "6px solid #FCA311" }}>
-                <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 800, textTransform: "uppercase" }}>Accepted</div>
-                <div style={{ color: "#14213D", fontSize: "26px", fontWeight: 900, marginTop: "4px" }}>
-                  {stats.statusCounts.ACCEPTED || 0}
-                </div>
+                <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" }}>Assigned total</div>
+                <div style={{ color: "#14213D", fontSize: "26px", fontWeight: 800 }}>{dashboardStats.total}</div>
               </div>
               <div style={{ ...metricCardStyle, borderLeft: "6px solid #FA8112" }}>
-                <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 800, textTransform: "uppercase" }}>In progress</div>
-                <div style={{ color: "#14213D", fontSize: "26px", fontWeight: 900, marginTop: "4px" }}>
-                  {stats.statusCounts.IN_PROGRESS || 0}
-                </div>
+                <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" }}>In progress</div>
+                <div style={{ color: "#14213D", fontSize: "26px", fontWeight: 800 }}>{inProgressCount}</div>
+              </div>
+              <div style={{ ...metricCardStyle, borderLeft: "6px solid #FCA311" }}>
+                <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" }}>Accepted</div>
+                <div style={{ color: "#14213D", fontSize: "26px", fontWeight: 800 }}>{acceptedCount}</div>
               </div>
               <div style={{ ...metricCardStyle, borderLeft: "6px solid #2e7d32" }}>
-                <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 800, textTransform: "uppercase" }}>Resolved</div>
-                <div style={{ color: "#14213D", fontSize: "26px", fontWeight: 900, marginTop: "4px" }}>{stats.resolved}</div>
+                <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" }}>Resolved</div>
+                <div style={{ color: "#14213D", fontSize: "26px", fontWeight: 800 }}>{dashboardStats.statusCounts.RESOLVED}</div>
               </div>
             </div>
 
-            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", marginBottom: "12px" }}>
-              <div style={chartCardStyle}>
-                <div style={sectionTitleStyle}>Status distribution (pie)</div>
-                {stats.statusPie.length === 0 ? (
-                  <p style={{ color: "#6b7280", fontSize: "13px", margin: 0 }}>No tickets to chart yet.</p>
-                ) : (
-                  <div style={{ width: "100%", height: 280 }}>
-                    <ResponsiveContainer>
-                      <PieChart>
-                        <Pie
-                          data={stats.statusPie}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={56}
-                          outerRadius={96}
-                          paddingAngle={2}
-                        >
-                          {stats.statusPie.map((entry, i) => (
-                            <Cell key={`cell-${i}`} fill={entry.color} stroke="#fff" strokeWidth={1} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={tooltipStyle} />
-                        <Legend wrapperStyle={{ fontSize: "12px", fontWeight: 700 }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
+            <div
+              style={{
+                width: "100%",
+                display: "grid",
+                gap: "16px",
+                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+                alignItems: "stretch",
+              }}
+            >
+              <div style={{ ...chartCardStyle, minWidth: 0 }}>
+                <div style={sectionTitleStyle}>Ticket volume by day</div>
+                <p style={{ margin: "0 0 14px 0", color: "#6b7280", fontSize: "12px", fontWeight: 600 }}>
+                  How many assigned tickets were originally reported on each day (last 7 days).
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-end",
+                    justifyContent: "space-between",
+                    gap: "8px",
+                    minHeight: "200px",
+                    padding: "8px 4px 4px",
+                    borderBottom: "2px solid #E8E4DC",
+                  }}
+                >
+                  {last7DaysBars.map((day, index) => (
+                    <div
+                      key={day.key}
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        gap: "6px",
+                        minWidth: 0,
+                      }}
+                    >
+                      <div style={{ color: "#14213D", fontSize: "13px", fontWeight: 800 }}>{day.count}</div>
+                      <div
+                        title={`${day.count} ticket(s)`}
+                        style={{
+                          width: "100%",
+                          maxWidth: "36px",
+                          height: `${Math.max(10, (day.count / maxDayBarCount) * 140)}px`,
+                          borderRadius: "8px 8px 0 0",
+                          backgroundColor: index === last7DaysBars.length - 1 ? "#FA8112" : "#14213D",
+                          transition: "height 0.2s ease",
+                        }}
+                      />
+                      <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700, textAlign: "center", lineHeight: 1.2 }}>
+                        {day.shortLabel}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div style={chartCardStyle}>
-                <div style={sectionTitleStyle}>Resolution progress (radial)</div>
-                <p style={{ margin: "0 0 8px 0", color: "#6b7280", fontSize: "12px", fontWeight: 600 }}>
-                  Share of assigned tickets marked resolved.
+              <div style={{ ...chartCardStyle, minWidth: 0 }}>
+                <div style={sectionTitleStyle}>Your tickets by status</div>
+                <p style={{ margin: "0 0 12px 0", color: "#6b7280", fontSize: "12px", fontWeight: 600 }}>
+                  Share of each status across tickets assigned to you.
                 </p>
-                <div style={{ position: "relative", width: "100%", height: 280 }}>
-                  <ResponsiveContainer>
-                    <RadialBarChart
-                      cx="50%"
-                      cy="50%"
-                      innerRadius="30%"
-                      outerRadius="100%"
-                      barSize={18}
-                      data={stats.radialProgress}
-                      startAngle={90}
-                      endAngle={-270}
-                    >
-                      <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-                      <RadialBar dataKey="value" cornerRadius={8} background={{ fill: "#e8e3d8" }} />
-                      <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${v}%`, "Resolved"]} />
-                    </RadialBarChart>
-                  </ResponsiveContainer>
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "220px" }}>
                   <div
                     style={{
-                      position: "absolute",
-                      left: "50%",
-                      top: "50%",
-                      transform: "translate(-50%, -50%)",
-                      fontSize: "28px",
-                      fontWeight: 900,
-                      color: "#14213D",
-                      pointerEvents: "none",
+                      width: "220px",
+                      height: "220px",
+                      borderRadius: "50%",
+                      background: statusPieGradient,
+                      border: "1px solid #E8E4DC",
+                      position: "relative",
                     }}
                   >
-                    {stats.resolvedPct}%
+                    <div
+                      style={{
+                        position: "absolute",
+                        width: "96px",
+                        height: "96px",
+                        borderRadius: "50%",
+                        backgroundColor: "#FFFFFF",
+                        top: "50%",
+                        left: "50%",
+                        transform: "translate(-50%, -50%)",
+                        border: "1px solid #E8E4DC",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexDirection: "column",
+                      }}
+                    >
+                      <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700 }}>TOTAL</div>
+                      <div style={{ color: "#14213D", fontSize: "24px", fontWeight: 800, lineHeight: 1 }}>{dashboardStats.total}</div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", marginBottom: "12px" }}>
-              <div style={chartCardStyle}>
-                <div style={sectionTitleStyle}>Priority (bar)</div>
-                <div style={{ width: "100%", height: 300 }}>
-                  <ResponsiveContainer>
-                    <BarChart data={stats.priorityBar} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e8e3d8" />
-                      <XAxis dataKey="name" tick={{ fontSize: 11, fontWeight: 700 }} />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                      <Tooltip contentStyle={tooltipStyle} />
-                      <Bar dataKey="count" radius={[8, 8, 0, 0]}>
-                        {stats.priorityBar.map((entry, i) => (
-                          <Cell key={`p-${i}`} fill={entry.fill} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              <div style={chartCardStyle}>
-                <div style={sectionTitleStyle}>Workload by category (horizontal bar)</div>
-                {stats.categoryBar.length === 0 ? (
-                  <p style={{ color: "#6b7280", fontSize: "13px", margin: 0 }}>No category data yet.</p>
-                ) : (
-                  <div style={{ width: "100%", height: 300 }}>
-                    <ResponsiveContainer>
-                      <BarChart layout="vertical" data={stats.categoryBar} margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e8e3d8" horizontal={false} />
-                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                        <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10, fontWeight: 600 }} />
-                        <Tooltip contentStyle={tooltipStyle} />
-                        <Bar dataKey="count" fill="#14213D" radius={[0, 6, 6, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "1fr", marginBottom: "12px" }}>
-              <div style={chartCardStyle}>
-                <div style={sectionTitleStyle}>New assignments (area plot — last 14 days)</div>
-                <p style={{ margin: "0 0 8px 0", color: "#6b7280", fontSize: "12px", fontWeight: 600 }}>
-                  Ticket creation dates for your assigned work (when the ticket was originally created).
-                </p>
-                <div style={{ width: "100%", height: 300 }}>
-                  <ResponsiveContainer>
-                    <AreaChart data={stats.trend} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="techAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#FA8112" stopOpacity={0.35} />
-                          <stop offset="100%" stopColor="#FA8112" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e8e3d8" />
-                      <XAxis dataKey="label" tick={{ fontSize: 10, fontWeight: 600 }} interval={2} />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                      <Tooltip contentStyle={tooltipStyle} />
-                      <Area type="monotone" dataKey="count" stroke="#FA8112" strokeWidth={2} fill="url(#techAreaGrad)" name="New (day)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "1fr", marginBottom: "4px" }}>
-              <div style={chartCardStyle}>
-                <div style={sectionTitleStyle}>Trend & cumulative line (composed chart)</div>
-                <p style={{ margin: "0 0 8px 0", color: "#6b7280", fontSize: "12px", fontWeight: 600 }}>
-                  Per-day ticket creations (bars) vs cumulative over the last 14 days (line).
-                </p>
-                <div style={{ width: "100%", height: 320 }}>
-                  <ResponsiveContainer>
-                    <ComposedChart data={composedData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e8e3d8" />
-                      <XAxis dataKey="label" tick={{ fontSize: 10, fontWeight: 600 }} interval={2} />
-                      <YAxis yAxisId="left" allowDecimals={false} tick={{ fontSize: 11 }} />
-                      <YAxis yAxisId="right" orientation="right" allowDecimals={false} tick={{ fontSize: 11 }} />
-                      <Tooltip contentStyle={tooltipStyle} />
-                      <Legend wrapperStyle={{ fontSize: "12px", fontWeight: 700 }} />
-                      <Bar yAxisId="left" dataKey="count" fill="#14213D" name="Per day" radius={[4, 4, 0, 0]} />
-                      <Line
-                        yAxisId="right"
-                        type="monotone"
-                        dataKey="cumulative"
-                        stroke="#2e7d32"
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
-                        name="Cumulative"
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
                 </div>
               </div>
             </div>
 
             <div
               style={{
-                marginTop: "8px",
-                padding: "12px 14px",
-                borderRadius: "10px",
-                border: "1px dashed #F5E7C6",
-                backgroundColor: "#fff",
-                color: "#6b7280",
-                fontSize: "12px",
-                fontWeight: 600,
-                lineHeight: 1.5,
+                display: "grid",
+                gap: "12px",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                width: "100%",
+                alignItems: "stretch",
               }}
             >
-              Charts use live data from your assigned tickets. Open the main technician dashboard to update progress or resolve tickets.
+              <div style={chartCardStyle}>
+                <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Priority breakdown</div>
+                <p style={{ margin: "0 0 10px 0", color: "#6b7280", fontSize: "12px", fontWeight: 600 }}>
+                  How urgent your assignments are.
+                </p>
+                {[
+                  ["HIGH", dashboardStats.priorityCounts.HIGH, "#d32f2f"],
+                  ["MEDIUM", dashboardStats.priorityCounts.MEDIUM, "#FCA311"],
+                  ["LOW", dashboardStats.priorityCounts.LOW, "#2e7d32"],
+                ].map(([label, count, color]) => (
+                  <div key={label} style={{ marginBottom: "10px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: "#374151", fontSize: "13px", fontWeight: 700 }}>
+                      <span>{label}</span>
+                      <span>{count}</span>
+                    </div>
+                    <div style={{ height: "12px", borderRadius: "999px", border: "1px solid #E8E4DC", backgroundColor: "#F3F4F6", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${(Number(count) / maxPriorityCount) * 100}%`, backgroundColor: color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={chartCardStyle}>
+                <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>By issue category</div>
+                <p style={{ margin: "0 0 10px 0", color: "#6b7280", fontSize: "12px", fontWeight: 600 }}>
+                  Types of work assigned to you (electrical, maintenance, etc.).
+                </p>
+                {categoryBreakdown.length === 0 ? (
+                  <p style={{ margin: 0, color: "#6b7280", fontSize: "13px", fontWeight: 600 }}>No category data.</p>
+                ) : (
+                  categoryBreakdown.map((row) => (
+                    <div key={row.name} style={{ marginBottom: "8px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: "#374151", fontSize: "13px", fontWeight: 700, gap: "8px" }}>
+                        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{row.name}</span>
+                        <span style={{ flexShrink: 0 }}>{row.count}</span>
+                      </div>
+                      <div style={{ height: "10px", borderRadius: "999px", border: "1px solid #E8E4DC", backgroundColor: "#F3F4F6", overflow: "hidden" }}>
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${(row.count / maxCategoryCount) * 100}%`,
+                            backgroundColor: "#14213D",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div style={chartCardStyle}>
+                <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>By location / resource</div>
+                <p style={{ margin: "0 0 10px 0", color: "#6b7280", fontSize: "12px", fontWeight: 600 }}>
+                  Where tickets are reported on campus (up to 12 locations).
+                </p>
+                {locationBreakdown.length === 0 ? (
+                  <p style={{ margin: 0, color: "#6b7280", fontSize: "13px", fontWeight: 600 }}>No location data.</p>
+                ) : (
+                  locationBreakdown.map((row) => (
+                    <div key={row.name} style={{ marginBottom: "8px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: "#374151", fontSize: "13px", fontWeight: 700, gap: "8px" }}>
+                        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{row.name}</span>
+                        <span style={{ flexShrink: 0 }}>{row.count}</span>
+                      </div>
+                      <div style={{ height: "10px", borderRadius: "999px", border: "1px solid #E8E4DC", backgroundColor: "#F3F4F6", overflow: "hidden" }}>
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${(row.count / maxLocationCount) * 100}%`,
+                            backgroundColor: "#FA8112",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
