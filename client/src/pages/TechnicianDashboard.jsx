@@ -1368,7 +1368,15 @@ function TechnicianWorkspace() {
                 Close
               </button>
             </div>
-            <div style={{ padding: 16, overflowY: "auto", flex: 1, minHeight: 0 }}>
+            <div
+              style={{
+                padding: 16,
+                overflowY: "auto",
+                flex: 1,
+                minHeight: 0,
+                fontFamily: techFontUi,
+              }}
+            >
               {ticketDetailModalLoading && <p style={{ margin: 0, color: "#6b7280" }}>Loading ticket…</p>}
               {ticketDetailModalError && (
                 <p style={{ margin: 0, color: "#d32f2f", fontWeight: 600 }}>{ticketDetailModalError}</p>
@@ -1420,23 +1428,6 @@ function TechnicianWorkspace() {
                     >
                       {tk.description || "—"}
                     </div>
-                    {(tk.status || "").toUpperCase() === "RESOLVED" && (tk.resolutionDetails || "").trim() && (
-                      <div
-                        style={{
-                          padding: "12px 14px",
-                          borderRadius: 12,
-                          border: "1px solid #c8e6c9",
-                          backgroundColor: "#f1f8e9",
-                          color: "#374151",
-                          fontSize: "14px",
-                          lineHeight: 1.45,
-                          marginBottom: 14,
-                        }}
-                      >
-                        <div style={{ fontSize: "12px", fontWeight: 800, color: "#14213D", marginBottom: 6 }}>Resolution details</div>
-                        {tk.resolutionDetails}
-                      </div>
-                    )}
 
                     <div style={{ ...sectionTitleStyle, color: "#14213D" }}>Attachments</div>
                     {attachments.length === 0 ? (
@@ -1469,6 +1460,37 @@ function TechnicianWorkspace() {
                             />
                           </div>
                         ))}
+                      </div>
+                    )}
+
+                    {(tk.status || "").toUpperCase() === "RESOLVED" && (tk.resolutionDetails || "").trim() && (
+                      <div
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 12,
+                          border: "1px solid #c8e6c9",
+                          backgroundColor: "#f1f8e9",
+                          color: "#374151",
+                          fontSize: "14px",
+                          lineHeight: 1.45,
+                          marginBottom: 14,
+                          fontFamily: techFontUi,
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: 800,
+                            color: "#14213D",
+                            marginBottom: 6,
+                            letterSpacing: "0.02em",
+                          }}
+                        >
+                          Resolution details
+                        </div>
+                        <div style={{ fontSize: "14px", fontWeight: 500, color: "#374151", lineHeight: 1.5 }}>
+                          {tk.resolutionDetails}
+                        </div>
                       </div>
                     )}
 
