@@ -149,6 +149,68 @@ function formatModalDate(value) {
   }
 }
 
+/** Same layout as My Tickets timeline panel */
+const techFontUi = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+const techTimelinePanelStyle = {
+  marginTop: "12px",
+  marginBottom: "12px",
+  borderRadius: "12px",
+  border: "1px solid #F5E7C6",
+  backgroundColor: "#FFFFFF",
+  overflow: "hidden",
+  fontFamily: techFontUi,
+};
+const techTimelineHeaderBarStyle = {
+  padding: "11px 16px",
+  backgroundColor: "#FAF3E1",
+  fontSize: "11px",
+  fontWeight: 700,
+  letterSpacing: "0.07em",
+  textTransform: "uppercase",
+  color: "#14213D",
+};
+const techTimelineHeaderButtonStyle = {
+  ...techTimelineHeaderBarStyle,
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "10px",
+  cursor: "pointer",
+  border: "none",
+  fontFamily: "inherit",
+  textAlign: "left",
+  boxSizing: "border-box",
+};
+const techTimelineRowStyle = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) max-content",
+  gap: "8px 16px",
+  alignItems: "center",
+  padding: "10px 16px",
+  fontSize: "13px",
+  borderBottom: "1px solid #f0ebe0",
+};
+const techTimelineLabelStyle = {
+  color: "#6b7280",
+  fontWeight: 600,
+  lineHeight: 1.4,
+  minWidth: 0,
+};
+const techTimelineValueStyle = {
+  color: "#374151",
+  fontWeight: 600,
+  textAlign: "right",
+  lineHeight: 1.35,
+  whiteSpace: "nowrap",
+  justifySelf: "end",
+};
+const techTimelineMetricsRowStyle = {
+  ...techTimelineRowStyle,
+  backgroundColor: "#faf9f6",
+  borderBottom: "none",
+};
+
 function TechnicianWorkspace() {
   const navigate = useNavigate();
   const [userRev, setUserRev] = useState(0);
@@ -181,6 +243,7 @@ function TechnicianWorkspace() {
   const [ticketDetailModalLoading, setTicketDetailModalLoading] = useState(false);
   const [ticketDetailModalError, setTicketDetailModalError] = useState("");
   const [techChatPopupOpen, setTechChatPopupOpen] = useState(false);
+  const [techTimelineExpanded, setTechTimelineExpanded] = useState(true);
 
   const [availabilityBusy, setAvailabilityBusy] = useState(false);
   const [availabilityError, setAvailabilityError] = useState("");
@@ -223,6 +286,12 @@ function TechnicianWorkspace() {
       document.body.style.overflow = prevOverflow;
     };
   }, [techChatPopupOpen]);
+
+  useEffect(() => {
+    if (ticketDetailModalId) {
+      setTechTimelineExpanded(true);
+    }
+  }, [ticketDetailModalId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -337,6 +406,7 @@ function TechnicianWorkspace() {
 
   const closeTicketDetailModal = () => {
     setTechChatPopupOpen(false);
+    setTechTimelineExpanded(true);
     setTicketDetailModalId(null);
     setTicketDetailModalData(null);
     setTicketDetailModalError("");
@@ -1330,95 +1400,6 @@ function TechnicianWorkspace() {
                       <span style={{ ...chip, backgroundColor: priorityBg, color: "#fff" }}>Priority: {tk.priority}</span>
                       <span style={{ ...chip, backgroundColor: "#E5E5E5", color: "#14213D" }}>Category: {tk.category}</span>
                     </div>
-                    <div
-                      style={{
-                        marginBottom: 12,
-                        padding: "14px 16px",
-                        borderRadius: 12,
-                        border: "1px solid #e2e8f0",
-                        backgroundColor: "#f8fafc",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: "12px",
-                          fontWeight: 800,
-                          color: "#14213D",
-                          marginBottom: 10,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.04em",
-                        }}
-                      >
-                        Timeline and service metrics
-                      </div>
-                      <div style={{ display: "grid", gap: 8, fontSize: "13px", color: "#374151", marginBottom: 12 }}>
-                        <div>
-                          <span style={{ fontWeight: 700, display: "block", marginBottom: 2 }}>Ticket created at</span>
-                          <span style={{ fontWeight: 600 }}>{formatTicketInstant(tk.createdAt)}</span>
-                        </div>
-                        <div>
-                          <span style={{ fontWeight: 700, display: "block", marginBottom: 2 }}>Technician assigned at</span>
-                          <span style={{ fontWeight: 600 }}>{formatTicketInstant(tk.technicianAssignedAt)}</span>
-                        </div>
-                        <div>
-                          <span style={{ fontWeight: 700, display: "block", marginBottom: 2 }}>Ticket resolved at</span>
-                          <span style={{ fontWeight: 600 }}>{formatTicketInstant(tk.resolvedAt)}</span>
-                        </div>
-                      </div>
-                      <div style={{ paddingTop: 12, borderTop: "1px solid #e2e8f0", display: "grid", gap: 6, fontSize: "13px", color: "#374151" }}>
-                        <div>
-                          <span style={{ fontWeight: 700 }}>TFR</span> (time to first response):{" "}
-                          <span style={{ fontWeight: 600 }}>{formatDurationSeconds(tk.timeToFirstResponseSeconds)}</span>
-                        </div>
-                        <div>
-                          <span style={{ fontWeight: 700 }}>TTR</span> (time to resolution):{" "}
-                          <span style={{ fontWeight: 600 }}>{formatDurationSeconds(tk.timeToResolutionSeconds)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    {(assignee || tk.assignedTechnicianName) && (
-                      <div
-                        style={{
-                          marginBottom: 12,
-                          padding: "12px 14px",
-                          borderRadius: 12,
-                          border: "1px solid #F5E7C6",
-                          backgroundColor: "#FAF3E1",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: "12px",
-                            fontWeight: 800,
-                            color: "#14213D",
-                            marginBottom: 8,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.04em",
-                          }}
-                        >
-                          Assigned technician
-                        </div>
-                        <div style={{ display: "grid", gap: 6, fontSize: "13px", color: "#374151" }}>
-                          <div>
-                            <span style={{ fontWeight: 700 }}>Name:</span>{" "}
-                            {assignee?.displayName || tk.assignedTechnicianName || "—"}
-                          </div>
-                          <div>
-                            <span style={{ fontWeight: 700 }}>Email:</span>{" "}
-                            <span style={{ wordBreak: "break-word" }}>{assignee?.email || "—"}</span>
-                          </div>
-                          <div>
-                            <span style={{ fontWeight: 700 }}>Phone:</span> {(assignee?.phoneNumber || "").trim() || "—"}
-                          </div>
-                          {assignee?.technicianCategory && (
-                            <div>
-                              <span style={{ fontWeight: 700 }}>Specialty:</span>{" "}
-                              {technicianCategoryLabel(assignee.technicianCategory)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
                     <p style={{ margin: "0 0 8px 0", color: "#374151", fontSize: "14px" }}>
                       <span style={{ fontWeight: 700 }}>Reporter:</span> {tk.fullName || "—"} · {tk.email || "—"} ·{" "}
                       {tk.phoneNumber || "—"}
@@ -1552,6 +1533,159 @@ function TechnicianWorkspace() {
                         Open chat
                       </button>
                     </div>
+
+                    <div style={{ ...techTimelinePanelStyle, marginTop: "14px" }}>
+                      <button
+                        type="button"
+                        id={`tech-timeline-toggle-${tk.id}`}
+                        aria-expanded={techTimelineExpanded}
+                        aria-controls={`tech-timeline-body-${tk.id}`}
+                        style={{
+                          ...techTimelineHeaderButtonStyle,
+                          borderBottom: techTimelineExpanded ? "1px solid #F5E7C6" : "none",
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTechTimelineExpanded((prev) => !prev);
+                        }}
+                      >
+                        <span>Timeline and service metrics</span>
+                        <span
+                          aria-hidden
+                          style={{
+                            fontSize: "11px",
+                            color: "#14213D",
+                            fontWeight: 800,
+                            lineHeight: 1,
+                            flexShrink: 0,
+                            width: "22px",
+                            height: "22px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "6px",
+                            border: "1px solid #F5E7C6",
+                            backgroundColor: "#FFFFFF",
+                          }}
+                          title={techTimelineExpanded ? "Collapse" : "Expand"}
+                        >
+                          {techTimelineExpanded ? "−" : "+"}
+                        </span>
+                      </button>
+
+                      {techTimelineExpanded && (
+                        <div id={`tech-timeline-body-${tk.id}`} role="region" aria-label="Timeline and service metrics">
+                          <div style={{ ...techTimelineRowStyle, borderBottom: "1px solid #f0ebe0" }}>
+                            <span style={techTimelineLabelStyle}>Ticket created at</span>
+                            <span style={techTimelineValueStyle}>{formatTicketInstant(tk.createdAt)}</span>
+                          </div>
+                          <div style={{ ...techTimelineRowStyle, borderBottom: "1px solid #f0ebe0" }}>
+                            <span style={techTimelineLabelStyle}>Technician assigned at</span>
+                            <span style={techTimelineValueStyle}>{formatTicketInstant(tk.technicianAssignedAt)}</span>
+                          </div>
+                          <div style={{ ...techTimelineRowStyle, borderBottom: "none" }}>
+                            <span style={techTimelineLabelStyle}>Ticket resolved at</span>
+                            <span style={techTimelineValueStyle}>{formatTicketInstant(tk.resolvedAt)}</span>
+                          </div>
+
+                          <div
+                            style={{
+                              borderTop: "1px solid #F5E7C6",
+                              backgroundColor: "#faf9f6",
+                            }}
+                          >
+                            <div
+                              style={{
+                                ...techTimelineMetricsRowStyle,
+                                borderBottom: "1px solid #f0ebe0",
+                              }}
+                            >
+                              <div style={{ minWidth: 0 }}>
+                                <span style={{ fontWeight: 700, color: "#14213D", fontSize: "13px" }}>TFR</span>
+                                <span
+                                  style={{
+                                    display: "block",
+                                    marginTop: "2px",
+                                    fontSize: "11px",
+                                    fontWeight: 500,
+                                    color: "#9ca3af",
+                                  }}
+                                >
+                                  Time to first response
+                                </span>
+                              </div>
+                              <span style={{ ...techTimelineValueStyle, color: "#14213D", fontSize: "14px" }}>
+                                {formatDurationSeconds(tk.timeToFirstResponseSeconds)}
+                              </span>
+                            </div>
+                            <div style={{ ...techTimelineMetricsRowStyle, backgroundColor: "#faf9f6" }}>
+                              <div style={{ minWidth: 0 }}>
+                                <span style={{ fontWeight: 700, color: "#14213D", fontSize: "13px" }}>TTR</span>
+                                <span
+                                  style={{
+                                    display: "block",
+                                    marginTop: "2px",
+                                    fontSize: "11px",
+                                    fontWeight: 500,
+                                    color: "#9ca3af",
+                                  }}
+                                >
+                                  Time to resolution
+                                </span>
+                              </div>
+                              <span style={{ ...techTimelineValueStyle, color: "#14213D", fontSize: "14px" }}>
+                                {formatDurationSeconds(tk.timeToResolutionSeconds)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {(assignee || tk.assignedTechnicianName) && (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          marginBottom: 12,
+                          padding: "12px 14px",
+                          borderRadius: 12,
+                          border: "1px solid #F5E7C6",
+                          backgroundColor: "#FAF3E1",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: 800,
+                            color: "#14213D",
+                            marginBottom: 8,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          Assigned technician
+                        </div>
+                        <div style={{ display: "grid", gap: 6, fontSize: "13px", color: "#374151" }}>
+                          <div>
+                            <span style={{ fontWeight: 700 }}>Name:</span>{" "}
+                            {assignee?.displayName || tk.assignedTechnicianName || "—"}
+                          </div>
+                          <div>
+                            <span style={{ fontWeight: 700 }}>Email:</span>{" "}
+                            <span style={{ wordBreak: "break-word" }}>{assignee?.email || "—"}</span>
+                          </div>
+                          <div>
+                            <span style={{ fontWeight: 700 }}>Phone:</span> {(assignee?.phoneNumber || "").trim() || "—"}
+                          </div>
+                          {assignee?.technicianCategory && (
+                            <div>
+                              <span style={{ fontWeight: 700 }}>Specialty:</span>{" "}
+                              {technicianCategoryLabel(assignee.technicianCategory)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     <div style={{ ...sectionTitleStyle, color: "#14213D" }}>Comments</div>
                     {comments.length === 0 ? (
