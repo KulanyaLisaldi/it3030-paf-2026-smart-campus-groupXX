@@ -234,6 +234,15 @@ function techShellInitial(user) {
   return "T";
 }
 
+function techShellDisplayName(user) {
+  if (!user) return "Technician";
+  const first = (user.firstName || "").trim();
+  if (first) return first;
+  const em = (user.email || "").trim();
+  if (em && em.includes("@")) return em.split("@")[0];
+  return "Technician";
+}
+
 const techShellSectionLabelStyle = {
   fontSize: "10px",
   fontWeight: 700,
@@ -248,6 +257,10 @@ function TechnicianAppShell({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileMenuPos, setProfileMenuPos] = useState({ top: 0, left: 0 });
+  const profileMenuTriggerRef = useRef(null);
+  const profileMenuPopoverRef = useRef(null);
   const user = readCampusUser();
   const path = location.pathname;
   const isTicketDashboardActive =
@@ -259,6 +272,50 @@ function TechnicianAppShell({ children }) {
   const isMyAssignmentActive =
     path === "/technician" && location.hash === "#technician-assigned-tickets";
   const isPersonalDetailsActive = path === "/technician" && location.hash === "#technician-personal-details";
+
+  const sidebarDisplayName = techShellDisplayName(user);
+  const sidebarEmail = (user?.email || "").trim() || "—";
+
+  const openMyProfile = () => {
+    setProfileMenuOpen(false);
+    if (path === "/technician") {
+      window.dispatchEvent(new Event("smart-campus-technician-open-profile"));
+    }
+    navigate("/technician#technician-personal-details");
+  };
+
+  useEffect(() => {
+    if (!profileMenuOpen) return undefined;
+    const onDocMouseDown = (e) => {
+      const t = e.target;
+      if (profileMenuTriggerRef.current?.contains(t)) return;
+      if (profileMenuPopoverRef.current?.contains(t)) return;
+      setProfileMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [profileMenuOpen]);
+
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    const update = () => {
+      const el = profileMenuTriggerRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setProfileMenuPos({ top: r.bottom + 8, left: r.left });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [profileMenuOpen, sidebarCollapsed]);
+
+  useEffect(() => {
+    if (sidebarCollapsed) setProfileMenuOpen(false);
+  }, [sidebarCollapsed]);
 
   const handleLogout = () => {
     persistCampusUser(null);
@@ -279,8 +336,8 @@ function TechnicianAppShell({ children }) {
     >
       <aside
         style={{
-          width: sidebarCollapsed ? "92px" : "272px",
-          minWidth: sidebarCollapsed ? "92px" : "272px",
+          width: sidebarCollapsed ? "56px" : "272px",
+          minWidth: sidebarCollapsed ? "56px" : "272px",
           flexShrink: 0,
           alignSelf: "stretch",
           minHeight: "100vh",
@@ -294,62 +351,115 @@ function TechnicianAppShell({ children }) {
           overflow: "hidden",
         }}
       >
-        <div
-          style={{
-            padding: "22px 18px 18px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "12px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
-            {!sidebarCollapsed && (
-              <div
+        {sidebarCollapsed ? (
+          <div
+            style={{
+              padding: "14px 8px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              borderBottom: "1px solid rgba(148, 163, 184, 0.12)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(false)}
+              aria-label="Open menu"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "rgba(148, 163, 184, 0.12)",
+                border: "1px solid rgba(255, 255, 255, 0.35)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#e2e8f0",
+                flexShrink: 0,
+                boxSizing: "border-box",
+              }}
+            >
+              <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>≡</span>
+            </button>
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: "22px 18px 18px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                minWidth: 0,
+              }}
+            >
+              <button
+                type="button"
+                ref={profileMenuTriggerRef}
+                aria-haspopup="menu"
+                aria-expanded={profileMenuOpen}
+                aria-label="Account menu"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setProfileMenuOpen((o) => !o);
+                }}
                 style={{
-                  width: "42px",
-                  height: "42px",
-                  borderRadius: "12px",
+                  width: 42,
+                  height: 42,
+                  borderRadius: 12,
                   background: "linear-gradient(135deg, #FA8112, #F5E7C6)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   color: "#fff",
                   fontWeight: 800,
-                  fontSize: "18px",
+                  fontSize: 18,
+                  border: "none",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  boxShadow: profileMenuOpen ? "0 0 0 2px #FA8112" : "none",
                 }}
               >
                 {techShellInitial(user)}
-              </div>
-            )}
-            {!sidebarCollapsed && (
+              </button>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 800, fontSize: "16px", color: "#f8fafc" }}>Technician</div>
                 <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600, marginTop: "2px" }}>Smart Campus</div>
               </div>
-            )}
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSidebarCollapsed(true);
+              }}
+              aria-label="Close menu"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "rgba(148, 163, 184, 0.12)",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#e2e8f0",
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>≡</span>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setSidebarCollapsed((v) => !v)}
-            aria-label={sidebarCollapsed ? "Open menu" : "Close menu"}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: "rgba(148, 163, 184, 0.12)",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#e2e8f0",
-              flexShrink: 0,
-            }}
-          >
-            <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>≡</span>
-          </button>
-        </div>
+        )}
 
         <nav style={{ flex: 1, padding: "4px 0" }} aria-label="Technician sections">
           {!sidebarCollapsed && <div style={techShellSectionLabelStyle}>MENU</div>}
@@ -407,6 +517,71 @@ function TechnicianAppShell({ children }) {
         )}
       </aside>
 
+      {profileMenuOpen ? (
+        <div
+          ref={profileMenuPopoverRef}
+          role="menu"
+          style={{
+            position: "fixed",
+            top: profileMenuPos.top,
+            left: profileMenuPos.left,
+            width: "min(280px, calc(100vw - 24px))",
+            zIndex: 10020,
+            backgroundColor: "#ffffff",
+            borderRadius: 12,
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 12px 40px rgba(15, 23, 42, 0.14)",
+            padding: 14,
+            boxSizing: "border-box",
+            fontFamily: techFontUi,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: "50%",
+                backgroundColor: "#475569",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#fff",
+                fontWeight: 800,
+                fontSize: 18,
+                flexShrink: 0,
+              }}
+            >
+              {techShellInitial(user)}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a", wordBreak: "break-word" }}>{sidebarDisplayName}</div>
+              <div style={{ fontSize: 12, color: "#64748b", fontWeight: 600, marginTop: 2, wordBreak: "break-word" }}>{sidebarEmail}</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={openMyProfile}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 8,
+              border: "1px solid #e5e7eb",
+              background: "#ffffff",
+              fontWeight: 700,
+              fontSize: 14,
+              color: "#0f172a",
+              cursor: "pointer",
+              textAlign: "left",
+              fontFamily: techFontUi,
+            }}
+          >
+            My profile
+          </button>
+        </div>
+      ) : null}
+
       <div
         style={{
           flex: 1,
@@ -424,15 +599,12 @@ function TechnicianAppShell({ children }) {
 }
 
 function TechnicianWorkspace() {
-  const navigate = useNavigate();
   const location = useLocation();
   const [userRev, setUserRev] = useState(0);
   const techUser = useMemo(() => readCampusUser(), [userRev]);
   const name = (techUser?.firstName || techUser?.email || "Technician").trim();
 
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
-  const profileRef = useRef(null);
   const avatarFileRef = useRef(null);
 
   const [phoneDraft, setPhoneDraft] = useState("");
@@ -502,6 +674,12 @@ function TechnicianWorkspace() {
   }, []);
 
   useEffect(() => {
+    const onOpen = () => setProfileModalOpen(true);
+    window.addEventListener("smart-campus-technician-open-profile", onOpen);
+    return () => window.removeEventListener("smart-campus-technician-open-profile", onOpen);
+  }, []);
+
+  useEffect(() => {
     if (!techChatPopupOpen) return undefined;
     const onKey = (e) => {
       if (e.key === "Escape") setTechChatPopupOpen(false);
@@ -542,17 +720,6 @@ function TechnicianWorkspace() {
   }, [userRev]);
 
   useEffect(() => {
-    const onDocMouseDown = (e) => {
-      const t = e.target;
-      if (profileRef.current && !profileRef.current.contains(t)) {
-        setProfileMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDocMouseDown);
-    return () => document.removeEventListener("mousedown", onDocMouseDown);
-  }, []);
-
-  useEffect(() => {
     if (!profileModalOpen) return;
     setPhoneDraft((techUser?.phoneNumber || "").trim());
     setSaveState({ busy: false, message: "", error: "" });
@@ -561,13 +728,6 @@ function TechnicianWorkspace() {
     setAvatarError("");
     setAvatarSuccess("");
   }, [profileModalOpen, techUser]);
-
-  const handleLogout = () => {
-    setProfileMenuOpen(false);
-    persistCampusUser(null);
-    localStorage.removeItem("smartCampusAuthToken");
-    navigate("/signin", { replace: true });
-  };
 
   const handleAvailabilityChange = async (nextAvailable) => {
     setAvailabilityBusy(true);
@@ -722,37 +882,6 @@ function TechnicianWorkspace() {
     return draft !== serverPhone;
   }, [phoneDraft, serverPhone]);
 
-  const triggerStyle = {
-    width: 40,
-    height: 40,
-    borderRadius: "50%",
-    border: "none",
-    padding: 0,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: techUser?.profileImageUrl ? "#ffffff" : "#475569",
-    color: "#ffffff",
-    fontWeight: 700,
-    fontSize: 16,
-    overflow: "hidden",
-    boxShadow: profileMenuOpen ? "0 0 0 2px #FA8112" : "0 0 0 1px #e5e7eb",
-  };
-
-  const dropdownStyle = {
-    position: "absolute",
-    top: "calc(100% + 10px)",
-    right: 0,
-    width: "min(280px, calc(100vw - 48px))",
-    backgroundColor: "#fff",
-    border: "1px solid #e5e7eb",
-    borderRadius: 12,
-    boxShadow: "0 12px 40px rgba(15, 23, 42, 0.12)",
-    padding: 14,
-    zIndex: 50,
-  };
-
   return (
     <>
       <div
@@ -766,14 +895,10 @@ function TechnicianWorkspace() {
       >
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
             flexShrink: 0,
             marginBottom: 20,
             padding: "16px 18px",
-            backgroundColor: "#FAF3E1",
+            backgroundColor: "#FFFFFF",
             border: "1px solid #F5E7C6",
             borderLeft: "4px solid #FA8112",
             borderRadius: "12px",
@@ -781,136 +906,36 @@ function TechnicianWorkspace() {
             boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
           }}
         >
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: "0 0 0 0", lineHeight: 1.45 }}>
-              <span style={{ fontSize: "clamp(17px, 2.1vw, 22px)", fontWeight: 800, color: "#14213D" }}>
-                Welcome back, {name}.
-              </span>{" "}
-              <span style={{ fontSize: "clamp(15px, 1.7vw, 18px)", fontWeight: 600, color: "#4b5563" }}>
-                Ticket assignment and maintenance workflows can plug in here.
-              </span>
-            </p>
-            <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: "12px", fontWeight: 700, color: "#6b7280" }}>Availability:</span>
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  padding: "4px 10px",
-                  borderRadius: "999px",
-                  fontSize: "12px",
-                  fontWeight: 800,
-                  backgroundColor: isTechnicianAvailable ? "#e8f5e9" : "#f3f4f6",
-                  color: isTechnicianAvailable ? "#2e7d32" : "#6b7280",
-                  border: `1px solid ${isTechnicianAvailable ? "#c8e6c9" : "#e5e7eb"}`,
-                }}
-              >
-                {isTechnicianAvailable ? "Available" : "Unavailable"}
-              </span>
-            </div>
-            {availabilityError && (
-              <p style={{ margin: "8px 0 0 0", color: "#c62828", fontSize: "12px", fontWeight: 600 }}>{availabilityError}</p>
-            )}
+          <p style={{ margin: 0, lineHeight: 1.45 }}>
+            <span style={{ fontSize: "clamp(17px, 2.1vw, 22px)", fontWeight: 800, color: "#14213D" }}>
+              Welcome back, {name}.
+            </span>
+          </p>
+          <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "#6b7280" }}>Availability:</span>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "4px 10px",
+                borderRadius: "999px",
+                fontSize: "12px",
+                fontWeight: 800,
+                backgroundColor: isTechnicianAvailable ? "#e8f5e9" : "#f3f4f6",
+                color: isTechnicianAvailable ? "#2e7d32" : "#6b7280",
+                border: `1px solid ${isTechnicianAvailable ? "#c8e6c9" : "#e5e7eb"}`,
+                opacity: availabilityBusy ? 0.7 : 1,
+              }}
+            >
+              {isTechnicianAvailable ? "Available" : "Unavailable"}
+            </span>
+            {availabilityBusy ? (
+              <span style={{ fontSize: "12px", fontWeight: 600, color: "#6b7280" }}>Saving…</span>
+            ) : null}
           </div>
-
-          <div style={{ position: "relative", flexShrink: 0 }} ref={profileRef}>
-          <button
-            type="button"
-            style={triggerStyle}
-            aria-haspopup="menu"
-            aria-expanded={profileMenuOpen}
-            onClick={() => setProfileMenuOpen((o) => !o)}
-          >
-            {techUser?.profileImageUrl ? (
-              <img
-                src={techUser.profileImageUrl}
-                alt=""
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : (
-              userDisplayInitial(techUser)
-            )}
-          </button>
-
-          {profileMenuOpen && (
-            <div role="menu" style={dropdownStyle}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <div
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: "50%",
-                    backgroundColor: techUser?.profileImageUrl ? "#f1f5f9" : "#475569",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    overflow: "hidden",
-                  }}
-                >
-                  {techUser?.profileImageUrl ? (
-                    <img
-                      src={techUser.profileImageUrl}
-                      alt=""
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  ) : (
-                    <span style={{ color: "#fff", fontWeight: 800 }}>{userDisplayInitial(techUser)}</span>
-                  )}
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>
-                    {(techUser?.firstName || "").trim() || "Technician"}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#64748b", wordBreak: "break-word" }}>{techUser?.email || "—"}</div>
-                </div>
-              </div>
-
-              <div style={{ display: "grid", gap: 8 }}>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setProfileMenuOpen(false);
-                    setProfileModalOpen(true);
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: 8,
-                    border: "1px solid #e5e7eb",
-                    background: "#ffffff",
-                    fontWeight: 700,
-                    fontSize: 14,
-                    color: "#0f172a",
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
-                >
-                  My profile
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={handleLogout}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: 8,
-                    border: "1px solid #e5e7eb",
-                    background: "#ffffff",
-                    fontWeight: 700,
-                    fontSize: 14,
-                    color: "#0f172a",
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
-                >
-                  Logout
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+          {availabilityError ? (
+            <p style={{ margin: "8px 0 0 0", color: "#c62828", fontSize: "12px", fontWeight: 600 }}>{availabilityError}</p>
+          ) : null}
         </div>
 
         <div
@@ -920,7 +945,7 @@ function TechnicianWorkspace() {
             border: "1px solid #F5E7C6",
             borderRadius: "12px",
             padding: "clamp(18px, 3vw, 24px)",
-            backgroundColor: "#FAF3E1",
+            backgroundColor: "#FFFFFF",
             boxSizing: "border-box",
             boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
           }}
