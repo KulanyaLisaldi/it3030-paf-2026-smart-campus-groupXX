@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getMyTickets } from "../api/tickets";
 import { getAuthToken } from "../api/http";
@@ -147,6 +147,55 @@ const timelineMetricsRowStyle = {
   borderBottom: "none",
 };
 
+const STATUS_FILTER_OPTIONS = [
+  { value: "ALL", label: "All statuses" },
+  { value: "OPEN", label: "Open" },
+  { value: "ACCEPTED", label: "Accepted" },
+  { value: "IN_PROGRESS", label: "In progress" },
+  { value: "RESOLVED", label: "Resolved" },
+  { value: "REJECTED", label: "Rejected" },
+];
+
+const PRIORITY_FILTER_OPTIONS = [
+  { value: "ALL", label: "All priorities" },
+  { value: "High", label: "High" },
+  { value: "Medium", label: "Medium" },
+  { value: "Low", label: "Low" },
+];
+
+const filterBarStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "10px",
+  alignItems: "center",
+  marginTop: "12px",
+  padding: "14px",
+  border: "1px solid #F5E7C6",
+  borderRadius: "12px",
+  backgroundColor: "#FFFFFF",
+  boxShadow: "0 4px 12px rgba(20, 33, 61, 0.04)",
+};
+
+const filterSelectStyle = {
+  border: "2px solid #F5E7C6",
+  borderRadius: "10px",
+  padding: "10px 12px",
+  fontSize: "14px",
+  fontWeight: 600,
+  fontFamily: appFontFamily,
+  color: "#222222",
+  backgroundColor: "#FFFFFF",
+  outline: "none",
+  minWidth: "158px",
+  boxSizing: "border-box",
+};
+
+const filterSearchStyle = {
+  ...filterSelectStyle,
+  flex: "1 1 220px",
+  minWidth: "200px",
+};
+
 function getProgressInfo(status) {
   const normalizedStatus = (status || "").toUpperCase();
   if (normalizedStatus === "RESOLVED") {
@@ -183,8 +232,45 @@ export default function MyTickets() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [priorityFilter, setPriorityFilter] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [searchText, setSearchText] = useState("");
   /** ticket id → false means collapsed; missing/undefined means expanded */
   const [timelineExpandedById, setTimelineExpandedById] = useState({});
+
+  const categoryOptions = useMemo(() => {
+    const set = new Set();
+    tickets.forEach((t) => {
+      const c = (t.category || "").trim();
+      if (c) set.add(c);
+    });
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [tickets]);
+
+  const filteredTickets = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    return tickets.filter((t) => {
+      if (statusFilter !== "ALL" && (t.status || "").toUpperCase() !== statusFilter) return false;
+      if (priorityFilter !== "ALL" && (t.priority || "") !== priorityFilter) return false;
+      if (categoryFilter !== "ALL" && (t.category || "") !== categoryFilter) return false;
+      if (q) {
+        const hay = `${t.issueTitle || ""} ${t.description || ""} ${t.category || ""} ${t.resourceLocation || ""} ${t.assignedTechnicianName || ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [tickets, statusFilter, priorityFilter, categoryFilter, searchText]);
+
+  const filtersActive =
+    statusFilter !== "ALL" || priorityFilter !== "ALL" || categoryFilter !== "ALL" || searchText.trim() !== "";
+
+  const clearFilters = () => {
+    setStatusFilter("ALL");
+    setPriorityFilter("ALL");
+    setCategoryFilter("ALL");
+    setSearchText("");
+  };
 
   const handleButtonHover = (event, isHover) => {
     event.target.style.backgroundColor = isHover ? "#E66A0A" : "#FA8112";
@@ -271,8 +357,73 @@ export default function MyTickets() {
         {!loading && !error && tickets.length === 0 && <p>No tickets found yet.</p>}
 
         {!loading && !error && tickets.length > 0 && (
+          <div style={filterBarStyle}>
+            <select style={filterSelectStyle} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status">
+              {STATUS_FILTER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <select style={filterSelectStyle} value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} aria-label="Filter by priority">
+              {PRIORITY_FILTER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <select style={filterSelectStyle} value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} aria-label="Filter by category">
+              <option value="ALL">All categories</option>
+              {categoryOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <input
+              type="search"
+              style={filterSearchStyle}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search title, description, location…"
+              aria-label="Search tickets"
+            />
+            {filtersActive && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                style={{
+                  border: "2px solid #F5E7C6",
+                  borderRadius: "10px",
+                  padding: "10px 14px",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  fontFamily: appFontFamily,
+                  backgroundColor: "#FFFFFF",
+                  color: "#14213D",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
+
+        {!loading && !error && tickets.length > 0 && (
+          <p style={{ margin: "10px 0 0 0", color: "#6b7280", fontSize: "13px", fontWeight: 600 }}>
+            Showing {filteredTickets.length} of {tickets.length} ticket{tickets.length === 1 ? "" : "s"}
+          </p>
+        )}
+
+        {!loading && !error && tickets.length > 0 && filteredTickets.length === 0 && (
+          <p style={{ marginTop: "14px", color: "#374151", fontWeight: 600 }}>No tickets match your filters.</p>
+        )}
+
+        {!loading && !error && tickets.length > 0 && filteredTickets.length > 0 && (
           <div style={{ display: "grid", gap: "12px", marginTop: "12px", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-            {tickets.map((ticket) => (
+            {filteredTickets.map((ticket) => (
               (() => {
                 const progress = getProgressInfo(ticket.status);
                 const timelineExpanded = timelineExpandedById[ticket.id] !== false;
