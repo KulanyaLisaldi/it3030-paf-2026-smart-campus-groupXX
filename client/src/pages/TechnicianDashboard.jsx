@@ -1376,7 +1376,6 @@ function TechnicianWorkspace() {
               {!ticketDetailModalLoading && !ticketDetailModalError && ticketDetailModalData?.ticket && (() => {
                 const tk = ticketDetailModalData.ticket;
                 const hasTechAssignment = Boolean((tk.assignedTechnicianId || "").trim());
-                const assignee = ticketDetailModalData.assignedTechnician;
                 const comments = ticketDetailModalData.comments || [];
                 const attachments = normalizeTicketAttachments(tk.attachments);
                 const priorityBg =
@@ -1641,51 +1640,6 @@ function TechnicianWorkspace() {
                         </div>
                       )}
                     </div>
-
-                    {(assignee || tk.assignedTechnicianName) && (
-                      <div
-                        style={{
-                          marginTop: 12,
-                          marginBottom: 12,
-                          padding: "12px 14px",
-                          borderRadius: 12,
-                          border: "1px solid #F5E7C6",
-                          backgroundColor: "#FAF3E1",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: "12px",
-                            fontWeight: 800,
-                            color: "#14213D",
-                            marginBottom: 8,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.04em",
-                          }}
-                        >
-                          Assigned technician
-                        </div>
-                        <div style={{ display: "grid", gap: 6, fontSize: "13px", color: "#374151" }}>
-                          <div>
-                            <span style={{ fontWeight: 700 }}>Name:</span>{" "}
-                            {assignee?.displayName || tk.assignedTechnicianName || "—"}
-                          </div>
-                          <div>
-                            <span style={{ fontWeight: 700 }}>Email:</span>{" "}
-                            <span style={{ wordBreak: "break-word" }}>{assignee?.email || "—"}</span>
-                          </div>
-                          <div>
-                            <span style={{ fontWeight: 700 }}>Phone:</span> {(assignee?.phoneNumber || "").trim() || "—"}
-                          </div>
-                          {assignee?.technicianCategory && (
-                            <div>
-                              <span style={{ fontWeight: 700 }}>Specialty:</span>{" "}
-                              {technicianCategoryLabel(assignee.technicianCategory)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
 
                     <div style={{ ...sectionTitleStyle, color: "#14213D" }}>Comments</div>
                     {comments.length === 0 ? (
