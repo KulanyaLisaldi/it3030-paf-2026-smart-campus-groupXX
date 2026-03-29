@@ -11,8 +11,7 @@ const ADMIN_SIDEBAR_ITEMS = ["Dashboard", "Tickets", "Charts", "Reports"];
 
 const pageStyle = {
   minHeight: "100vh",
-  backgroundColor: "#FAF3E1",
-  backgroundImage: "linear-gradient(180deg, #FAF3E1 0%, #FFFFFF 70%)",
+  backgroundColor: "#FFFFFF",
   padding: "28px 16px",
   display: "flex",
   justifyContent: "center",
@@ -39,7 +38,7 @@ const headerStyle = {
   padding: "12px",
   borderRadius: "10px",
   border: "1px solid #F5E7C6",
-  backgroundColor: "#FAF3E1",
+  backgroundColor: "#FFFFFF",
 };
 
 const titleStyle = {
@@ -143,7 +142,7 @@ const chartCardStyle = {
   border: "1px solid #F5E7C6",
   borderRadius: "12px",
   padding: "14px",
-  backgroundColor: "#FAF3E1",
+  backgroundColor: "#FFFFFF",
   boxShadow: "0 6px 14px rgba(20, 33, 61, 0.05)",
 };
 
@@ -1031,7 +1030,7 @@ export default function AdminTicketDashboard() {
               style={{
                 border: "1px solid #F5E7C6",
                 borderRadius: "12px",
-                backgroundColor: "#FAF3E1",
+                backgroundColor: "#FFFFFF",
                 padding: "12px",
                 height: "100%",
                 display: "flex",
@@ -1104,7 +1103,7 @@ export default function AdminTicketDashboard() {
               style={{
                 border: "1px solid #F5E7C6",
                 borderRadius: "12px",
-                backgroundColor: "#FAF3E1",
+                backgroundColor: "#FFFFFF",
                 padding: "14px",
                 boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
               }}
@@ -1328,7 +1327,7 @@ export default function AdminTicketDashboard() {
               style={{
                 border: "1px solid #F5E7C6",
                 borderRadius: "12px",
-                backgroundColor: "#FAF3E1",
+                backgroundColor: "#FFFFFF",
                 padding: "12px",
                 height: "100%",
                 display: "flex",
@@ -1391,7 +1390,7 @@ export default function AdminTicketDashboard() {
                   padding: "14px",
                   border: "1px solid #F5E7C6",
                   borderRadius: "12px",
-                  backgroundColor: "#FAF3E1",
+                  backgroundColor: "#FFFFFF",
                   display: "flex",
                   gap: "10px",
                   flexWrap: "wrap",

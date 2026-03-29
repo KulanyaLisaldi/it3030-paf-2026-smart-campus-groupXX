@@ -8,8 +8,7 @@ import { appFontFamily } from "../utils/appFont";
 
 const pageStyle = {
   minHeight: "100vh",
-  backgroundColor: "#FAF3E1",
-  backgroundImage: "linear-gradient(180deg, #FAF3E1 0%, #FFFFFF 70%)",
+  backgroundColor: "#FFFFFF",
   padding: "28px 16px",
   display: "flex",
   justifyContent: "center",
@@ -18,7 +17,7 @@ const pageStyle = {
 
 const cardStyle = {
   width: "100%",
-  maxWidth: "960px",
+  maxWidth: "1280px",
   backgroundColor: "#FFFFFF",
   borderRadius: "12px",
   boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
@@ -26,7 +25,7 @@ const cardStyle = {
 };
 
 const headerStripStyle = {
-  backgroundColor: "#FAF3E1",
+  backgroundColor: "#FFFFFF",
   color: "#222222",
   borderRadius: "12px",
   padding: "16px 16px",

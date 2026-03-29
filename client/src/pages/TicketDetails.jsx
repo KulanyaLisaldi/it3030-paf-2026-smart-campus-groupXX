@@ -14,8 +14,7 @@ import { appFontFamily } from "../utils/appFont";
 
 const pageStyle = {
   minHeight: "100vh",
-  backgroundColor: "#FAF3E1",
-  backgroundImage: "linear-gradient(180deg, #FAF3E1 0%, #FFFFFF 70%)",
+  backgroundColor: "#FFFFFF",
   padding: "28px 16px",
   display: "flex",
   justifyContent: "center",
@@ -24,7 +23,7 @@ const pageStyle = {
 
 const containerStyle = {
   width: "100%",
-  maxWidth: "960px",
+  maxWidth: "1280px",
   backgroundColor: "#FFFFFF",
   borderRadius: "12px",
   boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
@@ -41,7 +40,7 @@ const headerStyle = {
   padding: "12px 12px",
   borderRadius: "10px",
   border: "1px solid #F5E7C6",
-  backgroundColor: "#FAF3E1",
+  backgroundColor: "#FFFFFF",
 };
 
 const titleStyle = {
@@ -639,6 +638,50 @@ export default function TicketDetails() {
               )}
             </div>
 
+            {(ticketDetails.assignedTechnician || ticketDetails.ticket.assignedTechnicianName) && (
+              <div style={{ ...cardStyle, backgroundColor: "#FAF3E1", border: "1px solid #F5E7C6" }}>
+                <div
+                  style={{
+                    color: "#14213D",
+                    fontSize: "13px",
+                    fontWeight: 800,
+                    marginBottom: "12px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  Assigned technician
+                </div>
+                {(() => {
+                  const a = ticketDetails.assignedTechnician;
+                  const name = a?.displayName || ticketDetails.ticket.assignedTechnicianName || "—";
+                  const email = a?.email || "—";
+                  const phone = (a?.phoneNumber || "").trim() || "—";
+                  const specialty = a?.technicianCategory ? technicianCategoryLabel(a.technicianCategory) : "—";
+                  return (
+                    <div style={{ display: "grid", gap: "10px", fontSize: "14px", color: "#374151" }}>
+                      <div>
+                        <span style={{ fontWeight: 700, color: "#222222" }}>Name:</span>{" "}
+                        <span style={{ fontWeight: 400 }}>{name}</span>
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: 700, color: "#222222" }}>Email:</span>{" "}
+                        <span style={{ fontWeight: 400, wordBreak: "break-word" }}>{email}</span>
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: 700, color: "#222222" }}>Phone:</span>{" "}
+                        <span style={{ fontWeight: 400 }}>{phone}</span>
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: 700, color: "#222222" }}>Specialty:</span>{" "}
+                        <span style={{ fontWeight: 400 }}>{specialty}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
             <div style={cardStyle}>
               <div
                 style={{
@@ -852,53 +895,6 @@ export default function TicketDetails() {
                 </button>
               </form>
             </div>
-
-            {(ticketDetails.assignedTechnician || ticketDetails.ticket.assignedTechnicianName) && (
-              <div style={{ ...cardStyle, backgroundColor: "#FAF3E1", border: "1px solid #F5E7C6" }}>
-                <div
-                  style={{
-                    color: "#14213D",
-                    fontSize: "13px",
-                    fontWeight: 800,
-                    marginBottom: "12px",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  Assigned technician
-                </div>
-                {(() => {
-                  const a = ticketDetails.assignedTechnician;
-                  const name = a?.displayName || ticketDetails.ticket.assignedTechnicianName || "—";
-                  const email = a?.email || "—";
-                  const phone = (a?.phoneNumber || "").trim() || "—";
-                  const specialty = a?.technicianCategory
-                    ? technicianCategoryLabel(a.technicianCategory)
-                    : "—";
-                  return (
-                    <div style={{ display: "grid", gap: "10px", fontSize: "14px", color: "#374151" }}>
-                      <div>
-                        <span style={{ fontWeight: 700, color: "#222" }}>Name:</span>{" "}
-                        <span style={{ fontWeight: 600 }}>{name}</span>
-                      </div>
-
-                      <div>
-                        <span style={{ fontWeight: 700, color: "#222" }}>Email:</span>{" "}
-                        <span style={{ fontWeight: 600, wordBreak: "break-word" }}>{email}</span>
-                      </div>
-                      <div>
-                        <span style={{ fontWeight: 700, color: "#222" }}>Phone:</span>{" "}
-                        <span style={{ fontWeight: 600 }}>{phone}</span>
-                      </div>
-                      <div>
-                        <span style={{ fontWeight: 700, color: "#222" }}>Specialty:</span>{" "}
-                        <span style={{ fontWeight: 600 }}>{specialty}</span>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
           </>
         )}
       </section>
