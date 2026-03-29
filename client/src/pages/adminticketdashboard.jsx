@@ -836,6 +836,39 @@ export default function AdminTicketDashboard() {
 
   const maxGrowthCount = Math.max(1, ...growthData.map((d) => d.count));
 
+  const slaMetrics = useMemo(() => {
+    let tfrSum = 0;
+    let tfrN = 0;
+    let ttrSum = 0;
+    let ttrN = 0;
+
+    filteredAndSortedTickets.forEach((item) => {
+      const t = item?.ticket || {};
+      const tfr = t.timeToFirstResponseSeconds;
+      const ttr = t.timeToResolutionSeconds;
+      if (typeof tfr === "number" && !Number.isNaN(tfr) && tfr >= 0) {
+        tfrSum += tfr;
+        tfrN += 1;
+      }
+      if (typeof ttr === "number" && !Number.isNaN(ttr) && ttr >= 0) {
+        ttrSum += ttr;
+        ttrN += 1;
+      }
+    });
+
+    const avgTfr = tfrN > 0 ? tfrSum / tfrN : null;
+    const avgTtr = ttrN > 0 ? ttrSum / ttrN : null;
+    const maxAvg = Math.max(avgTfr ?? 0, avgTtr ?? 0, 1);
+
+    return {
+      avgTfr,
+      avgTtr,
+      tfrN,
+      ttrN,
+      maxAvg,
+    };
+  }, [filteredAndSortedTickets]);
+
   useEffect(() => {
     if (activeView === "tickets") {
       setExtraBarMenu("Ticket Management");
@@ -1205,6 +1238,98 @@ export default function AdminTicketDashboard() {
               </div>
 
               <div id="admin-dashboard-reports" style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
+                <div style={{ ...chartCardStyle, gridColumn: "1 / -1" }}>
+                  <div style={{ ...sectionTitleStyle, marginBottom: "6px" }}>SLA performance — efficiency and service quality</div>
+                  <p style={{ margin: "0 0 16px 0", color: "#6b7280", fontSize: "12px", lineHeight: 1.5, fontWeight: 500 }}>
+                    <strong style={{ color: "#374151" }}>TFR</strong> (time to first response) and{" "}
+                    <strong style={{ color: "#374151" }}>TTR</strong> (time to resolution). Lower averages mean faster handling.
+                  </p>
+                  {slaMetrics.tfrN === 0 && slaMetrics.ttrN === 0 ? (
+                    <p style={{ margin: 0, color: "#6b7280", fontSize: "13px" }}>No TFR or TTR metrics recorded for the current ticket set yet.</p>
+                  ) : (
+                    <div
+                      style={{
+                        maxWidth: "520px",
+                        margin: "0 auto",
+                        paddingTop: "4px",
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 800,
+                          color: "#14213D",
+                          marginBottom: "14px",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        Average TFR vs TTR
+                      </div>
+                      {slaMetrics.avgTfr != null && (
+                        <div style={{ marginBottom: "16px" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "baseline",
+                              gap: "12px",
+                              marginBottom: "6px",
+                              color: "#374151",
+                              fontSize: "13px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            <span style={{ flexShrink: 0 }}>Avg. TFR</span>
+                            <span style={{ textAlign: "right", wordBreak: "break-word" }}>{formatDurationSeconds(slaMetrics.avgTfr)}</span>
+                          </div>
+                          <div style={{ height: "12px", borderRadius: "999px", border: "1px solid #F5E7C6", backgroundColor: "#FAF3E1", overflow: "hidden" }}>
+                            <div
+                              style={{
+                                height: "100%",
+                                width: `${(slaMetrics.avgTfr / slaMetrics.maxAvg) * 100}%`,
+                                backgroundColor: "#14213D",
+                              }}
+                            />
+                          </div>
+                          <div style={{ marginTop: "6px", color: "#9ca3af", fontSize: "11px", fontWeight: 600 }}>{slaMetrics.tfrN} ticket(s) with TFR</div>
+                        </div>
+                      )}
+                      {slaMetrics.avgTtr != null && (
+                        <div style={{ marginBottom: "4px" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "baseline",
+                              gap: "12px",
+                              marginBottom: "6px",
+                              color: "#374151",
+                              fontSize: "13px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            <span style={{ flexShrink: 0 }}>Avg. TTR</span>
+                            <span style={{ textAlign: "right", wordBreak: "break-word" }}>{formatDurationSeconds(slaMetrics.avgTtr)}</span>
+                          </div>
+                          <div style={{ height: "12px", borderRadius: "999px", border: "1px solid #F5E7C6", backgroundColor: "#FAF3E1", overflow: "hidden" }}>
+                            <div
+                              style={{
+                                height: "100%",
+                                width: `${(slaMetrics.avgTtr / slaMetrics.maxAvg) * 100}%`,
+                                backgroundColor: "#2e7d32",
+                              }}
+                            />
+                          </div>
+                          <div style={{ marginTop: "6px", color: "#9ca3af", fontSize: "11px", fontWeight: 600 }}>{slaMetrics.ttrN} ticket(s) with TTR</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div style={chartCardStyle}>
                   <div style={{ ...sectionTitleStyle, marginBottom: "10px" }}>Status Bar Chart</div>
                   {[

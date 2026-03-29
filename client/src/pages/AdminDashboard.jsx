@@ -94,12 +94,6 @@ const inputStyle = {
   color: "#222222",
 };
 
-const selectFieldStyle = {
-  ...inputStyle,
-  cursor: "pointer",
-  minHeight: "46px",
-};
-
 const labelStyle = {
   display: "block",
   fontSize: "13px",
@@ -191,6 +185,13 @@ function isValidPhone(value) {
   return t.length > 0 && PHONE_PATTERN.test(t);
 }
 
+/** API accepts one category; use first in standard list order among selected values. */
+function primaryTechnicianCategoryForApi(selectedValues) {
+  const picked = new Set(selectedValues);
+  const ordered = TECHNICIAN_CATEGORIES.map((c) => c.value).filter((v) => picked.has(v));
+  return ordered[0] || DEFAULT_TECHNICIAN_CATEGORY;
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [panel, setPanel] = useState("dashboard");
@@ -213,7 +214,7 @@ export default function AdminDashboard() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [category, setCategory] = useState(DEFAULT_TECHNICIAN_CATEGORY);
+  const [selectedCategories, setSelectedCategories] = useState([]);
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
@@ -262,7 +263,7 @@ export default function AdminDashboard() {
     setLastName("");
     setEmail("");
     setPhoneNumber("");
-    setCategory(DEFAULT_TECHNICIAN_CATEGORY);
+    setSelectedCategories([]);
     setPassword("");
     setSubmitting(false);
     setMessage("");
@@ -279,6 +280,10 @@ export default function AdminDashboard() {
     e.preventDefault();
     setMessage("");
     setError("");
+    if (selectedCategories.length === 0) {
+      setError("Select at least one category.");
+      return;
+    }
     setSubmitting(true);
     try {
       await createTechnician({
@@ -287,7 +292,7 @@ export default function AdminDashboard() {
         email: email.trim(),
         phoneNumber: phoneNumber.trim(),
         password,
-        category: toApiTechnicianCategory(category),
+        category: toApiTechnicianCategory(primaryTechnicianCategoryForApi(selectedCategories)),
       });
       setMessage("Technician created. They can sign in with email and password on the main Sign In page.");
       setUsersTableRev((n) => n + 1);
@@ -296,7 +301,7 @@ export default function AdminDashboard() {
       setLastName("");
       setEmail("");
       setPhoneNumber("");
-      setCategory(DEFAULT_TECHNICIAN_CATEGORY);
+      setSelectedCategories([]);
       setPassword("");
     } catch (err) {
       setError(err?.message || "Could not create technician.");
@@ -757,36 +762,68 @@ export default function AdminDashboard() {
                     />
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                    <div>
-                      <label style={labelStyle}>Category</label>
-                      <select
-                        required
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        style={selectFieldStyle}
-                        aria-label="Technician category"
+                  <div>
+                    <fieldset style={{ border: "none", margin: 0, padding: 0 }}>
+                      <legend style={{ ...labelStyle, padding: 0 }}>Categories</legend>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "10px 18px",
+                          padding: "12px 14px",
+                          borderRadius: "10px",
+                          border: "2px solid #F5E7C6",
+                          backgroundColor: "#FFFFFF",
+                          boxSizing: "border-box",
+                        }}
                       >
-                        {TECHNICIAN_CATEGORIES.map((c) => (
-                          <option key={c.value} value={c.value}>
-                            {c.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                        {TECHNICIAN_CATEGORIES.map((c) => {
+                          const checked = selectedCategories.includes(c.value);
+                          return (
+                            <label
+                              key={c.value}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "10px",
+                                fontSize: "14px",
+                                fontWeight: 600,
+                                color: "#222222",
+                                cursor: "pointer",
+                                userSelect: "none",
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => {
+                                  setSelectedCategories((prev) => {
+                                    const has = prev.includes(c.value);
+                                    if (has) return prev.filter((v) => v !== c.value);
+                                    return [...prev, c.value];
+                                  });
+                                }}
+                                style={{ width: "18px", height: "18px", accentColor: "#FA8112", cursor: "pointer", flexShrink: 0 }}
+                              />
+                              <span>{c.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
+                  </div>
 
-                    <div>
-                      <label style={labelStyle}>
-                        Phone <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
-                      </label>
-                      <input
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        style={inputStyle}
-                        placeholder="+94 77 000 0000"
-                        autoComplete="tel"
-                      />
-                    </div>
+                  <div>
+                    <label style={labelStyle}>
+                      Phone <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
+                    </label>
+                    <input
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      style={inputStyle}
+                      placeholder="+94 77 000 0000"
+                      autoComplete="tel"
+                    />
                   </div>
 
                   <div>
