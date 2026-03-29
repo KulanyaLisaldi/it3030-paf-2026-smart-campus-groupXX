@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getMyTickets } from "../api/tickets";
 import { getAuthToken } from "../api/http";
-import { CREATE_TICKET_PATH, rememberPostLoginPath } from "../utils/authRedirect";
 import { formatDurationSeconds, formatTicketInstant } from "../utils/slaFormat";
 import { appFontFamily } from "../utils/appFont";
 
@@ -272,10 +271,6 @@ export default function MyTickets() {
     setSearchText("");
   };
 
-  const handleButtonHover = (event, isHover) => {
-    event.target.style.backgroundColor = isHover ? "#E66A0A" : "#FA8112";
-  };
-
   useEffect(() => {
     const load = async () => {
       if (!getAuthToken()) {
@@ -314,36 +309,6 @@ export default function MyTickets() {
       <section style={cardStyle}>
         <div style={headerStripStyle}>
           <h1 style={titleStyle}>My Tickets</h1>
-
-          <button
-            type="button"
-            style={{
-              backgroundColor: "#FA8112",
-              color: "#FFFFFF",
-              border: "none",
-              borderRadius: "8px",
-              padding: "12px 18px",
-              fontSize: "14px",
-              fontWeight: 600,
-              lineHeight: 1,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-            }}
-            onMouseEnter={(event) => handleButtonHover(event, true)}
-            onMouseLeave={(event) => handleButtonHover(event, false)}
-            onClick={() => {
-              if (!getAuthToken()) {
-                rememberPostLoginPath(CREATE_TICKET_PATH);
-                navigate("/signin", { state: { from: CREATE_TICKET_PATH } });
-              } else {
-                navigate(CREATE_TICKET_PATH);
-              }
-            }}
-          >
-            Create New Ticket
-          </button>
         </div>
 
         {location.state?.createdSuccess && (
