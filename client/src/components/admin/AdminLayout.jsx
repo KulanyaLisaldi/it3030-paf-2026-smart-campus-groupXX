@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getAuthToken } from "../../api/http";
 import { changeMyPassword, removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../../api/auth";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../../utils/campusUserStorage";
+import PasswordInput from "../PasswordInput.jsx";
 
 const shellStyle = {
   height: "100vh",
@@ -31,6 +32,14 @@ const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: "10px", 
 const labelStyle = { display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" };
 const PHONE_PATTERN = /^[0-9+\-()\s]{7,20}$/;
 const isValidPhone = (v) => (v || "").trim().length > 0 && PHONE_PATTERN.test((v || "").trim());
+const PASSWORD_POLICY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+const getPasswordChecks = (value) => {
+  const v = value || "";
+  return {
+    minLength: v.length >= 8,
+    hasComplexity: /[a-z]/.test(v) && /[A-Z]/.test(v) && /\d/.test(v) && /[^A-Za-z\d]/.test(v),
+  };
+};
 
 function navRowStyle(active) {
   return {
@@ -136,12 +145,20 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
       setPasswordState({ busy: false, message: "", error: "All fields are required." });
       return;
     }
-    if (newPassword.length < 6) {
-      setPasswordState({ busy: false, message: "", error: "New password must be at least 6 characters." });
+    if (newPassword.length < 8) {
+      setPasswordState({ busy: false, message: "", error: "Password must be at least 8 characters." });
+      return;
+    }
+    if (!PASSWORD_POLICY_REGEX.test(newPassword)) {
+      setPasswordState({ busy: false, message: "", error: "Must include uppercase, lowercase, number, and symbol." });
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordState({ busy: false, message: "", error: "New password and confirmation do not match." });
+      setPasswordState({ busy: false, message: "", error: "Passwords do not match" });
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setPasswordState({ busy: false, message: "", error: "New password must be different from current password." });
       return;
     }
     setPasswordState({ busy: true, message: "", error: "" });
@@ -153,6 +170,15 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
       setPasswordState({ busy: false, message: "", error: err?.message || "Could not change password" });
     }
   };
+  const passwordChecks = getPasswordChecks(passwordDraft.newPassword);
+  const canSubmitPassword =
+    !!passwordDraft.currentPassword &&
+    !!passwordDraft.newPassword &&
+    !!passwordDraft.confirmPassword &&
+    passwordChecks.minLength &&
+    passwordChecks.hasComplexity &&
+    passwordDraft.newPassword === passwordDraft.confirmPassword &&
+    passwordDraft.newPassword !== passwordDraft.currentPassword;
 
   return (
     <div style={shellStyle}>
@@ -276,16 +302,24 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
               </div>
               <div style={{ padding: "18px" }}>
                 <div style={{ display: "grid", gap: "12px" }}>
-                  <div><label style={labelStyle}>Current password</label><input type="password" value={passwordDraft.currentPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, currentPassword: e.target.value }))} style={inputStyle} /></div>
-                  <div><label style={labelStyle}>New password</label><input type="password" value={passwordDraft.newPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, newPassword: e.target.value }))} style={inputStyle} /></div>
-                  <div><label style={labelStyle}>Confirm new password</label><input type="password" value={passwordDraft.confirmPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, confirmPassword: e.target.value }))} style={inputStyle} /></div>
+                  <div><label style={labelStyle}>Current password</label><PasswordInput value={passwordDraft.currentPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, currentPassword: e.target.value }))} style={inputStyle} /></div>
+                  <div>
+                    <label style={labelStyle}>New password</label>
+                    <PasswordInput value={passwordDraft.newPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, newPassword: e.target.value }))} style={inputStyle} />
+                    <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.45 }}>
+                      <div style={{ color: passwordChecks.minLength ? "#15803d" : "#6b7280" }}>Password must be at least 8 characters</div>
+                      <div style={{ color: passwordChecks.hasComplexity ? "#15803d" : "#6b7280" }}>Must include uppercase, lowercase, number, symbol</div>
+                      <div style={{ color: (passwordDraft.newPassword && passwordDraft.newPassword === passwordDraft.currentPassword) ? "#b91c1c" : "#6b7280" }}>New password must be different from current password</div>
+                    </div>
+                  </div>
+                  <div><label style={labelStyle}>Confirm new password</label><PasswordInput value={passwordDraft.confirmPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, confirmPassword: e.target.value }))} style={inputStyle} /></div>
                 </div>
                 <div style={{ marginTop: "14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
                   <div>
                     {passwordState.error ? <div style={{ color: "#b91c1c", fontSize: "13px", fontWeight: 700 }}>{passwordState.error}</div> : null}
                     {passwordState.message ? <div style={{ color: "#15803d", fontSize: "13px", fontWeight: 700 }}>{passwordState.message}</div> : null}
                   </div>
-                  <button type="button" onClick={handleSubmitPassword} disabled={passwordState.busy} style={{ padding: "10px 14px", borderRadius: "10px", border: "none", backgroundColor: "#FA8112", color: "#fff", fontWeight: 800, cursor: passwordState.busy ? "wait" : "pointer", opacity: passwordState.busy ? 0.7 : 1 }}>
+                  <button type="button" onClick={handleSubmitPassword} disabled={passwordState.busy || !canSubmitPassword} style={{ padding: "10px 14px", borderRadius: "10px", border: "none", backgroundColor: "#FA8112", color: "#fff", fontWeight: 800, cursor: passwordState.busy || !canSubmitPassword ? "not-allowed" : "pointer", opacity: passwordState.busy || !canSubmitPassword ? 0.6 : 1 }}>
                     {passwordState.busy ? "Saving..." : "Update password"}
                   </button>
                 </div>

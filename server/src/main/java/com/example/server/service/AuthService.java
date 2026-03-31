@@ -38,6 +38,8 @@ import java.util.UUID;
 
 @Service
 public class AuthService {
+    private static final String PASSWORD_COMPLEXITY_REGEX =
+        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d]).{8,128}$";
 
     private final UserRepo userRepo;
     private final TicketRepo ticketRepo;
@@ -289,6 +291,12 @@ public class AuthService {
         }
         if (current.equals(next)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be different from current password");
+        }
+        if (!next.matches(PASSWORD_COMPLEXITY_REGEX)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Password must include uppercase, lowercase, number, and symbol"
+            );
         }
         user.setPasswordHash(passwordEncoder.encode(next));
         userRepo.save(user);
