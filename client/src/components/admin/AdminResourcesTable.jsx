@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { createResource, disableResource, getAdminResources, updateResourceStatus } from "../../api/adminResources";
+import { createResource, disableResource, getAdminResources, updateResource, updateResourceStatus } from "../../api/adminResources";
 
 const pageCardStyle = {
   maxWidth: "100%",
@@ -70,9 +70,23 @@ export default function AdminResourcesTable() {
   const [resources, setResources] = useState([]);
   const [busyId, setBusyId] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [createBusy, setCreateBusy] = useState(false);
+  const [editBusy, setEditBusy] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [editError, setEditError] = useState("");
   const [formData, setFormData] = useState({
+    resourceCode: "",
+    resourceName: "",
+    resourceType: "LECTURE_HALL",
+    capacity: "",
+    location: "",
+    description: "",
+    availabilityWindows: "",
+    status: "ACTIVE",
+  });
+  const [editResourceId, setEditResourceId] = useState("");
+  const [editFormData, setEditFormData] = useState({
     resourceCode: "",
     resourceName: "",
     resourceType: "LECTURE_HALL",
@@ -175,6 +189,27 @@ export default function AdminResourcesTable() {
     setAddModalOpen(true);
   };
 
+  const openEditModal = (resource) => {
+    setEditResourceId(resource.id || "");
+    setEditFormData({
+      resourceCode: resource.code || resource.resourceCode || "",
+      resourceName: resource.name || resource.resourceName || "",
+      resourceType: resource.type || "LECTURE_HALL",
+      capacity: String(resource.capacity ?? ""),
+      location: resource.location || "",
+      description: resource.description || "",
+      availabilityWindows: resource.availability || resource.availabilityText || "",
+      status: resource.status || "ACTIVE",
+    });
+    setEditError("");
+    setEditModalOpen(true);
+  };
+
+  const updateEditForm = (key, value) => {
+    setEditFormData((prev) => ({ ...prev, [key]: value }));
+    setEditError("");
+  };
+
   const handleCreateResource = async (e) => {
     e.preventDefault();
     const capacityNumber = Number(formData.capacity);
@@ -210,6 +245,54 @@ export default function AdminResourcesTable() {
       setAddModalOpen(false);
     } finally {
       setCreateBusy(false);
+    }
+  };
+
+  const handleEditResource = async (e) => {
+    e.preventDefault();
+    const capacityNumber = Number(editFormData.capacity);
+    if (!editResourceId) {
+      setEditError("Resource id is missing.");
+      return;
+    }
+    if (!editFormData.resourceName.trim() || !editFormData.location.trim()) {
+      setEditError("Resource name and location are required.");
+      return;
+    }
+    if (!Number.isFinite(capacityNumber) || capacityNumber < 0) {
+      setEditError("Capacity must be a valid number.");
+      return;
+    }
+
+    const payload = {
+      name: editFormData.resourceName.trim(),
+      type: editFormData.resourceType,
+      capacity: capacityNumber,
+      location: editFormData.location.trim(),
+      description: editFormData.description.trim(),
+      availability: editFormData.availabilityWindows.trim(),
+      status: editFormData.status,
+    };
+
+    setEditBusy(true);
+    setEditError("");
+    try {
+      await updateResource(editResourceId, payload);
+      setEditModalOpen(false);
+      await load();
+    } catch (err) {
+      if (String(editResourceId).startsWith("tmp-")) {
+        setResources((prev) => prev.map((r) => (
+          r.id === editResourceId
+            ? { ...r, ...payload }
+            : r
+        )));
+        setEditModalOpen(false);
+      } else {
+        setEditError(err?.message || "Could not update resource.");
+      }
+    } finally {
+      setEditBusy(false);
     }
   };
 
@@ -277,7 +360,7 @@ export default function AdminResourcesTable() {
                   <td style={tdStyle}>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button type="button" style={smallBtnStyle()} onClick={() => window.alert(`View resource: ${r.name || r.code || ""}`)}>View</button>
-                      <button type="button" style={smallBtnStyle()} onClick={() => window.alert(`Edit resource: ${r.name || r.code || ""}`)}>Edit</button>
+                      <button type="button" style={smallBtnStyle()} onClick={() => openEditModal(r)}>Edit</button>
                       <button type="button" style={smallBtnStyle("primary")} disabled={busyId === r.id} onClick={() => onToggleStatus(r)}>{(r.status || "OUT_OF_SERVICE") === "ACTIVE" ? "Change to Out of Service" : "Change to Active"}</button>
                       <button type="button" style={smallBtnStyle("danger")} disabled={busyId === r.id} onClick={() => onDisable(r)}>Delete / Disable</button>
                     </div>
@@ -363,6 +446,87 @@ export default function AdminResourcesTable() {
                 <button type="button" onClick={() => setAddModalOpen(false)} style={smallBtnStyle()}>Cancel</button>
                 <button type="submit" disabled={createBusy} style={{ ...smallBtnStyle("primary"), opacity: createBusy ? 0.7 : 1 }}>
                   {createBusy ? "Creating..." : "Create Resource"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{ position: "fixed", inset: 0, zIndex: 1002, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px" }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setEditModalOpen(false); }}
+        >
+          <div style={{ width: "100%", maxWidth: "860px", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+              <div>
+                <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Edit Resource</div>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Update existing resource details.</div>
+              </div>
+              <button type="button" onClick={() => setEditModalOpen(false)} style={{ padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, fontSize: "14px", cursor: "pointer", color: "#0f172a" }}>Cancel</button>
+            </div>
+
+            <form onSubmit={handleEditResource} style={{ padding: "18px 22px 22px", display: "grid", gap: "16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                <div>
+                  <label style={labelStyle}>Resource Code</label>
+                  <input value={editFormData.resourceCode} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#6b7280" }} readOnly disabled />
+                </div>
+                <div>
+                  <label style={labelStyle}>Resource Name</label>
+                  <input value={editFormData.resourceName} onChange={(e) => updateEditForm("resourceName", e.target.value)} style={inputStyle} required />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                <div>
+                  <label style={labelStyle}>Resource Type</label>
+                  <select value={editFormData.resourceType} onChange={(e) => updateEditForm("resourceType", e.target.value)} style={inputStyle}>
+                    <option value="LECTURE_HALL">Lecture Hall</option>
+                    <option value="LAB">Lab</option>
+                    <option value="MEETING_ROOM">Meeting Room</option>
+                    <option value="EQUIPMENT">Equipment</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Capacity</label>
+                  <input value={editFormData.capacity} onChange={(e) => updateEditForm("capacity", e.target.value.replace(/[^\d]/g, ""))} style={inputStyle} required />
+                </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Location</label>
+                <input value={editFormData.location} onChange={(e) => updateEditForm("location", e.target.value)} style={inputStyle} required />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Description</label>
+                <textarea value={editFormData.description} onChange={(e) => updateEditForm("description", e.target.value)} style={{ ...inputStyle, minHeight: "88px", resize: "vertical" }} />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                <div>
+                  <label style={labelStyle}>Availability Windows</label>
+                  <textarea value={editFormData.availabilityWindows} onChange={(e) => updateEditForm("availabilityWindows", e.target.value)} style={{ ...inputStyle, minHeight: "88px", resize: "vertical" }} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Status</label>
+                  <select value={editFormData.status} onChange={(e) => updateEditForm("status", e.target.value)} style={inputStyle}>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
+                  </select>
+                </div>
+              </div>
+
+              {editError ? <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 700 }}>{editError}</p> : null}
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button type="button" onClick={() => setEditModalOpen(false)} style={smallBtnStyle()}>Cancel</button>
+                <button type="submit" disabled={editBusy} style={{ ...smallBtnStyle("primary"), opacity: editBusy ? 0.7 : 1 }}>
+                  {editBusy ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>

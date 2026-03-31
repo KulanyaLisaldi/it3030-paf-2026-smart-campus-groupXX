@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from "./http";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "./http";
 
 function toQueryString(filters = {}) {
   const params = new URLSearchParams();
@@ -18,6 +18,10 @@ export function getAdminResources(filters = {}) {
 
 export function createResource(payload) {
   return apiPost("/api/resources", payload);
+}
+
+export function updateResource(resourceId, payload) {
+  return apiPut(`/api/resources/${encodeURIComponent(resourceId)}`, payload);
 }
 
 export function updateResourceStatus(resourceId, payload) {
