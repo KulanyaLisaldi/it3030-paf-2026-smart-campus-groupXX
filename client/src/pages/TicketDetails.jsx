@@ -12,6 +12,19 @@ import { technicianCategoryLabel } from "../constants/technicianCategories";
 import TicketTechnicianChat from "../components/TicketTechnicianChat.jsx";
 import { appFontFamily } from "../utils/appFont";
 
+function assignedTechnicianSpecialtyLabel(assignee) {
+  if (!assignee) return "—";
+  const list = Array.isArray(assignee.technicianCategories) ? assignee.technicianCategories : [];
+  const normalized = list.map((v) => String(v || "").toUpperCase().trim()).filter(Boolean);
+  if (normalized.length > 0) {
+    return normalized.map((v) => technicianCategoryLabel(v)).join(", ");
+  }
+  if (assignee.technicianCategory) {
+    return technicianCategoryLabel(assignee.technicianCategory);
+  }
+  return "—";
+}
+
 const pageStyle = {
   minHeight: "100vh",
   backgroundColor: "#FFFFFF",
@@ -657,7 +670,7 @@ export default function TicketDetails() {
                   const name = a?.displayName || ticketDetails.ticket.assignedTechnicianName || "—";
                   const email = a?.email || "—";
                   const phone = (a?.phoneNumber || "").trim() || "—";
-                  const specialty = a?.technicianCategory ? technicianCategoryLabel(a.technicianCategory) : "—";
+                  const specialty = assignedTechnicianSpecialtyLabel(a);
                   return (
                     <div style={{ display: "grid", gap: "10px", fontSize: "14px", color: "#374151" }}>
                       <div>
