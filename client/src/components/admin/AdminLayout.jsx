@@ -166,6 +166,13 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
     }
   };
   const passwordChecks = getPasswordChecks(passwordDraft.newPassword);
+  const canSubmitPassword =
+    !!passwordDraft.currentPassword &&
+    !!passwordDraft.newPassword &&
+    !!passwordDraft.confirmPassword &&
+    passwordChecks.minLength &&
+    passwordChecks.hasComplexity &&
+    passwordDraft.newPassword === passwordDraft.confirmPassword;
 
   return (
     <div style={shellStyle}>
@@ -305,7 +312,7 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                     {passwordState.error ? <div style={{ color: "#b91c1c", fontSize: "13px", fontWeight: 700 }}>{passwordState.error}</div> : null}
                     {passwordState.message ? <div style={{ color: "#15803d", fontSize: "13px", fontWeight: 700 }}>{passwordState.message}</div> : null}
                   </div>
-                  <button type="button" onClick={handleSubmitPassword} disabled={passwordState.busy} style={{ padding: "10px 14px", borderRadius: "10px", border: "none", backgroundColor: "#FA8112", color: "#fff", fontWeight: 800, cursor: passwordState.busy ? "wait" : "pointer", opacity: passwordState.busy ? 0.7 : 1 }}>
+                  <button type="button" onClick={handleSubmitPassword} disabled={passwordState.busy || !canSubmitPassword} style={{ padding: "10px 14px", borderRadius: "10px", border: "none", backgroundColor: "#FA8112", color: "#fff", fontWeight: 800, cursor: passwordState.busy || !canSubmitPassword ? "not-allowed" : "pointer", opacity: passwordState.busy || !canSubmitPassword ? 0.6 : 1 }}>
                     {passwordState.busy ? "Saving..." : "Update password"}
                   </button>
                 </div>
