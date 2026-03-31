@@ -1,6 +1,6 @@
-# 🎓 Smart Campus Management System
+# 🎓 CampusSync Management System
 
-A Full-Stack Smart Campus web application built using:
+A Full-Stack CampusSync web application built using:
 
 - React (Vite)
 - Tailwind CSS v4
@@ -12,7 +12,7 @@ A Full-Stack Smart Campus web application built using:
 
 ## 📌 Project Overview
 
-Smart Campus is a web-based system designed to manage campus-related operations.  
+CampusSync is a web-based system designed to manage campus-related operations.  
 This project demonstrates full-stack integration between:
 
 - Frontend / client (React + Tailwind)

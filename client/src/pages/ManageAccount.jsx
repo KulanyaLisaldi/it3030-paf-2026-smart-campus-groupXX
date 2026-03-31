@@ -203,7 +203,7 @@ export default function ManageAccount() {
 
   const handleRemoveAvatar = async () => {
     if (!profile?.profileImageUrl) return;
-    const ok = window.confirm("Remove your profile photo from Smart Campus?");
+    const ok = window.confirm("Remove your profile photo from CampusSync?");
     if (!ok) return;
     setAvatarError("");
     setAvatarSuccess("");
@@ -234,7 +234,7 @@ export default function ManageAccount() {
       return;
     }
     const ok = window.confirm(
-      "Delete your Smart Campus account? This cannot be undone. Your tickets and related data will be removed."
+      "Delete your CampusSync account? This cannot be undone. Your tickets and related data will be removed."
     );
     if (!ok) return;
     setDeleteBusy(true);
@@ -316,7 +316,7 @@ export default function ManageAccount() {
               C
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: "16px", color: "#111827" }}>Smart Campus</div>
+              <div style={{ fontWeight: 700, fontSize: "16px", color: "#111827" }}>CampusSync</div>
               <div style={{ fontSize: "12px", color: "#9ca3af" }}>Account</div>
             </div>
           </div>
@@ -423,7 +423,7 @@ export default function ManageAccount() {
             <h1 style={sectionHeading}>Personal info</h1>
             <p style={subtleNote}>
               Update your campus profile. Your email and name come from your account provider and cannot be changed
-              here. Profile photo is stored only on Smart Campus.
+              here. Profile photo is stored only on CampusSync.
             </p>
 
             {loadError && (
@@ -439,7 +439,7 @@ export default function ManageAccount() {
                     Profile photo
                   </h2>
                   <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 18px 0", lineHeight: 1.5 }}>
-                    Shown in the top bar on Smart Campus only. Choose a new image anytime or remove it.
+                    Shown in the top bar on CampusSync only. Choose a new image anytime or remove it.
                   </p>
                   <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
                     <div
@@ -625,7 +625,7 @@ export default function ManageAccount() {
                       Delete account
                     </h2>
                     <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "20px", lineHeight: 1.5 }}>
-                      You will lose access to your Smart Campus account once your deletion request is confirmed. Your
+                      You will lose access to your CampusSync account once your deletion request is confirmed. Your
                       tickets and comments you created will be removed.
                     </p>
                     <div style={{ display: "flex", justifyContent: "flex-end" }}>

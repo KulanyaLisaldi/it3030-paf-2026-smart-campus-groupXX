@@ -918,7 +918,7 @@ export default function AdminTicketDashboard() {
                   <div style={{ width: "52px", height: "52px", borderRadius: "14px", background: "linear-gradient(135deg, #FA8112, #F5E7C6)", color: "#FFFFFF", fontWeight: 800, fontSize: "32px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>A</div>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 800, fontSize: "30px", color: "#f8fafc", lineHeight: 1 }}>Admin</div>
-                    <div style={{ fontSize: "13px", color: "#94a3b8", fontWeight: 600, marginTop: "3px" }}>Smart Campus</div>
+                    <div style={{ fontSize: "13px", color: "#94a3b8", fontWeight: 600, marginTop: "3px" }}>CampusSync</div>
                   </div>
                 </div>
                 <button type="button" aria-label="Menu" style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(148, 163, 184, 0.12)", border: "none", color: "#e2e8f0", fontSize: "18px", fontWeight: 900, lineHeight: 1, cursor: "default", flexShrink: 0 }}>≡</button>
@@ -1308,7 +1308,7 @@ export default function AdminTicketDashboard() {
                   <div style={{ width: "52px", height: "52px", borderRadius: "14px", background: "linear-gradient(135deg, #FA8112, #F5E7C6)", color: "#FFFFFF", fontWeight: 800, fontSize: "32px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>A</div>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 800, fontSize: "30px", color: "#f8fafc", lineHeight: 1 }}>Admin</div>
-                    <div style={{ fontSize: "13px", color: "#94a3b8", fontWeight: 600, marginTop: "3px" }}>Smart Campus</div>
+                    <div style={{ fontSize: "13px", color: "#94a3b8", fontWeight: 600, marginTop: "3px" }}>CampusSync</div>
                   </div>
                 </div>
                 <button type="button" aria-label="Menu" style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(148, 163, 184, 0.12)", border: "none", color: "#e2e8f0", fontSize: "18px", fontWeight: 900, lineHeight: 1, cursor: "default", flexShrink: 0 }}>≡</button>

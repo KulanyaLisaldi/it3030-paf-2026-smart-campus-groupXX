@@ -23,7 +23,7 @@ public class PasswordOtpEmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromAddress);
         message.setTo(toEmail);
-        message.setSubject("Smart Campus password change verification code");
+        message.setSubject("CampusSync password change verification code");
         message.setText(
             "Use this verification code to complete your password change:\n\n" +
             code + "\n\n" +

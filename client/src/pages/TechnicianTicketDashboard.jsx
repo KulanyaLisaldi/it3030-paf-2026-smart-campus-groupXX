@@ -335,7 +335,7 @@ function TechnicianAppShell({ children }) {
 
   const handleRemoveAvatar = async () => {
     if (!profileUser?.profileImageUrl) return;
-    const ok = window.confirm("Remove your profile photo from Smart Campus?");
+    const ok = window.confirm("Remove your profile photo from CampusSync?");
     if (!ok) return;
     setAvatarError("");
     setAvatarSuccess("");

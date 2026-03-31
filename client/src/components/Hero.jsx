@@ -46,7 +46,7 @@ const Hero = () => {
         {/* Hero Content */}
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-bold text-dark-text mb-6">
-            Smart Campus Operations Hub
+            CampusSync Operations Hub
           </h1>
           <p className="text-lg text-dark-text mb-8 max-w-3xl mx-auto">
             Streamline your university experience with our comprehensive platform for 

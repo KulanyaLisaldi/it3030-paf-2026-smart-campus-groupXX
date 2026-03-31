@@ -1768,7 +1768,7 @@ function TechnicianWorkspace() {
                         type="button"
                         disabled={avatarBusy || avatarRemoveBusy}
                         onClick={async () => {
-                          const ok = window.confirm("Remove your profile photo from Smart Campus?");
+                          const ok = window.confirm("Remove your profile photo from CampusSync?");
                           if (!ok) return;
                           setAvatarError("");
                           setAvatarSuccess("");
