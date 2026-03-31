@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getAuthToken } from "../../api/http";
 import { changeMyPassword, removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../../api/auth";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../../utils/campusUserStorage";
+import PasswordInput from "../PasswordInput.jsx";
 
 const shellStyle = {
   height: "100vh",
@@ -296,16 +297,16 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
               </div>
               <div style={{ padding: "18px" }}>
                 <div style={{ display: "grid", gap: "12px" }}>
-                  <div><label style={labelStyle}>Current password</label><input type="password" value={passwordDraft.currentPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, currentPassword: e.target.value }))} style={inputStyle} /></div>
+                  <div><label style={labelStyle}>Current password</label><PasswordInput value={passwordDraft.currentPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, currentPassword: e.target.value }))} style={inputStyle} /></div>
                   <div>
                     <label style={labelStyle}>New password</label>
-                    <input type="password" value={passwordDraft.newPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, newPassword: e.target.value }))} style={inputStyle} />
+                    <PasswordInput value={passwordDraft.newPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, newPassword: e.target.value }))} style={inputStyle} />
                     <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.45 }}>
                       <div style={{ color: passwordChecks.minLength ? "#15803d" : "#6b7280" }}>Password must be at least 8 characters</div>
                       <div style={{ color: passwordChecks.hasComplexity ? "#15803d" : "#6b7280" }}>Must include uppercase, lowercase, number, symbol</div>
                     </div>
                   </div>
-                  <div><label style={labelStyle}>Confirm new password</label><input type="password" value={passwordDraft.confirmPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, confirmPassword: e.target.value }))} style={inputStyle} /></div>
+                  <div><label style={labelStyle}>Confirm new password</label><PasswordInput value={passwordDraft.confirmPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, confirmPassword: e.target.value }))} style={inputStyle} /></div>
                 </div>
                 <div style={{ marginTop: "14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
                   <div>
