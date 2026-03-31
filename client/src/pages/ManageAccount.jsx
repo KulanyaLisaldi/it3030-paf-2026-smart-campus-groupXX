@@ -56,11 +56,13 @@ const inputDisabled = {
   width: "100%",
   padding: "10px 12px",
   borderRadius: "8px",
-  border: "1px solid #e5e7eb",
-  backgroundColor: "#f3f4f6",
-  color: "#374151",
+  border: "1px solid #d1d5db",
+  backgroundColor: "#f9fafb",
+  color: "#4b5563",
   fontSize: "14px",
   boxSizing: "border-box",
+  cursor: "not-allowed",
+  opacity: 1,
 };
 
 const inputEditable = {
@@ -75,6 +77,15 @@ const labelStyle = {
   fontWeight: 600,
   color: "#111827",
   marginBottom: "6px",
+};
+
+const readOnlyBadgeStyle = {
+  marginLeft: "8px",
+  fontSize: "11px",
+  fontWeight: 700,
+  color: "#6b7280",
+  letterSpacing: "0.02em",
+  textTransform: "uppercase",
 };
 
 const sectionHeading = {
@@ -132,6 +143,17 @@ export default function ManageAccount() {
   }, [navigate, loadProfile]);
 
   const serverPhone = (profile?.phoneNumber || "").trim();
+  const roleText = useMemo(() => {
+    const role = String(profile?.role || "").trim().toUpperCase();
+    return role || "USER";
+  }, [profile]);
+  const providerText = useMemo(() => {
+    const provider = String(profile?.provider || "").trim().toLowerCase();
+    if (provider.includes("google")) return "Google OAuth";
+    if (provider.includes("email")) return "Email";
+    if (profile?.googleSubject) return "Google OAuth";
+    return "Email";
+  }, [profile]);
   const canSave = useMemo(() => {
     if (!profile) return false;
     const draft = phoneDraft.trim();
@@ -496,19 +518,55 @@ export default function ManageAccount() {
 
                 <div style={{ ...cardStyle, marginBottom: "20px" }}>
                   <div style={{ marginBottom: "18px" }}>
-                    <label style={labelStyle}>Email address</label>
+                    <label style={labelStyle}>
+                      Email address <span style={readOnlyBadgeStyle}>Read-only</span>
+                    </label>
                     <input type="email" readOnly disabled value={profile.email || ""} style={inputDisabled} />
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "18px" }}>
                     <div>
-                      <label style={labelStyle}>First name</label>
+                      <label style={labelStyle}>
+                        First name <span style={readOnlyBadgeStyle}>Read-only</span>
+                      </label>
                       <input readOnly disabled value={profile.firstName || ""} style={inputDisabled} />
                     </div>
                     <div>
-                      <label style={labelStyle}>Last name</label>
+                      <label style={labelStyle}>
+                        Last name <span style={readOnlyBadgeStyle}>Read-only</span>
+                      </label>
                       <input readOnly disabled value={profile.lastName || ""} style={inputDisabled} />
                     </div>
                   </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "18px" }}>
+                    <div>
+                      <label style={labelStyle}>
+                        Role <span style={readOnlyBadgeStyle}>Read-only</span>
+                      </label>
+                      <input readOnly disabled value={roleText} style={inputDisabled} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>
+                        Login Provider <span style={readOnlyBadgeStyle}>Read-only</span>
+                      </label>
+                      <input readOnly disabled value={providerText} style={inputDisabled} />
+                    </div>
+                  </div>
+                  {providerText === "Google OAuth" && (
+                    <p
+                      style={{
+                        margin: "0 0 18px 0",
+                        fontSize: "13px",
+                        color: "#1f2937",
+                        backgroundColor: "#eff6ff",
+                        border: "1px solid #bfdbfe",
+                        borderRadius: "8px",
+                        padding: "10px 12px",
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      This account uses Google sign-in. Some identity fields are managed by Google.
+                    </p>
+                  )}
                   <div style={{ marginBottom: "20px" }}>
                     <label style={labelStyle}>Phone number</label>
                     <input

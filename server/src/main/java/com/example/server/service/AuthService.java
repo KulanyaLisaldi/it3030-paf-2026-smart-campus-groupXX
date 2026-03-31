@@ -370,6 +370,7 @@ public class AuthService {
         if (user.getEffectiveRole() == UserRole.TECHNICIAN) {
             technicianAvailable = user.getTechnicianAvailable() == null || user.getTechnicianAvailable();
         }
+        String provider = (user.getGoogleSubject() != null && !user.getGoogleSubject().isBlank()) ? "Google OAuth" : "Email";
         return new AuthUserResponse(
             user.getId(),
             user.getFirstName(),
@@ -377,6 +378,7 @@ public class AuthService {
             user.getEmail(),
             user.getPhoneNumber(),
             user.getEffectiveRole().name(),
+            provider,
             user.getProfileImageUrl(),
             category,
             categories,
