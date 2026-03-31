@@ -13,10 +13,10 @@ const PLACEHOLDER_STYLE = {
   boxSizing: "border-box",
 };
 
-export default function AdminDashboard() {
+export default function AdminBookingsPage() {
   return (
-    <AdminLayout activeSection="dashboard" pageTitle="Dashboard" description="Overview and quick actions for admin operations.">
-      <div style={PLACEHOLDER_STYLE}>Select a section from the left menu.</div>
+    <AdminLayout activeSection="bookings" pageTitle="Booking Management" description="Manage campus bookings and reservations. (Coming soon)">
+      <div style={PLACEHOLDER_STYLE}>Booking Management tools will appear here in a future update.</div>
     </AdminLayout>
   );
 }

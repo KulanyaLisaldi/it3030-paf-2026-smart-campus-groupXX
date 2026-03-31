@@ -146,8 +146,8 @@ const chartCardStyle = {
   boxShadow: "0 6px 14px rgba(20, 33, 61, 0.05)",
 };
 
-const EXTRA_BAR_WIDTH_EXPANDED = 260;
-const EXTRA_BAR_WIDTH_COLLAPSED = 56;
+const EXTRA_BAR_WIDTH_EXPANDED = 272;
+const EXTRA_BAR_WIDTH_COLLAPSED = 92;
 
 const extraBarToggleHamburgerStyle = {
   display: "flex",
@@ -164,47 +164,50 @@ const extraBarHamburgerLineStyle = {
 };
 
 const extraBarStyle = {
-  borderRadius: "12px",
   background: "linear-gradient(180deg, #14213D 0%, #1a2d4d 100%)",
+  fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
   color: "#e2e8f0",
   display: "flex",
   flexDirection: "column",
-  minHeight: "calc(100vh - 16px)",
+  minHeight: "100vh",
+  height: "100vh",
   boxSizing: "border-box",
-  border: "1px solid rgba(148, 163, 184, 0.12)",
-  padding: "14px 10px 10px",
+  borderRight: "1px solid rgba(148, 163, 184, 0.12)",
   position: "fixed",
-  left: "8px",
-  top: "8px",
+  left: 0,
+  top: 0,
   zIndex: 120,
-  boxShadow: "0 14px 32px rgba(0, 0, 0, 0.18)",
-  transition: "width 0.22s ease, padding 0.22s ease, border-radius 0.22s ease, background 0.22s ease",
+  overflow: "hidden",
+  transition: "width 0.2s ease, min-width 0.2s ease",
 };
 
 const extraBarLabelStyle = {
+  fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
   fontSize: "10px",
   fontWeight: 700,
   letterSpacing: "0.12em",
   color: "#94a3b8",
-  marginTop: "12px",
+  marginTop: "20px",
   marginBottom: "8px",
-  padding: "0 10px",
+  padding: "0 16px",
 };
 
 function extraBarItemStyle(active) {
   return {
+    fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     width: "100%",
     textAlign: "left",
-    padding: "11px 12px",
-    margin: "2px 0",
+    padding: "11px 16px",
+    margin: "2px 8px",
     borderRadius: "10px",
-    border: active ? "1px solid #FA8112" : "1px solid transparent",
+    border: "none",
     background: active ? "rgba(250, 129, 18, 0.2)" : "transparent",
     color: active ? "#fb923c" : "#cbd5e1",
-    fontSize: "13px",
-    fontWeight: 700,
+    fontSize: "14px",
+    fontWeight: 600,
     cursor: "pointer",
     boxSizing: "border-box",
+    borderLeft: active ? "3px solid #FA8112" : "3px solid transparent",
   };
 }
 
@@ -885,11 +888,7 @@ export default function AdminTicketDashboard() {
   }, [activeView]);
 
   const handleExtraBarNav = (item) => {
-    const keepTicketBarActive =
-      item === "Dashboard" || item === "Resource Management" || item === "Booking Management" || item === "Notification";
-    if (!keepTicketBarActive) {
-      setExtraBarMenu(item);
-    }
+    setExtraBarMenu(item);
     if (item === "Ticket Management") {
       setActiveMenuItem("Dashboard");
       handleViewChange("dashboard");
@@ -899,18 +898,24 @@ export default function AdminTicketDashboard() {
       navigate("/admin");
       return;
     }
-    if (item === "Resource Management" || item === "Booking Management") {
+    if (item === "Resource Management") {
+      navigate("/adminresources");
+      return;
+    }
+    if (item === "Booking Management") {
+      navigate("/adminbookings");
       return;
     }
     if (item === "Analytics & Report") {
-      navigateFromSidebar("Reports");
+      navigate("/adminanalytics");
       return;
     }
     if (item === "User Management") {
-      navigate("/admin");
+      navigate("/adminusers");
       return;
     }
     if (item === "Notification") {
+      navigate("/adminnotifications");
       return;
     }
     handleViewChange("dashboard");
@@ -928,33 +933,21 @@ export default function AdminTicketDashboard() {
       style={{
         ...extraBarStyle,
         width: extraBarCollapsed ? EXTRA_BAR_WIDTH_COLLAPSED : EXTRA_BAR_WIDTH_EXPANDED,
-        overflow: "hidden",
-        padding: extraBarCollapsed ? "12px 6px" : "14px 10px 10px",
-        borderRadius: extraBarCollapsed ? "16px 0 0 16px" : "12px",
-        background: extraBarCollapsed ? "#14213D" : "linear-gradient(180deg, #14213D 0%, #1a2d4d 100%)",
-        alignItems: extraBarCollapsed ? "center" : "stretch",
+        minWidth: extraBarCollapsed ? EXTRA_BAR_WIDTH_COLLAPSED : EXTRA_BAR_WIDTH_EXPANDED,
       }}
     >
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: extraBarCollapsed ? "center" : "space-between",
-          gap: "8px",
+          justifyContent: "space-between",
+          gap: "12px",
           marginBottom: extraBarCollapsed ? 0 : "8px",
-          padding: extraBarCollapsed ? 0 : "0 4px",
+          padding: "22px 18px 18px",
           width: "100%",
         }}
       >
-        {!extraBarCollapsed && (
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
-            <div style={{ width: "52px", height: "52px", borderRadius: "14px", background: "linear-gradient(135deg, #FA8112, #F5E7C6)", color: "#FFFFFF", fontWeight: 800, fontSize: "32px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>A</div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: "30px", color: "#f8fafc", lineHeight: 1 }}>Admin</div>
-              <div style={{ fontSize: "13px", color: "#94a3b8", fontWeight: 600, marginTop: "3px" }}>Smart Campus</div>
-            </div>
-          </div>
-        )}
+        <div />
         <button
           type="button"
           aria-label={extraBarCollapsed ? "Expand menu" : "Collapse menu"}
@@ -963,8 +956,8 @@ export default function AdminTicketDashboard() {
             width: 40,
             height: 40,
             borderRadius: 10,
-            background: extraBarCollapsed ? "transparent" : "rgba(148, 163, 184, 0.12)",
-            border: extraBarCollapsed ? "1px solid rgba(255, 255, 255, 0.92)" : "none",
+            background: "rgba(148, 163, 184, 0.12)",
+            border: "none",
             color: "#e2e8f0",
             fontSize: "18px",
             fontWeight: 900,
@@ -977,30 +970,26 @@ export default function AdminTicketDashboard() {
             padding: 0,
           }}
         >
-          <span style={extraBarToggleHamburgerStyle} aria-hidden>
-            <span style={extraBarHamburgerLineStyle} />
-            <span style={extraBarHamburgerLineStyle} />
-            <span style={extraBarHamburgerLineStyle} />
-          </span>
+          <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }} aria-hidden>≡</span>
         </button>
       </div>
+      <nav style={{ flex: 1, padding: "4px 0" }} aria-label="Admin sections">
+        {!extraBarCollapsed && <div style={extraBarLabelStyle}>MENU</div>}
+        {!extraBarCollapsed && (
+          <>
+            <button type="button" style={extraBarItemStyle(false)} onClick={() => handleExtraBarNav("Dashboard")}>Dashboard</button>
+            <button type="button" style={extraBarItemStyle(extraBarMenu === "Resource Management")} onClick={() => handleExtraBarNav("Resource Management")}>Resource Management</button>
+            <button type="button" style={extraBarItemStyle(extraBarMenu === "Booking Management")} onClick={() => handleExtraBarNav("Booking Management")}>Booking Management</button>
+            <button type="button" style={extraBarItemStyle(extraBarMenu === "Ticket Management")} onClick={() => handleExtraBarNav("Ticket Management")}>Ticket Management</button>
+            <button type="button" style={extraBarItemStyle(extraBarMenu === "User Management")} onClick={() => handleExtraBarNav("User Management")}>User Management</button>
+            <button type="button" style={extraBarItemStyle(extraBarMenu === "Notification")} onClick={() => handleExtraBarNav("Notification")}>Notification</button>
+            <button type="button" style={extraBarItemStyle(extraBarMenu === "Analytics & Report")} onClick={() => handleExtraBarNav("Analytics & Report")}>Analytics & Report</button>
+          </>
+        )}
+      </nav>
       {!extraBarCollapsed && (
-        <>
-          <div style={extraBarLabelStyle}>MENU</div>
-          <div style={{ display: "grid", gap: "6px", marginBottom: "14px", padding: "0 4px" }}>
-            <button type="button" style={extraBarItemStyle(false)} onClick={() => handleExtraBarNav("Dashboard")} onMouseEnter={(e) => handleExtraBarHover(e, true, false)} onMouseLeave={(e) => handleExtraBarHover(e, false, false)}>Dashboard</button>
-            <button type="button" style={extraBarItemStyle(extraBarMenu === "Resource Management")} onMouseEnter={(e) => handleExtraBarHover(e, true, extraBarMenu === "Resource Management")} onMouseLeave={(e) => handleExtraBarHover(e, false, extraBarMenu === "Resource Management")}>Resource Management</button>
-            <button type="button" style={extraBarItemStyle(extraBarMenu === "Booking Management")} onMouseEnter={(e) => handleExtraBarHover(e, true, extraBarMenu === "Booking Management")} onMouseLeave={(e) => handleExtraBarHover(e, false, extraBarMenu === "Booking Management")}>Booking Management</button>
-            <button type="button" style={extraBarItemStyle(extraBarMenu === "Ticket Management")} onClick={() => handleExtraBarNav("Ticket Management")} onMouseEnter={(e) => handleExtraBarHover(e, true, extraBarMenu === "Ticket Management")} onMouseLeave={(e) => handleExtraBarHover(e, false, extraBarMenu === "Ticket Management")}>Ticket Management</button>
-            <button type="button" style={extraBarItemStyle(extraBarMenu === "User Management")} onClick={() => handleExtraBarNav("User Management")} onMouseEnter={(e) => handleExtraBarHover(e, true, extraBarMenu === "User Management")} onMouseLeave={(e) => handleExtraBarHover(e, false, extraBarMenu === "User Management")}>User Management</button>
-            <button type="button" style={extraBarItemStyle(extraBarMenu === "Notification")} onClick={() => handleExtraBarNav("Notification")} onMouseEnter={(e) => handleExtraBarHover(e, true, extraBarMenu === "Notification")} onMouseLeave={(e) => handleExtraBarHover(e, false, extraBarMenu === "Notification")}>Notification</button>
-            <button type="button" style={extraBarItemStyle(extraBarMenu === "Analytics & Report")} onClick={() => handleExtraBarNav("Analytics & Report")} onMouseEnter={(e) => handleExtraBarHover(e, true, extraBarMenu === "Analytics & Report")} onMouseLeave={(e) => handleExtraBarHover(e, false, extraBarMenu === "Analytics & Report")}>Analytics & Report</button>
-          </div>
-        </>
-      )}
-      {!extraBarCollapsed && (
-        <div style={{ marginTop: "auto", borderTop: "1px solid rgba(148, 163, 184, 0.15)", padding: "12px 8px 6px" }}>
-          <button type="button" style={{ width: "100%", padding: "12px 14px", borderRadius: "12px", border: "1px solid rgba(248, 113, 113, 0.35)", background: "rgba(127, 29, 29, 0.35)", color: "#fecaca", fontWeight: 700, fontSize: "14px", cursor: "pointer" }} onClick={handleLogout}>
+        <div style={{ padding: "12px 14px 20px", borderTop: "1px solid rgba(148, 163, 184, 0.15)" }}>
+          <button type="button" style={{ width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1px solid rgba(248, 113, 113, 0.35)", background: "rgba(127, 29, 29, 0.35)", color: "#fecaca", fontWeight: 700, fontSize: "14px", cursor: "pointer", fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif' }} onClick={handleLogout}>
             Logout
           </button>
         </div>
@@ -1011,7 +1000,7 @@ export default function AdminTicketDashboard() {
   return (
     <div style={pageStyle}>
       {renderExtraSidebar()}
-      <section style={{ ...containerStyle, marginLeft: extraBarCollapsed ? `${8 + EXTRA_BAR_WIDTH_COLLAPSED + 8}px` : "270px" }}>
+      <section style={{ ...containerStyle, marginLeft: extraBarCollapsed ? `${EXTRA_BAR_WIDTH_COLLAPSED}px` : `${EXTRA_BAR_WIDTH_EXPANDED}px` }}>
         <div style={headerStyle}>
           <div>
             <h1 style={titleStyle}>

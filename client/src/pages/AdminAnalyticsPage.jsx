@@ -13,10 +13,10 @@ const PLACEHOLDER_STYLE = {
   boxSizing: "border-box",
 };
 
-export default function AdminDashboard() {
+export default function AdminAnalyticsPage() {
   return (
-    <AdminLayout activeSection="dashboard" pageTitle="Dashboard" description="Overview and quick actions for admin operations.">
-      <div style={PLACEHOLDER_STYLE}>Select a section from the left menu.</div>
+    <AdminLayout activeSection="analytics" pageTitle="Analytics & Report" description="View analytics and reports for tickets and operations. (Coming soon)">
+      <div style={PLACEHOLDER_STYLE}>Analytics & Report tools will appear here in a future update.</div>
     </AdminLayout>
   );
 }

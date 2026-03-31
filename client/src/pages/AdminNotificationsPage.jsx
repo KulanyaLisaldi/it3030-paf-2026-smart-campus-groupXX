@@ -13,10 +13,10 @@ const PLACEHOLDER_STYLE = {
   boxSizing: "border-box",
 };
 
-export default function AdminDashboard() {
+export default function AdminNotificationsPage() {
   return (
-    <AdminLayout activeSection="dashboard" pageTitle="Dashboard" description="Overview and quick actions for admin operations.">
-      <div style={PLACEHOLDER_STYLE}>Select a section from the left menu.</div>
+    <AdminLayout activeSection="notifications" pageTitle="Notification" description="View and manage admin notifications. (Coming soon)">
+      <div style={PLACEHOLDER_STYLE}>Notifications tools will appear here in a future update.</div>
     </AdminLayout>
   );
 }
