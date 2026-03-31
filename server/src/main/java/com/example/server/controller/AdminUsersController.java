@@ -137,6 +137,12 @@ public class AdminUsersController {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(java.util.Map.of("message", "Unauthorized"));
         }
+        String actingUserId = authentication.getName();
+        boolean disabling = Boolean.TRUE.equals(request.getDisabled());
+        if (disabling && userId.equals(actingUserId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(java.util.Map.of("message", "You cannot disable your own account."));
+        }
 
         Optional<User> maybe = userRepo.findById(userId);
         if (maybe.isEmpty()) {

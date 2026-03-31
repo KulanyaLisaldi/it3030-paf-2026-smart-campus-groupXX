@@ -6,6 +6,12 @@ import { persistCampusUser, readCampusUser } from '../utils/campusUserStorage';
 import { navigateAfterAuth, navigateAfterLogin } from '../utils/authRedirect';
 import PasswordInput from '../components/PasswordInput';
 
+const ACCENT = '#FA8112';
+const ACCENT_SOFT = '#FCA311';
+const CREAM = '#F5E7C6';
+const NAVY = '#14213D';
+const NAVY_DEEP = '#0b1220';
+
 const SignIn = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -21,168 +27,244 @@ const SignIn = () => {
     navigateAfterAuth(user, navigate);
   }, [navigate]);
 
-  const pageStyle = {
+  const shellStyle = {
     minHeight: '100vh',
-    backgroundColor: '#FAF3E1',
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '20px',
+    flexWrap: 'wrap',
+    background: `linear-gradient(145deg, ${NAVY_DEEP} 0%, ${NAVY} 45%, #1a2744 100%)`,
+    color: '#f8fafc',
+    position: 'relative',
   };
 
-  const cardStyle = {
-    backgroundColor: '#FFFFFF',
-    borderRadius: '12px',
-    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
-    padding: '40px',
-    width: '100%',
-    maxWidth: '400px',
-    textAlign: 'center',
+  const backToHomeStyle = {
+    position: 'fixed',
+    top: 20,
+    left: 20,
+    zIndex: 50,
+    padding: '10px 14px',
+    border: 'none',
+    borderRadius: 10,
+    background: 'rgba(255, 255, 255, 0.08)',
+    color: CREAM,
+    fontSize: 14,
+    fontWeight: 600,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
   };
 
-  const logoBoxStyle = {
-    width: '60px',
-    height: '60px',
-    borderRadius: '12px',
-    background: 'linear-gradient(135deg, #FA8112, #F5E7C6)',
+  const leftPanelStyle = {
+    flex: '1 1 420px',
+    position: 'relative',
+    minHeight: 'min(520px, 100vh)',
+    padding: 'clamp(28px, 5vw, 56px)',
     display: 'flex',
-    alignItems: 'center',
+    flexDirection: 'column',
     justifyContent: 'center',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+  };
+
+  const decorLayerStyle = {
+    position: 'absolute',
+    inset: 0,
+    overflow: 'hidden',
+    pointerEvents: 'none',
+  };
+
+  const barStyle = (top, rotate, opacity) => ({
+    position: 'absolute',
+    width: '140%',
+    height: 72,
+    left: '-20%',
+    top,
+    transform: `rotate(${rotate}deg)`,
+    borderRadius: 999,
+    background: `linear-gradient(90deg, rgba(250, 129, 18, ${opacity}) 0%, rgba(252, 163, 17, ${opacity * 0.35}) 45%, transparent 100%)`,
+  });
+
+  const leftInnerStyle = {
+    position: 'relative',
+    zIndex: 1,
+    maxWidth: 520,
+  };
+
+  const welcomeHeadingStyle = {
+    fontSize: 'clamp(2rem, 4.5vw, 3.25rem)',
+    fontWeight: 800,
+    margin: '0 0 16px 0',
+    lineHeight: 1.1,
     color: '#ffffff',
+  };
+
+  const welcomeRuleStyle = {
+    width: 56,
+    height: 4,
+    borderRadius: 999,
+    background: `linear-gradient(90deg, ${ACCENT}, ${ACCENT_SOFT})`,
+    marginBottom: 22,
+  };
+
+  const welcomeTextStyle = {
+    fontSize: 'clamp(15px, 1.6vw, 17px)',
+    lineHeight: 1.65,
+    color: 'rgba(245, 231, 198, 0.88)',
+    maxWidth: 440,
+    margin: '0 0 28px 0',
+  };
+
+  const learnMoreBtnStyle = {
+    alignSelf: 'flex-start',
+    padding: '12px 26px',
+    borderRadius: 999,
+    border: `2px solid rgba(245, 231, 198, 0.45)`,
+    background: 'rgba(250, 129, 18, 0.12)',
+    color: CREAM,
+    fontSize: 15,
     fontWeight: 700,
-    fontSize: '24px',
-    margin: '0 auto 16px',
+    cursor: 'pointer',
+    transition: 'background 0.2s ease, border-color 0.2s ease, transform 0.15s ease',
   };
 
-  const titleStyle = {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    color: '#222222',
-    marginBottom: '8px',
+  const rightPanelStyle = {
+    flex: '1 1 380px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 'clamp(24px, 4vw, 48px)',
+    boxSizing: 'border-box',
+    position: 'relative',
   };
 
-  const subtitleStyle = {
-    fontSize: '18px',
-    fontWeight: '600',
-    color: '#222222',
-    marginBottom: '12px',
+  const glassCardStyle = {
+    width: '100%',
+    maxWidth: 420,
+    padding: 'clamp(28px, 4vw, 40px)',
+    borderRadius: 24,
+    background: 'rgba(255, 255, 255, 0.08)',
+    border: '1px solid rgba(245, 231, 198, 0.22)',
+    boxShadow: '0 24px 80px rgba(0, 0, 0, 0.35)',
+    backdropFilter: 'blur(18px)',
+    WebkitBackdropFilter: 'blur(18px)',
+    textAlign: 'center',
+    boxSizing: 'border-box',
   };
 
-  const hintStyle = {
-    fontSize: '13px',
-    color: '#6b7280',
-    marginBottom: '24px',
-    lineHeight: 1.45,
-    textAlign: 'left',
+  const cardTitleStyle = {
+    fontSize: 26,
+    fontWeight: 800,
+    color: '#ffffff',
+    margin: '0 0 28px 0',
+    letterSpacing: '-0.02em',
   };
 
   const inputContainerStyle = {
-    marginBottom: '20px',
+    marginBottom: 18,
     textAlign: 'left',
   };
 
   const labelStyle = {
     display: 'block',
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#222222',
-    marginBottom: '8px',
+    fontSize: 13,
+    fontWeight: 700,
+    color: 'rgba(245, 231, 198, 0.95)',
+    marginBottom: 8,
+    marginLeft: 4,
   };
 
   const inputStyle = {
     width: '100%',
-    padding: '12px 16px',
-    border: '2px solid #F5E7C6',
-    borderRadius: '8px',
-    fontSize: '16px',
-    color: '#222222',
-    backgroundColor: '#FFFFFF',
+    padding: '14px 18px',
+    border: '2px solid rgba(245, 231, 198, 0.35)',
+    borderRadius: 999,
+    fontSize: 15,
+    color: '#0f172a',
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
     outline: 'none',
-    transition: 'border-color 0.2s ease',
+    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
     boxSizing: 'border-box',
   };
 
   const buttonStyle = {
     width: '100%',
-    padding: '14px',
-    backgroundColor: '#FA8112',
+    padding: '15px 18px',
+    backgroundColor: ACCENT,
     color: '#FFFFFF',
     border: 'none',
-    borderRadius: '8px',
-    fontSize: '16px',
-    fontWeight: '600',
+    borderRadius: 999,
+    fontSize: 16,
+    fontWeight: 700,
     cursor: 'pointer',
     transition: 'background-color 0.2s ease',
-    marginBottom: '24px',
+    marginTop: 8,
+    marginBottom: 8,
+    boxShadow: 'none',
   };
 
   const orDividerStyle = {
     display: 'flex',
     alignItems: 'center',
-    margin: '24px 0',
+    margin: '22px 0',
   };
 
   const dividerLineStyle = {
     flex: 1,
-    height: '1px',
-    backgroundColor: '#F5E7C6',
+    height: 1,
+    background: 'rgba(245, 231, 198, 0.22)',
   };
 
   const orTextStyle = {
-    padding: '0 16px',
-    color: '#222222',
-    fontSize: '14px',
-    fontWeight: '500',
+    padding: '0 14px',
+    color: 'rgba(245, 231, 198, 0.75)',
+    fontSize: 13,
+    fontWeight: 700,
+    letterSpacing: '0.06em',
   };
 
   const googleButtonStyle = {
     width: '100%',
-    padding: '14px',
-    backgroundColor: '#FFFFFF',
-    color: '#222222',
-    border: '2px solid #F5E7C6',
-    borderRadius: '8px',
-    fontSize: '16px',
-    fontWeight: '600',
+    padding: '14px 18px',
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    color: '#14213D',
+    border: '2px solid rgba(245, 231, 198, 0.4)',
+    borderRadius: 999,
+    fontSize: 15,
+    fontWeight: 700,
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    transition: 'none',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '8px',
-    marginBottom: '16px',
+    gap: 10,
   };
 
   const errorTextStyle = {
-    color: '#d32f2f',
-    fontSize: '14px',
-    marginBottom: '16px',
+    color: '#fecaca',
+    fontSize: 14,
+    marginBottom: 14,
     textAlign: 'left',
+    fontWeight: 600,
+    lineHeight: 1.45,
   };
 
   const handleInputFocus = (e) => {
-    e.target.style.borderColor = '#FA8112';
+    e.target.style.borderColor = ACCENT;
+    e.target.style.boxShadow = `0 0 0 3px rgba(250, 129, 18, 0.25)`;
   };
 
   const handleInputBlur = (e) => {
-    e.target.style.borderColor = '#F5E7C6';
+    e.target.style.borderColor = 'rgba(245, 231, 198, 0.35)';
+    e.target.style.boxShadow = 'none';
   };
 
   const handleButtonHover = (e, isHover) => {
     if (isHover) {
       e.target.style.backgroundColor = '#E66A0A';
     } else {
-      e.target.style.backgroundColor = '#FA8112';
-    }
-  };
-
-  const handleGoogleHover = (e, isHover) => {
-    if (isHover) {
-      e.target.style.backgroundColor = '#FAF3E1';
-      e.target.style.borderColor = '#FA8112';
-    } else {
-      e.target.style.backgroundColor = '#FFFFFF';
-      e.target.style.borderColor = '#F5E7C6';
+      e.target.style.backgroundColor = ACCENT;
     }
   };
 
@@ -225,76 +307,121 @@ const SignIn = () => {
   );
 
   return (
-    <div style={pageStyle}>
-      <div style={cardStyle}>
-        <div style={logoBoxStyle}>SC</div>
+    <>
+      <style>{`
+        .signin-google-btn:hover {
+          background-color: rgba(255, 255, 255, 0.92) !important;
+          border-color: rgba(245, 231, 198, 0.4) !important;
+          color: #14213D !important;
+        }
+      `}</style>
+      <div style={shellStyle}>
+      <button type="button" style={backToHomeStyle} onClick={() => navigate('/')} aria-label="Back to home">
+        ← Back to home
+      </button>
+      <div style={leftPanelStyle}>
+        <div style={decorLayerStyle} aria-hidden>
+          <div style={barStyle('14%', -14, 0.2)} />
+          <div style={barStyle('38%', -8, 0.12)} />
+          <div style={barStyle('62%', -18, 0.1)} />
+        </div>
+        <div style={leftInnerStyle}>
+          <h1 style={welcomeHeadingStyle}>Welcome!</h1>
+          <div style={welcomeRuleStyle} />
+          <p style={welcomeTextStyle}>
+            Sign in to manage campus resources, support tickets, and staff tools in one place. CampusSync keeps your
+            team connected.
+          </p>
+          <button
+            type="button"
+            style={learnMoreBtnStyle}
+            onClick={() => navigate('/')}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(250, 129, 18, 0.22)';
+              e.currentTarget.style.borderColor = 'rgba(245, 231, 198, 0.65)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(250, 129, 18, 0.12)';
+              e.currentTarget.style.borderColor = 'rgba(245, 231, 198, 0.45)';
+            }}
+          >
+            Learn More
+          </button>
+        </div>
+      </div>
 
-        <h1 style={titleStyle}>Smart Operations Platform</h1>
-        <h2 style={subtitleStyle}>Sign In</h2>
+      <div style={rightPanelStyle}>
+        <div style={glassCardStyle}>
+          <h2 style={cardTitleStyle}>Sign In</h2>
 
-        
+          <form onSubmit={handleStaffSignIn}>
+            {error && <p style={errorTextStyle}>{error}</p>}
 
-        <form onSubmit={handleStaffSignIn}>
-          {error && <p style={errorTextStyle}>{error}</p>}
+            <div style={inputContainerStyle}>
+              <label style={labelStyle} htmlFor="signin-email">
+                Email
+              </label>
+              <input
+                id="signin-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+                style={inputStyle}
+                placeholder="Email"
+                autoComplete="username"
+                required
+              />
+            </div>
 
-          <div style={inputContainerStyle}>
-            <label style={labelStyle}>Email </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onFocus={handleInputFocus}
-              onBlur={handleInputBlur}
-              style={inputStyle}
-              placeholder="Email"
-              autoComplete="username"
-              required
-            />
-          </div>
+            <div style={inputContainerStyle}>
+              <label style={labelStyle} htmlFor="signin-password">
+                Password
+              </label>
+              <PasswordInput
+                id="signin-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+                style={inputStyle}
+                placeholder="Password"
+                autoComplete="current-password"
+                required
+              />
+            </div>
 
-          <div style={inputContainerStyle}>
-            <label style={labelStyle}>Password</label>
-            <PasswordInput
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onFocus={handleInputFocus}
-              onBlur={handleInputBlur}
-              style={inputStyle}
-              placeholder="Password"
-              autoComplete="current-password"
-              required
-            />
+            <button
+              type="submit"
+              style={{ ...buttonStyle, opacity: loading ? 0.85 : 1, cursor: loading ? 'wait' : 'pointer' }}
+              onMouseEnter={(e) => !loading && handleButtonHover(e, true)}
+              onMouseLeave={(e) => !loading && handleButtonHover(e, false)}
+              disabled={loading}
+            >
+              {loading ? 'Signing In…' : 'Sign in'}
+            </button>
+          </form>
+
+          <div style={orDividerStyle}>
+            <div style={dividerLineStyle} />
+            <span style={orTextStyle}>OR</span>
+            <div style={dividerLineStyle} />
           </div>
 
           <button
-            type="submit"
-            style={{ ...buttonStyle, opacity: loading ? 0.8 : 1 }}
-            onMouseEnter={(e) => handleButtonHover(e, true)}
-            onMouseLeave={(e) => handleButtonHover(e, false)}
-            disabled={loading}
+            type="button"
+            className="signin-google-btn"
+            style={googleButtonStyle}
+            onClick={handleGoogleSignIn}
           >
-            {loading ? 'Signing In…' : 'Sign in'}
+            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{googleIcon}</span>
+            Sign in with Google
           </button>
-        </form>
-
-        <div style={orDividerStyle}>
-          <div style={dividerLineStyle} />
-          <span style={orTextStyle}>OR</span>
-          <div style={dividerLineStyle} />
         </div>
-
-        <button
-          type="button"
-          style={googleButtonStyle}
-          onMouseEnter={(e) => handleGoogleHover(e, true)}
-          onMouseLeave={(e) => handleGoogleHover(e, false)}
-          onClick={handleGoogleSignIn}
-        >
-          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{googleIcon}</span>
-          Sign in with Google
-        </button>
       </div>
     </div>
+    </>
   );
 };
 

@@ -5,6 +5,7 @@ import {
   adminUpdateUserProfile,
   getAdminUsers,
 } from "../../api/adminUsers";
+import { readCampusUser } from "../../utils/campusUserStorage";
 
 const pageCardStyle = {
   maxWidth: "100%",
@@ -118,6 +119,10 @@ function formatDate(value) {
 }
 
 export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onRequestRefresh }) {
+  const currentUserId = useMemo(() => {
+    const me = readCampusUser();
+    return String(me?.id || "").trim();
+  }, []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [users, setUsers] = useState([]);
@@ -215,6 +220,10 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
 
   const handleToggleDisabled = async (u) => {
     if (!u) return;
+    if (currentUserId && u.userId === currentUserId) {
+      setActionError("You cannot disable your own account.");
+      return;
+    }
     const currentlyDisabled = (u.accountStatus || "") === "Disabled";
     const nextDisabled = !currentlyDisabled;
     const ok = window.confirm(
@@ -439,9 +448,13 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                         <button
                           type="button"
                           style={((u.accountStatus || "") === "Disabled") ? iconBtnStyle("primary") : iconBtnStyle("danger")}
-                          disabled={actionBusy}
-                          title={(u.accountStatus || "") === "Disabled" ? "Enable account" : "Disable account"}
-                          aria-label={(u.accountStatus || "") === "Disabled" ? "Enable account" : "Disable account"}
+                          disabled={actionBusy || (currentUserId && u.userId === currentUserId)}
+                          title={(currentUserId && u.userId === currentUserId)
+                            ? "You cannot disable your own account"
+                            : ((u.accountStatus || "") === "Disabled" ? "Enable account" : "Disable account")}
+                          aria-label={(currentUserId && u.userId === currentUserId)
+                            ? "Self disable not allowed"
+                            : ((u.accountStatus || "") === "Disabled" ? "Enable account" : "Disable account")}
                           onClick={() => handleToggleDisabled(u)}
                         >
                           {(u.accountStatus || "") === "Disabled" ? <EnableIcon /> : <DisableIcon />}

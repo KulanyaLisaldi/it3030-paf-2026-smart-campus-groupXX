@@ -102,7 +102,7 @@ export default function AdminUsersPage() {
                   <div><label style={labelStyle}>First name</label><input required value={firstName} onChange={(e) => setFirstName(e.target.value)} style={inputStyle} placeholder="First name" /></div>
                   <div><label style={labelStyle}>Last name</label><input required value={lastName} onChange={(e) => setLastName(e.target.value)} style={inputStyle} placeholder="Last name" /></div>
                 </div>
-                <div><label style={labelStyle}>Work email</label><input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} placeholder="name@campus.edu" /></div>
+                <div><label style={labelStyle}>Work email</label><input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} placeholder="example@gmail.com" /></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                   <div>
                     <label style={labelStyle}>Categories</label>

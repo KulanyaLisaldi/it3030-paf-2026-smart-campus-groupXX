@@ -33,7 +33,7 @@ const Footer = () => {
           {/* About Section */}
           <div className="col-span-1 md:col-span-1">
             <h3 className="text-lg font-semibold mb-4" style={{ color: '#FFFFFF' }}>About</h3>
-            <h4 className="text-xl font-bold mb-2" style={{ color: '#FFFFFF' }}>Smart Campus Operations Hub</h4>
+            <h4 className="text-xl font-bold mb-2" style={{ color: '#FFFFFF' }}>CampusSync Operations Hub</h4>
             <p style={{ color: '#F5E7C6' }}>"Book labs/rooms and track maintenance tickets."</p>
           </div>
 
@@ -151,7 +151,7 @@ const Footer = () => {
 
         {/* Bottom Section */}
         <div style={{ borderTop: '1px solid #444444', marginTop: '32px', paddingTop: '16px', textAlign: 'center' }}>
-          <p style={{ color: '#F5E7C6' }}>© 2026 Smart Campus Hub | v1.0.0</p>
+          <p style={{ color: '#F5E7C6' }}>© 2026 CampusSync Hub | v1.0.0</p>
         </div>
       </div>
     </footer>

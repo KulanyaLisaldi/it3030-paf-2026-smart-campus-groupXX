@@ -6,6 +6,7 @@ import com.example.server.dto.auth.AuthUserResponse;
 import com.example.server.dto.auth.ChangePasswordRequest;
 import com.example.server.dto.auth.SignInRequest;
 import com.example.server.dto.auth.UpdateProfileRequest;
+import com.example.server.dto.auth.VerifyPasswordChangeRequest;
 import com.example.server.model.Ticket;
 import com.example.server.model.User;
 import com.example.server.model.UserRole;
@@ -34,18 +35,25 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 @Service
 public class AuthService {
     private static final String PASSWORD_COMPLEXITY_REGEX =
         "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d]).{8,128}$";
+    private static final long PASSWORD_OTP_TTL_SECONDS = 10 * 60;
+    private static final int PASSWORD_OTP_MAX_ATTEMPTS = 5;
 
     private final UserRepo userRepo;
     private final TicketRepo ticketRepo;
     private final TicketCommentRepo ticketCommentRepo;
     private final TicketChatRepo ticketChatRepo;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordOtpEmailService passwordOtpEmailService;
     private final JwtService jwtService;
 
     public AuthService(
@@ -54,6 +62,7 @@ public class AuthService {
         TicketCommentRepo ticketCommentRepo,
         TicketChatRepo ticketChatRepo,
         PasswordEncoder passwordEncoder,
+        PasswordOtpEmailService passwordOtpEmailService,
         JwtService jwtService
     ) {
         this.userRepo = userRepo;
@@ -61,6 +70,7 @@ public class AuthService {
         this.ticketCommentRepo = ticketCommentRepo;
         this.ticketChatRepo = ticketChatRepo;
         this.passwordEncoder = passwordEncoder;
+        this.passwordOtpEmailService = passwordOtpEmailService;
         this.jwtService = jwtService;
     }
 
@@ -303,6 +313,118 @@ public class AuthService {
         return true;
     }
 
+    public boolean requestPasswordChangeOtp(String userId, ChangePasswordRequest request) {
+        Optional<User> maybe = userRepo.findById(userId);
+        if (maybe.isEmpty()) {
+            return false;
+        }
+        User user = maybe.get();
+        validatePasswordChangeRequest(user, request);
+
+        String code = String.format("%06d", new Random().nextInt(1_000_000));
+        user.setPasswordChangeOtpHash(sha256Hex(code));
+        user.setPasswordChangePendingHash(passwordEncoder.encode(request.getNewPassword().trim()));
+        user.setPasswordChangeOtpExpiresAt(Instant.now().plusSeconds(PASSWORD_OTP_TTL_SECONDS));
+        user.setPasswordChangeOtpAttempts(0);
+        userRepo.save(user);
+
+        try {
+            passwordOtpEmailService.sendPasswordChangeOtp(user.getEmail(), code);
+        } catch (Exception e) {
+            clearPendingPasswordChange(user);
+            userRepo.save(user);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not send verification email");
+        }
+        return true;
+    }
+
+    public boolean verifyPasswordChangeOtp(String userId, VerifyPasswordChangeRequest request) {
+        Optional<User> maybe = userRepo.findById(userId);
+        if (maybe.isEmpty()) {
+            return false;
+        }
+        User user = maybe.get();
+        UserRole role = user.getEffectiveRole();
+        if (role != UserRole.ADMIN && role != UserRole.TECHNICIAN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admin and technician accounts can change password here");
+        }
+        if (user.getGoogleSubject() != null && !user.getGoogleSubject().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This account uses Google sign-in. Password change is not available.");
+        }
+        if (user.getPasswordChangeOtpHash() == null || user.getPasswordChangePendingHash() == null || user.getPasswordChangeOtpExpiresAt() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No pending password change request. Request a new code.");
+        }
+        if (Instant.now().isAfter(user.getPasswordChangeOtpExpiresAt())) {
+            clearPendingPasswordChange(user);
+            userRepo.save(user);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Verification code expired. Request a new code.");
+        }
+        int attempts = user.getPasswordChangeOtpAttempts() == null ? 0 : user.getPasswordChangeOtpAttempts();
+        if (attempts >= PASSWORD_OTP_MAX_ATTEMPTS) {
+            clearPendingPasswordChange(user);
+            userRepo.save(user);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Too many invalid attempts. Request a new code.");
+        }
+
+        String submittedHash = sha256Hex(request.getCode().trim());
+        if (!submittedHash.equals(user.getPasswordChangeOtpHash())) {
+            user.setPasswordChangeOtpAttempts(attempts + 1);
+            userRepo.save(user);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid verification code");
+        }
+
+        user.setPasswordHash(user.getPasswordChangePendingHash());
+        clearPendingPasswordChange(user);
+        userRepo.save(user);
+        return true;
+    }
+
+    private void validatePasswordChangeRequest(User user, ChangePasswordRequest request) {
+        UserRole role = user.getEffectiveRole();
+        if (role != UserRole.ADMIN && role != UserRole.TECHNICIAN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admin and technician accounts can change password here");
+        }
+        if (user.getGoogleSubject() != null && !user.getGoogleSubject().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This account uses Google sign-in. Password change is not available.");
+        }
+        String current = request.getCurrentPassword() == null ? "" : request.getCurrentPassword().trim();
+        String next = request.getNewPassword() == null ? "" : request.getNewPassword().trim();
+        String hash = user.getPasswordHash();
+        if (hash == null || hash.isBlank() || !passwordEncoder.matches(current, hash)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+        }
+        if (current.equals(next)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be different from current password");
+        }
+        if (!next.matches(PASSWORD_COMPLEXITY_REGEX)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Password must include uppercase, lowercase, number, and symbol"
+            );
+        }
+    }
+
+    private void clearPendingPasswordChange(User user) {
+        user.setPasswordChangeOtpHash(null);
+        user.setPasswordChangePendingHash(null);
+        user.setPasswordChangeOtpExpiresAt(null);
+        user.setPasswordChangeOtpAttempts(null);
+    }
+
+    private String sha256Hex(String value) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(digest.length * 2);
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm unavailable", e);
+        }
+    }
+
     public Optional<AuthUserResponse> updateTechnicianAvailability(String userId, boolean available) {
         Optional<User> maybe = userRepo.findById(userId);
         if (maybe.isEmpty()) {
@@ -380,6 +502,13 @@ public class AuthService {
         Optional<User> maybe = userRepo.findById(userId);
         if (maybe.isEmpty()) {
             return false;
+        }
+        User user = maybe.get();
+        if (user.getEffectiveRole() == UserRole.ADMIN) {
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Administrator accounts cannot be deleted from your profile. Ask another administrator to adjust access if needed."
+            );
         }
         List<Ticket> tickets = ticketRepo.findByCreatedByOrderByCreatedAtDesc(userId);
         for (Ticket t : tickets) {

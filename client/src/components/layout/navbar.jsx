@@ -257,7 +257,7 @@ const Navbar = () => {
     <nav style={navStyle}>
       <div style={brandStyle} onClick={() => navigate("/")}>
         <div style={logoBoxStyle}>SC</div>
-        <span>Smart Campus</span>
+        <span>CampusSync</span>
       </div>
 
       <div style={centerMenuStyle}>
