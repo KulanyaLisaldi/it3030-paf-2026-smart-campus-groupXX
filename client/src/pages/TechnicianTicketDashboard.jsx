@@ -176,7 +176,7 @@ function TechnicianAppShell({ children }) {
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordState({ busy: false, message: "", error: "New password and confirmation do not match." });
+      setPasswordState({ busy: false, message: "", error: "Passwords do not match" });
       return;
     }
     setPasswordState({ busy: true, message: "", error: "" });
