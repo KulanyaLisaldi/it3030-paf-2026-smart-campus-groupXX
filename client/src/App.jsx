@@ -11,6 +11,11 @@ import MyTickets from "./pages/MyTickets.jsx";
 import TicketDetails from "./pages/TicketDetails.jsx";
 import AdminTicketDashboard from "./pages/adminticketdashboard.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
+import AdminUsersPage from "./pages/AdminUsersPage.jsx";
+import AdminResourcesPage from "./pages/AdminResourcesPage.jsx";
+import AdminBookingsPage from "./pages/AdminBookingsPage.jsx";
+import AdminNotificationsPage from "./pages/AdminNotificationsPage.jsx";
+import AdminAnalyticsPage from "./pages/AdminAnalyticsPage.jsx";
 import ManageAccount from "./pages/ManageAccount.jsx";
 
 function AppContent() {
@@ -36,6 +41,11 @@ function AppContent() {
         <Route path="/my-tickets" element={<MyTickets />} />
         <Route path="/tickets/:id" element={<TicketDetails />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/adminusers" element={<AdminUsersPage />} />
+        <Route path="/adminresources" element={<AdminResourcesPage />} />
+        <Route path="/adminbookings" element={<AdminBookingsPage />} />
+        <Route path="/adminnotifications" element={<AdminNotificationsPage />} />
+        <Route path="/adminanalytics" element={<AdminAnalyticsPage />} />
         <Route path="/adminticket" element={<AdminTicketDashboard />} />
         <Route path="/account" element={<ManageAccount />} />
       </Routes>

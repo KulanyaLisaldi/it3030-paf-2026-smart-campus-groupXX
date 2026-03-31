@@ -13,10 +13,10 @@ const PLACEHOLDER_STYLE = {
   boxSizing: "border-box",
 };
 
-export default function AdminDashboard() {
+export default function AdminResourcesPage() {
   return (
-    <AdminLayout activeSection="dashboard" pageTitle="Dashboard" description="Overview and quick actions for admin operations.">
-      <div style={PLACEHOLDER_STYLE}>Select a section from the left menu.</div>
+    <AdminLayout activeSection="resources" pageTitle="Resource Management" description="Manage campus resources. (Coming soon)">
+      <div style={PLACEHOLDER_STYLE}>Resource Management tools will appear here in a future update.</div>
     </AdminLayout>
   );
 }
