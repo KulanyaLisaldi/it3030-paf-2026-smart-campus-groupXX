@@ -157,6 +157,10 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
       setPasswordState({ busy: false, message: "", error: "Passwords do not match" });
       return;
     }
+    if (newPassword === currentPassword) {
+      setPasswordState({ busy: false, message: "", error: "New password must be different from current password." });
+      return;
+    }
     setPasswordState({ busy: true, message: "", error: "" });
     try {
       await changeMyPassword({ currentPassword, newPassword });
@@ -173,7 +177,8 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
     !!passwordDraft.confirmPassword &&
     passwordChecks.minLength &&
     passwordChecks.hasComplexity &&
-    passwordDraft.newPassword === passwordDraft.confirmPassword;
+    passwordDraft.newPassword === passwordDraft.confirmPassword &&
+    passwordDraft.newPassword !== passwordDraft.currentPassword;
 
   return (
     <div style={shellStyle}>
@@ -304,6 +309,7 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                     <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.45 }}>
                       <div style={{ color: passwordChecks.minLength ? "#15803d" : "#6b7280" }}>Password must be at least 8 characters</div>
                       <div style={{ color: passwordChecks.hasComplexity ? "#15803d" : "#6b7280" }}>Must include uppercase, lowercase, number, symbol</div>
+                      <div style={{ color: (passwordDraft.newPassword && passwordDraft.newPassword === passwordDraft.currentPassword) ? "#b91c1c" : "#6b7280" }}>New password must be different from current password</div>
                     </div>
                   </div>
                   <div><label style={labelStyle}>Confirm new password</label><PasswordInput value={passwordDraft.confirmPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, confirmPassword: e.target.value }))} style={inputStyle} /></div>
