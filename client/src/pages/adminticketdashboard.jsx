@@ -6,6 +6,7 @@ import { listTechnicians } from "../api/adminTechnicians";
 import { technicianCategoryLabel } from "../constants/technicianCategories";
 import { formatDurationSeconds } from "../utils/slaFormat";
 import { appFontFamily } from "../utils/appFont";
+import AdminLayout from "../components/admin/AdminLayout.jsx";
 
 const ADMIN_SIDEBAR_ITEMS = ["Dashboard", "Tickets", "Charts", "Reports"];
 
@@ -20,12 +21,13 @@ const pageStyle = {
 
 const containerStyle = {
   width: "100%",
-  maxWidth: "1180px",
+  maxWidth: "100%",
   backgroundColor: "#FFFFFF",
   borderRadius: "14px",
   border: "1px solid #F5E7C6",
   boxShadow: "0 14px 32px rgba(0, 0, 0, 0.08)",
-  padding: "22px",
+  padding: "18px",
+  marginTop: "4px",
   fontFamily: appFontFamily,
 };
 
@@ -34,7 +36,7 @@ const headerStyle = {
   justifyContent: "space-between",
   alignItems: "center",
   gap: "12px",
-  marginBottom: "12px",
+  marginBottom: "16px",
   padding: "12px",
   borderRadius: "10px",
   border: "1px solid #F5E7C6",
@@ -425,8 +427,6 @@ export default function AdminTicketDashboard() {
   const [acceptPanelEmptyHint, setAcceptPanelEmptyHint] = useState("");
   const [acceptSelectedTechnicianKey, setAcceptSelectedTechnicianKey] = useState("");
   const [acceptConfirming, setAcceptConfirming] = useState(false);
-  const [extraBarCollapsed, setExtraBarCollapsed] = useState(false);
-  const [extraBarMenu, setExtraBarMenu] = useState("Ticket Management");
   const [resolvedCloseBusyId, setResolvedCloseBusyId] = useState(null);
 
   useEffect(() => {
@@ -881,126 +881,9 @@ export default function AdminTicketDashboard() {
     };
   }, [filteredAndSortedTickets]);
 
-  useEffect(() => {
-    if (activeView === "tickets") {
-      setExtraBarMenu("Ticket Management");
-    }
-  }, [activeView]);
-
-  const handleExtraBarNav = (item) => {
-    setExtraBarMenu(item);
-    if (item === "Ticket Management") {
-      setActiveMenuItem("Dashboard");
-      handleViewChange("dashboard");
-      return;
-    }
-    if (item === "Dashboard") {
-      navigate("/admin");
-      return;
-    }
-    if (item === "Resource Management") {
-      navigate("/adminresources");
-      return;
-    }
-    if (item === "Booking Management") {
-      navigate("/adminbookings");
-      return;
-    }
-    if (item === "Analytics & Report") {
-      navigate("/adminanalytics");
-      return;
-    }
-    if (item === "User Management") {
-      navigate("/adminusers");
-      return;
-    }
-    if (item === "Notification") {
-      navigate("/adminnotifications");
-      return;
-    }
-    handleViewChange("dashboard");
-  };
-
-  const handleExtraBarHover = (e, isHover, isActive) => {
-    if (isActive) return;
-    e.currentTarget.style.background = isHover ? "rgba(250, 129, 18, 0.2)" : "transparent";
-    e.currentTarget.style.color = isHover ? "#fb923c" : "#cbd5e1";
-    e.currentTarget.style.borderColor = isHover ? "#FA8112" : "transparent";
-  };
-
-  const renderExtraSidebar = () => (
-    <aside
-      style={{
-        ...extraBarStyle,
-        width: extraBarCollapsed ? EXTRA_BAR_WIDTH_COLLAPSED : EXTRA_BAR_WIDTH_EXPANDED,
-        minWidth: extraBarCollapsed ? EXTRA_BAR_WIDTH_COLLAPSED : EXTRA_BAR_WIDTH_EXPANDED,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "12px",
-          marginBottom: extraBarCollapsed ? 0 : "8px",
-          padding: "22px 18px 18px",
-          width: "100%",
-        }}
-      >
-        <div />
-        <button
-          type="button"
-          aria-label={extraBarCollapsed ? "Expand menu" : "Collapse menu"}
-          onClick={() => setExtraBarCollapsed((v) => !v)}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            background: "rgba(148, 163, 184, 0.12)",
-            border: "none",
-            color: "#e2e8f0",
-            fontSize: "18px",
-            fontWeight: 900,
-            lineHeight: 1,
-            cursor: "pointer",
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 0,
-          }}
-        >
-          <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }} aria-hidden>≡</span>
-        </button>
-      </div>
-      <nav style={{ flex: 1, padding: "4px 0" }} aria-label="Admin sections">
-        {!extraBarCollapsed && <div style={extraBarLabelStyle}>MENU</div>}
-        {!extraBarCollapsed && (
-          <>
-            <button type="button" style={extraBarItemStyle(false)} onClick={() => handleExtraBarNav("Dashboard")}>Dashboard</button>
-            <button type="button" style={extraBarItemStyle(extraBarMenu === "Resource Management")} onClick={() => handleExtraBarNav("Resource Management")}>Resource Management</button>
-            <button type="button" style={extraBarItemStyle(extraBarMenu === "Booking Management")} onClick={() => handleExtraBarNav("Booking Management")}>Booking Management</button>
-            <button type="button" style={extraBarItemStyle(extraBarMenu === "Ticket Management")} onClick={() => handleExtraBarNav("Ticket Management")}>Ticket Management</button>
-            <button type="button" style={extraBarItemStyle(extraBarMenu === "User Management")} onClick={() => handleExtraBarNav("User Management")}>User Management</button>
-            <button type="button" style={extraBarItemStyle(extraBarMenu === "Notification")} onClick={() => handleExtraBarNav("Notification")}>Notification</button>
-            <button type="button" style={extraBarItemStyle(extraBarMenu === "Analytics & Report")} onClick={() => handleExtraBarNav("Analytics & Report")}>Analytics & Report</button>
-          </>
-        )}
-      </nav>
-      {!extraBarCollapsed && (
-        <div style={{ padding: "12px 14px 20px", borderTop: "1px solid rgba(148, 163, 184, 0.15)" }}>
-          <button type="button" style={{ width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1px solid rgba(248, 113, 113, 0.35)", background: "rgba(127, 29, 29, 0.35)", color: "#fecaca", fontWeight: 700, fontSize: "14px", cursor: "pointer", fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif' }} onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
-      )}
-    </aside>
-  );
-
   return (
-    <div style={pageStyle}>
-      {renderExtraSidebar()}
-      <section style={{ ...containerStyle, marginLeft: extraBarCollapsed ? `${EXTRA_BAR_WIDTH_COLLAPSED}px` : `${EXTRA_BAR_WIDTH_EXPANDED}px` }}>
+    <AdminLayout activeSection="tickets" pageTitle="Ticket Management" description="Manage tickets, assign technicians, and track ticket progress.">
+      <section style={containerStyle}>
         <div style={headerStyle}>
           <div>
             <h1 style={titleStyle}>
@@ -2140,7 +2023,7 @@ export default function AdminTicketDashboard() {
           </div>
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 }
 
