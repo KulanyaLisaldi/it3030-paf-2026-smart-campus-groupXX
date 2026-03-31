@@ -24,7 +24,7 @@ const sidebarStyle = {
   overflow: "hidden",
 };
 const mainColumnStyle = { flex: 1, display: "flex", flexDirection: "column", height: "100vh", minWidth: 0, overflow: "hidden" };
-const topBarStyle = { flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "14px 24px", backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0" };
+const topBarStyle = { flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", padding: "14px 24px", backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0" };
 const mainScrollStyle = { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "28px 28px 40px", boxSizing: "border-box" };
 const sectionLabelStyle = { fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", color: "#94a3b8", padding: "0 16px", marginTop: "20px", marginBottom: "8px" };
 const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "2px solid #F5E7C6", fontSize: "15px", outline: "none", boxSizing: "border-box", backgroundColor: "#FFFFFF", color: "#222222" };
@@ -109,6 +109,15 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
   const canSavePhone = isValidPhone(profilePhoneDraft) && profilePhoneDraft.trim() !== serverPhone;
   const displayName = `${(adminUser.firstName || "").trim()} ${(adminUser.lastName || "").trim()}`.trim() || adminUser.email || "Admin";
   const initial = ((adminUser.firstName || adminUser.email || "A").trim().charAt(0) || "A").toUpperCase();
+  const handleLogout = () => {
+    persistCampusUser(null);
+    localStorage.removeItem("smartCampusAuthToken");
+    navigate("/", { replace: true });
+  };
+  const handleChangePassword = () => {
+    setProfileMenuOpen(false);
+    window.alert("Change Password will be available soon.");
+  };
 
   return (
     <div style={shellStyle}>
@@ -133,14 +142,25 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
             </>
           )}
         </nav>
-        {!sidebarCollapsed && (
-          <div style={{ padding: "12px 14px 20px", borderTop: "1px solid rgba(148, 163, 184, 0.15)" }}>
-            <button type="button" onClick={() => { persistCampusUser(null); localStorage.removeItem("smartCampusAuthToken"); navigate("/", { replace: true }); }} style={{ fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1px solid rgba(248, 113, 113, 0.35)", background: "rgba(127, 29, 29, 0.35)", color: "#fecaca", fontWeight: 700, fontSize: "14px", cursor: "pointer" }}>Logout</button>
-          </div>
-        )}
       </aside>
       <div style={mainColumnStyle}>
         <header style={topBarStyle}>
+          <button
+            type="button"
+            aria-label="Notifications"
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              border: "1px solid #e2e8f0",
+              background: "#fff",
+              color: "#0f172a",
+              cursor: "pointer",
+              fontSize: 18,
+            }}
+          >
+            🔔
+          </button>
           <div ref={profileRef} style={{ position: "relative" }}>
             <button type="button" aria-expanded={profileMenuOpen} aria-haspopup="menu" aria-label="Account menu" style={{ width: 40, height: 40, borderRadius: "50%", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: adminUser.profileImageUrl ? "#fff" : "#475569", color: "#fff", fontWeight: 700, fontSize: "16px", overflow: "hidden", boxShadow: profileMenuOpen ? "0 0 0 2px #FA8112" : "0 0 0 1px #e2e8f0" }} onClick={() => setProfileMenuOpen((o) => !o)}>
               {adminUser.profileImageUrl ? <img src={adminUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initial}
@@ -155,6 +175,8 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                   </div>
                 </div>
                 <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); setProfileModalOpen(true); }} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(226, 232, 240, 0.9)", background: "rgba(255, 255, 255, 0.15)", fontWeight: 600, fontSize: "14px", color: "#0f172a", cursor: "pointer", textAlign: "left" }}>My profile</button>
+                <button type="button" role="menuitem" onClick={handleChangePassword} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(226, 232, 240, 0.9)", background: "rgba(255, 255, 255, 0.15)", fontWeight: 600, fontSize: "14px", color: "#0f172a", cursor: "pointer", textAlign: "left", marginTop: 8 }}>Change Password</button>
+                <button type="button" role="menuitem" onClick={handleLogout} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(248, 113, 113, 0.35)", background: "rgba(255, 255, 255, 0.15)", fontWeight: 700, fontSize: "14px", color: "#b91c1c", cursor: "pointer", textAlign: "left", marginTop: 8 }}>Logout</button>
               </div>
             )}
           </div>
