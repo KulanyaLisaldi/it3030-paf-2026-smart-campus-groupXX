@@ -25,6 +25,14 @@ const inputStyle = {
   boxSizing: "border-box",
 };
 const labelStyle = { display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 };
+const summaryGridStyle = { display: "grid", gridTemplateColumns: "repeat(5, minmax(140px, 1fr))", gap: "12px", marginBottom: "14px" };
+const summaryCardStyle = {
+  backgroundColor: "#ffffff",
+  border: "1px solid #e2e8f0",
+  borderRadius: "12px",
+  padding: "12px",
+  boxShadow: "0 6px 20px rgba(15,23,42,0.04)",
+};
 
 const smallBtnStyle = (variant = "neutral") => {
   const base = {
@@ -141,6 +149,15 @@ export default function AdminResourcesTable() {
       return true;
     });
   }, [resources, search, minCapacityFilter, locationFilter]);
+
+  const summary = useMemo(() => {
+    const total = resources.length;
+    const active = resources.filter((r) => String(r.status || "").toUpperCase() === "ACTIVE").length;
+    const outOfService = resources.filter((r) => String(r.status || "").toUpperCase() === "OUT_OF_SERVICE").length;
+    const totalRooms = resources.filter((r) => ["LECTURE_HALL", "LAB", "MEETING_ROOM"].includes(String(r.type || "").toUpperCase())).length;
+    const totalEquipment = resources.filter((r) => String(r.type || "").toUpperCase() === "EQUIPMENT").length;
+    return { total, active, outOfService, totalRooms, totalEquipment };
+  }, [resources]);
 
   const onToggleStatus = async (resource) => {
     const next = resource.status === "ACTIVE" ? "OUT_OF_SERVICE" : "ACTIVE";
@@ -306,6 +323,29 @@ export default function AdminResourcesTable() {
           <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b" }}>Manage facilities and assets in one place.</div>
         </div>
         <button type="button" style={smallBtnStyle("primary")} onClick={openAddModal}>+ Add Resource</button>
+      </div>
+
+      <div style={summaryGridStyle}>
+        <div style={summaryCardStyle}>
+          <div style={{ fontSize: "11px", fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Total Resources</div>
+          <div style={{ fontSize: "26px", fontWeight: 900, color: "#0f172a", marginTop: 4 }}>{summary.total}</div>
+        </div>
+        <div style={summaryCardStyle}>
+          <div style={{ fontSize: "11px", fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Active Resources</div>
+          <div style={{ fontSize: "26px", fontWeight: 900, color: "#166534", marginTop: 4 }}>{summary.active}</div>
+        </div>
+        <div style={summaryCardStyle}>
+          <div style={{ fontSize: "11px", fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Out of Service Resources</div>
+          <div style={{ fontSize: "26px", fontWeight: 900, color: "#991b1b", marginTop: 4 }}>{summary.outOfService}</div>
+        </div>
+        <div style={summaryCardStyle}>
+          <div style={{ fontSize: "11px", fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Total Rooms</div>
+          <div style={{ fontSize: "26px", fontWeight: 900, color: "#0f172a", marginTop: 4 }}>{summary.totalRooms}</div>
+        </div>
+        <div style={summaryCardStyle}>
+          <div style={{ fontSize: "11px", fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Total Equipment</div>
+          <div style={{ fontSize: "26px", fontWeight: 900, color: "#0f172a", marginTop: 4 }}>{summary.totalEquipment}</div>
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 160px 140px 1fr", gap: 12, marginBottom: 14 }}>
