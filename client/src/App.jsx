@@ -13,6 +13,7 @@ import AdminTicketDashboard from "./pages/adminticketdashboard.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 import AdminUsersPage from "./pages/AdminUsersPage.jsx";
 import AdminResourcesPage from "./pages/AdminResourcesPage.jsx";
+import AdminResourceDetailsPage from "./pages/AdminResourceDetailsPage.jsx";
 import AdminBookingsPage from "./pages/AdminBookingsPage.jsx";
 import AdminNotificationsPage from "./pages/AdminNotificationsPage.jsx";
 import AdminAnalyticsPage from "./pages/AdminAnalyticsPage.jsx";
@@ -43,6 +44,7 @@ function AppContent() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/adminusers" element={<AdminUsersPage />} />
         <Route path="/adminresources" element={<AdminResourcesPage />} />
+        <Route path="/adminresources/:id" element={<AdminResourceDetailsPage />} />
         <Route path="/adminbookings" element={<AdminBookingsPage />} />
         <Route path="/adminnotifications" element={<AdminNotificationsPage />} />
         <Route path="/adminanalytics" element={<AdminAnalyticsPage />} />

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { createResource, disableResource, getAdminResources, updateResource, updateResourceStatus } from "../../api/adminResources";
 
 const pageCardStyle = {
@@ -65,6 +66,7 @@ function normalizeResources(payload) {
 }
 
 export default function AdminResourcesTable() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [resources, setResources] = useState([]);
@@ -359,7 +361,7 @@ export default function AdminResourcesTable() {
                   <td style={tdStyle}>{r.availability || r.availabilityText || "—"}</td>
                   <td style={tdStyle}>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button type="button" style={smallBtnStyle()} onClick={() => window.alert(`View resource: ${r.name || r.code || ""}`)}>View</button>
+                      <button type="button" style={smallBtnStyle()} onClick={() => navigate(`/adminresources/${encodeURIComponent(r.id || "")}`)} disabled={!r.id}>View</button>
                       <button type="button" style={smallBtnStyle()} onClick={() => openEditModal(r)}>Edit</button>
                       <button type="button" style={smallBtnStyle("primary")} disabled={busyId === r.id} onClick={() => onToggleStatus(r)}>{(r.status || "OUT_OF_SERVICE") === "ACTIVE" ? "Change to Out of Service" : "Change to Active"}</button>
                       <button type="button" style={smallBtnStyle("danger")} disabled={busyId === r.id} onClick={() => onDisable(r)}>Delete / Disable</button>

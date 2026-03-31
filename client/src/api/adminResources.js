@@ -16,6 +16,10 @@ export function getAdminResources(filters = {}) {
   return apiGet(`/api/resources${toQueryString(filters)}`);
 }
 
+export function getAdminResourceById(resourceId) {
+  return apiGet(`/api/resources/${encodeURIComponent(resourceId)}`);
+}
+
 export function createResource(payload) {
   return apiPost("/api/resources", payload);
 }
