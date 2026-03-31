@@ -44,6 +44,14 @@ public class User {
 
     /** Updated on every successful sign-in (email/password or Google OAuth). */
     private Instant lastLoginAt;
+    /** Hashed 6-digit OTP for password change verification. */
+    private String passwordChangeOtpHash;
+    /** New password hash staged until OTP verification succeeds. */
+    private String passwordChangePendingHash;
+    /** OTP expiry timestamp. */
+    private Instant passwordChangeOtpExpiresAt;
+    /** Failed OTP attempts for current pending request. */
+    private Integer passwordChangeOtpAttempts;
 
     public User() {
     }
@@ -131,6 +139,38 @@ public class User {
 
     public void setLastLoginAt(Instant lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
+    }
+
+    public String getPasswordChangeOtpHash() {
+        return passwordChangeOtpHash;
+    }
+
+    public void setPasswordChangeOtpHash(String passwordChangeOtpHash) {
+        this.passwordChangeOtpHash = passwordChangeOtpHash;
+    }
+
+    public String getPasswordChangePendingHash() {
+        return passwordChangePendingHash;
+    }
+
+    public void setPasswordChangePendingHash(String passwordChangePendingHash) {
+        this.passwordChangePendingHash = passwordChangePendingHash;
+    }
+
+    public Instant getPasswordChangeOtpExpiresAt() {
+        return passwordChangeOtpExpiresAt;
+    }
+
+    public void setPasswordChangeOtpExpiresAt(Instant passwordChangeOtpExpiresAt) {
+        this.passwordChangeOtpExpiresAt = passwordChangeOtpExpiresAt;
+    }
+
+    public Integer getPasswordChangeOtpAttempts() {
+        return passwordChangeOtpAttempts;
+    }
+
+    public void setPasswordChangeOtpAttempts(Integer passwordChangeOtpAttempts) {
+        this.passwordChangeOtpAttempts = passwordChangeOtpAttempts;
     }
 
     public String getGoogleSubject() {

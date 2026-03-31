@@ -4,6 +4,7 @@ import com.example.server.dto.auth.AuthUserResponse;
 import com.example.server.dto.auth.ChangePasswordRequest;
 import com.example.server.dto.auth.UpdateProfileRequest;
 import com.example.server.dto.auth.UpdateTechnicianAvailabilityRequest;
+import com.example.server.dto.auth.VerifyPasswordChangeRequest;
 import com.example.server.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -66,14 +67,31 @@ public class AccountProfileController {
     }
 
     @PatchMapping(value = "/password", consumes = "application/json")
-    public ResponseEntity<?> changePassword(
+    public ResponseEntity<?> requestPasswordChangeOtp(
         Authentication authentication,
         @Valid @RequestBody ChangePasswordRequest request
     ) {
         String userId = authentication.getName();
         try {
-            boolean changed = authService.changePassword(userId, request);
-            if (!changed) {
+            boolean requested = authService.requestPasswordChangeOtp(userId, request);
+            if (!requested) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+            }
+            return ResponseEntity.ok(Map.of("message", "Verification code sent to your email"));
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(Map.of("message", ex.getReason()));
+        }
+    }
+
+    @PatchMapping(value = "/password/verify", consumes = "application/json")
+    public ResponseEntity<?> verifyPasswordChangeOtp(
+        Authentication authentication,
+        @Valid @RequestBody VerifyPasswordChangeRequest request
+    ) {
+        String userId = authentication.getName();
+        try {
+            boolean verified = authService.verifyPasswordChangeOtp(userId, request);
+            if (!verified) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
             }
             return ResponseEntity.ok(Map.of("message", "Password changed successfully"));

@@ -16,6 +16,10 @@ export function changeMyPassword(payload) {
   return apiPatch("/api/auth/profile/password", payload);
 }
 
+export function verifyMyPasswordChange(payload) {
+  return apiPatch("/api/auth/profile/password/verify", payload);
+}
+
 /** @param {boolean} available - true = available, false = unavailable (technicians only) */
 export function updateTechnicianAvailability(available) {
   return apiPatch("/api/auth/profile/technician-availability", { available });

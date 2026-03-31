@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuthToken } from "../../api/http";
-import { changeMyPassword, removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../../api/auth";
+import { changeMyPassword, removeProfileAvatar, updateProfilePhone, uploadProfileAvatar, verifyMyPasswordChange } from "../../api/auth";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../../utils/campusUserStorage";
 import PasswordInput from "../PasswordInput.jsx";
 
@@ -78,6 +78,8 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [passwordDraft, setPasswordDraft] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [passwordOtpCode, setPasswordOtpCode] = useState("");
+  const [passwordOtpSent, setPasswordOtpSent] = useState(false);
   const [passwordState, setPasswordState] = useState({ busy: false, message: "", error: "" });
   const [profilePhoneDraft, setProfilePhoneDraft] = useState("");
   const [profileSaveState, setProfileSaveState] = useState({ busy: false, message: "", error: "" });
@@ -134,6 +136,8 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
       return;
     }
     setPasswordDraft({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    setPasswordOtpCode("");
+    setPasswordOtpSent(false);
     setPasswordState({ busy: false, message: "", error: "" });
     setPasswordModalOpen(true);
   };
@@ -164,10 +168,27 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
     setPasswordState({ busy: true, message: "", error: "" });
     try {
       await changeMyPassword({ currentPassword, newPassword });
-      setPasswordState({ busy: false, message: "Password changed successfully.", error: "" });
-      setPasswordDraft({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setPasswordOtpSent(true);
+      setPasswordState({ busy: false, message: "Verification code sent to your email.", error: "" });
     } catch (err) {
       setPasswordState({ busy: false, message: "", error: err?.message || "Could not change password" });
+    }
+  };
+  const handleVerifyPasswordOtp = async () => {
+    const code = (passwordOtpCode || "").trim();
+    if (!/^[0-9]{6}$/.test(code)) {
+      setPasswordState({ busy: false, message: "", error: "Enter the 6-digit verification code." });
+      return;
+    }
+    setPasswordState({ busy: true, message: "", error: "" });
+    try {
+      await verifyMyPasswordChange({ code });
+      setPasswordState({ busy: false, message: "Password changed successfully.", error: "" });
+      setPasswordDraft({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setPasswordOtpCode("");
+      setPasswordOtpSent(false);
+    } catch (err) {
+      setPasswordState({ busy: false, message: "", error: err?.message || "Could not verify code" });
     }
   };
   const passwordChecks = getPasswordChecks(passwordDraft.newPassword);
@@ -313,14 +334,42 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                     </div>
                   </div>
                   <div><label style={labelStyle}>Confirm new password</label><PasswordInput value={passwordDraft.confirmPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, confirmPassword: e.target.value }))} style={inputStyle} /></div>
+                  {passwordOtpSent && (
+                    <div>
+                      <label style={labelStyle}>Verification code</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={passwordOtpCode}
+                        onChange={(e) => setPasswordOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="6-digit code"
+                        style={inputStyle}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div style={{ marginTop: "14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
                   <div>
                     {passwordState.error ? <div style={{ color: "#b91c1c", fontSize: "13px", fontWeight: 700 }}>{passwordState.error}</div> : null}
                     {passwordState.message ? <div style={{ color: "#15803d", fontSize: "13px", fontWeight: 700 }}>{passwordState.message}</div> : null}
                   </div>
-                  <button type="button" onClick={handleSubmitPassword} disabled={passwordState.busy || !canSubmitPassword} style={{ padding: "10px 14px", borderRadius: "10px", border: "none", backgroundColor: "#FA8112", color: "#fff", fontWeight: 800, cursor: passwordState.busy || !canSubmitPassword ? "not-allowed" : "pointer", opacity: passwordState.busy || !canSubmitPassword ? 0.6 : 1 }}>
-                    {passwordState.busy ? "Saving..." : "Update password"}
+                  <button
+                    type="button"
+                    onClick={passwordOtpSent ? handleVerifyPasswordOtp : handleSubmitPassword}
+                    disabled={passwordState.busy || (passwordOtpSent ? !/^[0-9]{6}$/.test(passwordOtpCode) : !canSubmitPassword)}
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: "10px",
+                      border: "none",
+                      backgroundColor: "#FA8112",
+                      color: "#fff",
+                      fontWeight: 800,
+                      cursor: passwordState.busy || (passwordOtpSent ? !/^[0-9]{6}$/.test(passwordOtpCode) : !canSubmitPassword) ? "not-allowed" : "pointer",
+                      opacity: passwordState.busy || (passwordOtpSent ? !/^[0-9]{6}$/.test(passwordOtpCode) : !canSubmitPassword) ? 0.6 : 1,
+                    }}
+                  >
+                    {passwordState.busy ? "Saving..." : passwordOtpSent ? "Verify & update" : "Send verification code"}
                   </button>
                 </div>
               </div>
