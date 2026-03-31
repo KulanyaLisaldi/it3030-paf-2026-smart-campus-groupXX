@@ -161,6 +161,8 @@ export default function ManageAccount() {
     return draft !== serverPhone;
   }, [profile, phoneDraft, serverPhone]);
 
+  const isAdminAccount = roleText === "ADMIN";
+
   const setView = (next) => {
     setSearchParams(next === "personal" ? {} : { view: next });
   };
@@ -225,6 +227,12 @@ export default function ManageAccount() {
   };
 
   const handleDeleteAccount = async () => {
+    if (isAdminAccount) {
+      window.alert(
+        "Administrator accounts cannot be deleted from your profile. Another administrator can manage user access from User Management."
+      );
+      return;
+    }
     const ok = window.confirm(
       "Delete your Smart Campus account? This cannot be undone. Your tickets and related data will be removed."
     );
@@ -611,34 +619,53 @@ export default function ManageAccount() {
                   </div>
                 </div>
 
-                <div style={cardStyle}>
-                  <h2 style={{ margin: "0 0 8px 0", fontSize: "16px", fontWeight: 700, color: "#111827" }}>
-                    Delete account
-                  </h2>
-                  <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "20px", lineHeight: 1.5 }}>
-                    You will lose access to your Smart Campus account once your deletion request is confirmed. Your
-                    tickets and comments you created will be removed.
-                  </p>
-                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <button
-                      type="button"
-                      disabled={deleteBusy}
-                      onClick={handleDeleteAccount}
-                      style={{
-                        padding: "10px 20px",
-                        borderRadius: "8px",
-                        border: "none",
-                        backgroundColor: "#dc2626",
-                        color: "#ffffff",
-                        fontWeight: 600,
-                        fontSize: "14px",
-                        cursor: deleteBusy ? "wait" : "pointer",
-                      }}
-                    >
-                      {deleteBusy ? "Deleting…" : "Delete account"}
-                    </button>
+                {!isAdminAccount && (
+                  <div style={cardStyle}>
+                    <h2 style={{ margin: "0 0 8px 0", fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                      Delete account
+                    </h2>
+                    <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "20px", lineHeight: 1.5 }}>
+                      You will lose access to your Smart Campus account once your deletion request is confirmed. Your
+                      tickets and comments you created will be removed.
+                    </p>
+                    <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                      <button
+                        type="button"
+                        disabled={deleteBusy}
+                        onClick={handleDeleteAccount}
+                        style={{
+                          padding: "10px 20px",
+                          borderRadius: "8px",
+                          border: "none",
+                          backgroundColor: "#dc2626",
+                          color: "#ffffff",
+                          fontWeight: 600,
+                          fontSize: "14px",
+                          cursor: deleteBusy ? "wait" : "pointer",
+                        }}
+                      >
+                        {deleteBusy ? "Deleting…" : "Delete account"}
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
+                {isAdminAccount && (
+                  <div
+                    style={{
+                      ...cardStyle,
+                      border: "1px solid #e5e7eb",
+                      backgroundColor: "#f9fafb",
+                    }}
+                  >
+                    <h2 style={{ margin: "0 0 8px 0", fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                      Account removal
+                    </h2>
+                    <p style={{ fontSize: "14px", color: "#6b7280", margin: 0, lineHeight: 1.5 }}>
+                      Administrator accounts cannot be deleted from this page. Use User Management to adjust other
+                      accounts, or contact support if an admin account must be retired.
+                    </p>
+                  </div>
+                )}
               </>
             )}
           </>

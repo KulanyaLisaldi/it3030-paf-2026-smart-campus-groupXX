@@ -130,10 +130,14 @@ public class AccountProfileController {
     @DeleteMapping
     public ResponseEntity<?> deleteAccount(Authentication authentication) {
         String userId = authentication.getName();
-        boolean deleted = authService.deleteAccount(userId);
-        if (!deleted) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+        try {
+            boolean deleted = authService.deleteAccount(userId);
+            if (!deleted) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+            }
+            return ResponseEntity.ok(Map.of("message", "Account deleted"));
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(Map.of("message", ex.getReason()));
         }
-        return ResponseEntity.ok(Map.of("message", "Account deleted"));
     }
 }

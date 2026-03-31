@@ -503,6 +503,13 @@ public class AuthService {
         if (maybe.isEmpty()) {
             return false;
         }
+        User user = maybe.get();
+        if (user.getEffectiveRole() == UserRole.ADMIN) {
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Administrator accounts cannot be deleted from your profile. Ask another administrator to adjust access if needed."
+            );
+        }
         List<Ticket> tickets = ticketRepo.findByCreatedByOrderByCreatedAtDesc(userId);
         for (Ticket t : tickets) {
             ticketCommentRepo.deleteByTicketId(t.getId());
