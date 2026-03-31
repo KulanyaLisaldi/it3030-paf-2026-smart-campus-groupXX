@@ -3,6 +3,7 @@ package com.example.server.service;
 import com.example.server.dto.admin.CreateTechnicianRequest;
 import com.example.server.dto.auth.AuthResponse;
 import com.example.server.dto.auth.AuthUserResponse;
+import com.example.server.dto.auth.ChangePasswordRequest;
 import com.example.server.dto.auth.SignInRequest;
 import com.example.server.dto.auth.UpdateProfileRequest;
 import com.example.server.model.Ticket;
@@ -265,6 +266,33 @@ public class AuthService {
             user.setPhoneNumber(request.getPhoneNumber().trim());
             return toUserResponse(userRepo.save(user));
         });
+    }
+
+    public boolean changePassword(String userId, ChangePasswordRequest request) {
+        Optional<User> maybe = userRepo.findById(userId);
+        if (maybe.isEmpty()) {
+            return false;
+        }
+        User user = maybe.get();
+        UserRole role = user.getEffectiveRole();
+        if (role != UserRole.ADMIN && role != UserRole.TECHNICIAN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admin and technician accounts can change password here");
+        }
+        if (user.getGoogleSubject() != null && !user.getGoogleSubject().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This account uses Google sign-in. Password change is not available.");
+        }
+        String current = request.getCurrentPassword() == null ? "" : request.getCurrentPassword().trim();
+        String next = request.getNewPassword() == null ? "" : request.getNewPassword().trim();
+        String hash = user.getPasswordHash();
+        if (hash == null || hash.isBlank() || !passwordEncoder.matches(current, hash)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+        }
+        if (current.equals(next)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be different from current password");
+        }
+        user.setPasswordHash(passwordEncoder.encode(next));
+        userRepo.save(user);
+        return true;
     }
 
     public Optional<AuthUserResponse> updateTechnicianAvailability(String userId, boolean available) {

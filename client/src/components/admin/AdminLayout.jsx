@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuthToken } from "../../api/http";
-import { removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../../api/auth";
+import { changeMyPassword, removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../../api/auth";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../../utils/campusUserStorage";
 
 const shellStyle = {
@@ -24,7 +24,7 @@ const sidebarStyle = {
   overflow: "hidden",
 };
 const mainColumnStyle = { flex: 1, display: "flex", flexDirection: "column", height: "100vh", minWidth: 0, overflow: "hidden" };
-const topBarStyle = { flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "14px 24px", backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0" };
+const topBarStyle = { flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", padding: "14px 24px", backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0" };
 const mainScrollStyle = { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "28px 28px 40px", boxSizing: "border-box" };
 const sectionLabelStyle = { fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", color: "#94a3b8", padding: "0 16px", marginTop: "20px", marginBottom: "8px" };
 const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "2px solid #F5E7C6", fontSize: "15px", outline: "none", boxSizing: "border-box", backgroundColor: "#FFFFFF", color: "#222222" };
@@ -67,6 +67,9 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
   const [userRev, setUserRev] = useState(0);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [passwordDraft, setPasswordDraft] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [passwordState, setPasswordState] = useState({ busy: false, message: "", error: "" });
   const [profilePhoneDraft, setProfilePhoneDraft] = useState("");
   const [profileSaveState, setProfileSaveState] = useState({ busy: false, message: "", error: "" });
   const [avatarBusy, setAvatarBusy] = useState(false);
@@ -109,6 +112,47 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
   const canSavePhone = isValidPhone(profilePhoneDraft) && profilePhoneDraft.trim() !== serverPhone;
   const displayName = `${(adminUser.firstName || "").trim()} ${(adminUser.lastName || "").trim()}`.trim() || adminUser.email || "Admin";
   const initial = ((adminUser.firstName || adminUser.email || "A").trim().charAt(0) || "A").toUpperCase();
+  const handleLogout = () => {
+    persistCampusUser(null);
+    localStorage.removeItem("smartCampusAuthToken");
+    navigate("/", { replace: true });
+  };
+  const handleChangePassword = () => {
+    setProfileMenuOpen(false);
+    const provider = String(adminUser?.provider || "").toLowerCase();
+    if (provider.includes("google")) {
+      window.alert("This account uses Google sign-in. Password change is available only for Email accounts.");
+      return;
+    }
+    setPasswordDraft({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    setPasswordState({ busy: false, message: "", error: "" });
+    setPasswordModalOpen(true);
+  };
+  const handleSubmitPassword = async () => {
+    const currentPassword = passwordDraft.currentPassword;
+    const newPassword = passwordDraft.newPassword;
+    const confirmPassword = passwordDraft.confirmPassword;
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordState({ busy: false, message: "", error: "All fields are required." });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordState({ busy: false, message: "", error: "New password must be at least 6 characters." });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordState({ busy: false, message: "", error: "New password and confirmation do not match." });
+      return;
+    }
+    setPasswordState({ busy: true, message: "", error: "" });
+    try {
+      await changeMyPassword({ currentPassword, newPassword });
+      setPasswordState({ busy: false, message: "Password changed successfully.", error: "" });
+      setPasswordDraft({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (err) {
+      setPasswordState({ busy: false, message: "", error: err?.message || "Could not change password" });
+    }
+  };
 
   return (
     <div style={shellStyle}>
@@ -133,20 +177,31 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
             </>
           )}
         </nav>
-        {!sidebarCollapsed && (
-          <div style={{ padding: "12px 14px 20px", borderTop: "1px solid rgba(148, 163, 184, 0.15)" }}>
-            <button type="button" onClick={() => { persistCampusUser(null); localStorage.removeItem("smartCampusAuthToken"); navigate("/", { replace: true }); }} style={{ fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1px solid rgba(248, 113, 113, 0.35)", background: "rgba(127, 29, 29, 0.35)", color: "#fecaca", fontWeight: 700, fontSize: "14px", cursor: "pointer" }}>Logout</button>
-          </div>
-        )}
       </aside>
       <div style={mainColumnStyle}>
         <header style={topBarStyle}>
+          <button
+            type="button"
+            aria-label="Notifications"
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              border: "1px solid #e2e8f0",
+              background: "#fff",
+              color: "#0f172a",
+              cursor: "pointer",
+              fontSize: 18,
+            }}
+          >
+            🔔
+          </button>
           <div ref={profileRef} style={{ position: "relative" }}>
             <button type="button" aria-expanded={profileMenuOpen} aria-haspopup="menu" aria-label="Account menu" style={{ width: 40, height: 40, borderRadius: "50%", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: adminUser.profileImageUrl ? "#fff" : "#475569", color: "#fff", fontWeight: 700, fontSize: "16px", overflow: "hidden", boxShadow: profileMenuOpen ? "0 0 0 2px #FA8112" : "0 0 0 1px #e2e8f0" }} onClick={() => setProfileMenuOpen((o) => !o)}>
               {adminUser.profileImageUrl ? <img src={adminUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initial}
             </button>
             {profileMenuOpen && (
-              <div role="menu" style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: "min(280px, calc(100vw - 48px))", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: "12px", boxShadow: "0 12px 40px rgba(15, 23, 42, 0.12)", padding: "16px", zIndex: 50 }}>
+              <div role="menu" style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: "min(280px, calc(100vw - 48px))", backgroundColor: "rgba(15, 23, 42, 0.08)", border: "1px solid rgba(148, 163, 184, 0.45)", borderRadius: "12px", boxShadow: "0 12px 40px rgba(15, 23, 42, 0.12)", padding: "16px", zIndex: 50, backdropFilter: "blur(10px)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
                   <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: adminUser.profileImageUrl ? "#f1f5f9" : "#475569", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "18px", overflow: "hidden" }}>{adminUser.profileImageUrl ? <img src={adminUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initial}</div>
                   <div style={{ minWidth: 0 }}>
@@ -154,7 +209,9 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                     <div style={{ fontSize: "12px", color: "#64748b", wordBreak: "break-word" }}>{adminUser.email || "—"}</div>
                   </div>
                 </div>
-                <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); setProfileModalOpen(true); }} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "#fff", fontWeight: 600, fontSize: "14px", color: "#0f172a", cursor: "pointer", textAlign: "left" }}>My profile</button>
+                <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); setProfileModalOpen(true); }} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(226, 232, 240, 0.9)", background: "rgba(255, 255, 255, 0.15)", fontWeight: 600, fontSize: "14px", color: "#0f172a", cursor: "pointer", textAlign: "left" }}>My profile</button>
+                <button type="button" role="menuitem" onClick={handleChangePassword} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(226, 232, 240, 0.9)", background: "rgba(255, 255, 255, 0.15)", fontWeight: 600, fontSize: "14px", color: "#0f172a", cursor: "pointer", textAlign: "left", marginTop: 8 }}>Change Password</button>
+                <button type="button" role="menuitem" onClick={handleLogout} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(248, 113, 113, 0.35)", background: "rgba(255, 255, 255, 0.15)", fontWeight: 700, fontSize: "14px", color: "#b91c1c", cursor: "pointer", textAlign: "left", marginTop: 8 }}>Logout</button>
               </div>
             )}
           </div>
@@ -200,6 +257,37 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                       {profileSaveState.error ? <span style={{ color: "#b91c1c", fontWeight: 700, fontSize: "13px" }}>{profileSaveState.error}</span> : null}
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {passwordModalOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{ position: "fixed", inset: 0, zIndex: 1100, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px" }}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setPasswordModalOpen(false); }}
+          >
+            <div style={{ width: "100%", maxWidth: "520px", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden" }}>
+              <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Change Password</div>
+                <button type="button" onClick={() => setPasswordModalOpen(false)} style={{ border: "none", background: "transparent", fontWeight: 800, cursor: "pointer", color: "#0f172a" }}>Close</button>
+              </div>
+              <div style={{ padding: "18px" }}>
+                <div style={{ display: "grid", gap: "12px" }}>
+                  <div><label style={labelStyle}>Current password</label><input type="password" value={passwordDraft.currentPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, currentPassword: e.target.value }))} style={inputStyle} /></div>
+                  <div><label style={labelStyle}>New password</label><input type="password" value={passwordDraft.newPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, newPassword: e.target.value }))} style={inputStyle} /></div>
+                  <div><label style={labelStyle}>Confirm new password</label><input type="password" value={passwordDraft.confirmPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, confirmPassword: e.target.value }))} style={inputStyle} /></div>
+                </div>
+                <div style={{ marginTop: "14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+                  <div>
+                    {passwordState.error ? <div style={{ color: "#b91c1c", fontSize: "13px", fontWeight: 700 }}>{passwordState.error}</div> : null}
+                    {passwordState.message ? <div style={{ color: "#15803d", fontSize: "13px", fontWeight: 700 }}>{passwordState.message}</div> : null}
+                  </div>
+                  <button type="button" onClick={handleSubmitPassword} disabled={passwordState.busy} style={{ padding: "10px 14px", borderRadius: "10px", border: "none", backgroundColor: "#FA8112", color: "#fff", fontWeight: 800, cursor: passwordState.busy ? "wait" : "pointer", opacity: passwordState.busy ? 0.7 : 1 }}>
+                    {passwordState.busy ? "Saving..." : "Update password"}
+                  </button>
                 </div>
               </div>
             </div>
