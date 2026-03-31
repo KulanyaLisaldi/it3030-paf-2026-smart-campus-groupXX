@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getTechnicianAssignedTickets } from "../api/technicianTickets";
-import { fetchCurrentUser, removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../api/auth";
+import { changeMyPassword, fetchCurrentUser, removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../api/auth";
 import { getAuthToken } from "../api/http";
 import { persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import { appFontFamily } from "../utils/appFont";
@@ -112,6 +112,9 @@ function TechnicianAppShell({ children }) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileMenuPos, setProfileMenuPos] = useState({ top: 0 });
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [passwordDraft, setPasswordDraft] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [passwordState, setPasswordState] = useState({ busy: false, message: "", error: "" });
   const [profileUser, setProfileUser] = useState(() => readCampusUser());
   const [phoneDraft, setPhoneDraft] = useState("");
   const [saveState, setSaveState] = useState({ busy: false, message: "", error: "" });
@@ -139,7 +142,39 @@ function TechnicianAppShell({ children }) {
 
   const openChangePassword = () => {
     setProfileMenuOpen(false);
-    window.alert("Change Password will be available soon.");
+    const provider = String(user?.provider || "").toLowerCase();
+    if (provider.includes("google")) {
+      window.alert("This account uses Google sign-in. Password change is available only for Email accounts.");
+      return;
+    }
+    setPasswordDraft({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    setPasswordState({ busy: false, message: "", error: "" });
+    setPasswordModalOpen(true);
+  };
+  const handleSubmitPassword = async () => {
+    const currentPassword = passwordDraft.currentPassword;
+    const newPassword = passwordDraft.newPassword;
+    const confirmPassword = passwordDraft.confirmPassword;
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordState({ busy: false, message: "", error: "All fields are required." });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordState({ busy: false, message: "", error: "New password must be at least 6 characters." });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordState({ busy: false, message: "", error: "New password and confirmation do not match." });
+      return;
+    }
+    setPasswordState({ busy: true, message: "", error: "" });
+    try {
+      await changeMyPassword({ currentPassword, newPassword });
+      setPasswordState({ busy: false, message: "Password changed successfully.", error: "" });
+      setPasswordDraft({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (err) {
+      setPasswordState({ busy: false, message: "", error: err?.message || "Could not change password" });
+    }
   };
 
   useEffect(() => {
@@ -660,6 +695,35 @@ function TechnicianAppShell({ children }) {
                   }}
                 >
                   {saveState.busy ? "Saving..." : "Save changes"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {passwordModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{ position: "fixed", inset: 0, zIndex: 10040, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px" }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setPasswordModalOpen(false); }}
+        >
+          <div style={{ width: "100%", maxWidth: "520px", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden" }}>
+            <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Change Password</div>
+              <button type="button" onClick={() => setPasswordModalOpen(false)} style={{ border: "none", background: "transparent", fontWeight: 800, cursor: "pointer", color: "#0f172a" }}>Close</button>
+            </div>
+            <div style={{ padding: "18px", display: "grid", gap: "12px" }}>
+              <div><label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>Current password</label><input type="password" value={passwordDraft.currentPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, currentPassword: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb" }} /></div>
+              <div><label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>New password</label><input type="password" value={passwordDraft.newPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, newPassword: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb" }} /></div>
+              <div><label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>Confirm new password</label><input type="password" value={passwordDraft.confirmPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, confirmPassword: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb" }} /></div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+                <div>
+                  {passwordState.error ? <div style={{ color: "#b91c1c", fontSize: "13px", fontWeight: 700 }}>{passwordState.error}</div> : null}
+                  {passwordState.message ? <div style={{ color: "#15803d", fontSize: "13px", fontWeight: 700 }}>{passwordState.message}</div> : null}
+                </div>
+                <button type="button" onClick={handleSubmitPassword} disabled={passwordState.busy} style={{ padding: "10px 14px", borderRadius: 10, border: "none", backgroundColor: "#FA8112", color: "#fff", fontWeight: 800, cursor: passwordState.busy ? "wait" : "pointer", opacity: passwordState.busy ? 0.7 : 1 }}>
+                  {passwordState.busy ? "Saving..." : "Update password"}
                 </button>
               </div>
             </div>

@@ -12,6 +12,10 @@ export function updateProfilePhone(payload) {
   return apiPatch("/api/auth/profile", payload);
 }
 
+export function changeMyPassword(payload) {
+  return apiPatch("/api/auth/profile/password", payload);
+}
+
 /** @param {boolean} available - true = available, false = unavailable (technicians only) */
 export function updateTechnicianAvailability(available) {
   return apiPatch("/api/auth/profile/technician-availability", { available });

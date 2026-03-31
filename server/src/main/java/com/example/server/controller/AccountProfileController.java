@@ -1,6 +1,7 @@
 package com.example.server.controller;
 
 import com.example.server.dto.auth.AuthUserResponse;
+import com.example.server.dto.auth.ChangePasswordRequest;
 import com.example.server.dto.auth.UpdateProfileRequest;
 import com.example.server.dto.auth.UpdateTechnicianAvailabilityRequest;
 import com.example.server.service.AuthService;
@@ -59,6 +60,23 @@ public class AccountProfileController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
             }
             return ResponseEntity.ok(updated.get());
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(Map.of("message", ex.getReason()));
+        }
+    }
+
+    @PatchMapping(value = "/password", consumes = "application/json")
+    public ResponseEntity<?> changePassword(
+        Authentication authentication,
+        @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        String userId = authentication.getName();
+        try {
+            boolean changed = authService.changePassword(userId, request);
+            if (!changed) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+            }
+            return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
         } catch (ResponseStatusException ex) {
             return ResponseEntity.status(ex.getStatusCode()).body(Map.of("message", ex.getReason()));
         }
