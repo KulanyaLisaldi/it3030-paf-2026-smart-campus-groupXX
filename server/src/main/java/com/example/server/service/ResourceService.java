@@ -1,6 +1,7 @@
 package com.example.server.service;
 
 import com.example.server.dto.resource.CreateResourceRequest;
+import com.example.server.dto.resource.UpdateResourceRequest;
 import com.example.server.model.Resource;
 import com.example.server.repository.ResourceRepo;
 import org.springframework.stereotype.Service;
@@ -72,6 +73,29 @@ public class ResourceService {
         return resourceRepo.findById(id);
     }
 
+    public Optional<Resource> update(String id, UpdateResourceRequest request) {
+        Optional<Resource> maybe = resourceRepo.findById(id);
+        if (maybe.isEmpty()) {
+            return Optional.empty();
+        }
+
+        String type = safeTrim(request.getType()).toUpperCase(Locale.ROOT);
+        String status = safeTrim(request.getStatus()).toUpperCase(Locale.ROOT);
+        Integer capacity = request.getCapacity();
+        validate(type, status, capacity);
+
+        Resource resource = maybe.get();
+        resource.setName(safeTrim(request.getName()));
+        resource.setType(type);
+        resource.setCapacity(capacity);
+        resource.setLocation(safeTrim(request.getLocation()));
+        resource.setDescription(safeTrim(request.getDescription()));
+        resource.setAvailability(safeTrim(request.getAvailability()));
+        resource.setStatus(status);
+        resource.setUpdatedAt(Instant.now());
+        return Optional.of(resourceRepo.save(resource));
+    }
+
     public Optional<Resource> updateStatus(String id, String rawStatus) {
         String status = safeTrim(rawStatus).toUpperCase(Locale.ROOT);
         if (!ALLOWED_STATUS.contains(status)) {
@@ -87,15 +111,12 @@ public class ResourceService {
         return Optional.of(resourceRepo.save(resource));
     }
 
-    public boolean disable(String id) {
+    public boolean delete(String id) {
         Optional<Resource> maybe = resourceRepo.findById(id);
         if (maybe.isEmpty()) {
             return false;
         }
-        Resource resource = maybe.get();
-        resource.setStatus("OUT_OF_SERVICE");
-        resource.setUpdatedAt(Instant.now());
-        resourceRepo.save(resource);
+        resourceRepo.deleteById(id);
         return true;
     }
 

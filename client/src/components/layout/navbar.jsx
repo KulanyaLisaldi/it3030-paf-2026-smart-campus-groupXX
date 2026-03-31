@@ -336,7 +336,14 @@ const Navbar = () => {
             </div>
           )}
         </div>
-        <a href="#resources" style={centerLinkStyle}>
+        <a
+          href="/resources"
+          style={centerLinkStyle}
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/resources");
+          }}
+        >
           Resources
         </a>
         <a href="#about" style={centerLinkStyle}>
