@@ -111,15 +111,12 @@ public class ResourceService {
         return Optional.of(resourceRepo.save(resource));
     }
 
-    public boolean disable(String id) {
+    public boolean delete(String id) {
         Optional<Resource> maybe = resourceRepo.findById(id);
         if (maybe.isEmpty()) {
             return false;
         }
-        Resource resource = maybe.get();
-        resource.setStatus("OUT_OF_SERVICE");
-        resource.setUpdatedAt(Instant.now());
-        resourceRepo.save(resource);
+        resourceRepo.deleteById(id);
         return true;
     }
 

@@ -32,6 +32,6 @@ export function updateResourceStatus(resourceId, payload) {
   return apiPatch(`/api/resources/${encodeURIComponent(resourceId)}/status`, payload);
 }
 
-export function disableResource(resourceId) {
+export function deleteResource(resourceId) {
   return apiDelete(`/api/resources/${encodeURIComponent(resourceId)}`);
 }

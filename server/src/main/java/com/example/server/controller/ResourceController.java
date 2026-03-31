@@ -94,11 +94,11 @@ public class ResourceController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> disable(@PathVariable("id") String id) {
-        boolean disabled = resourceService.disable(id);
-        if (!disabled) {
+    public ResponseEntity<?> delete(@PathVariable("id") String id) {
+        boolean deleted = resourceService.delete(id);
+        if (!deleted) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Resource not found"));
         }
-        return ResponseEntity.ok(Map.of("message", "Resource disabled successfully"));
+        return ResponseEntity.ok(Map.of("message", "Resource deleted successfully"));
     }
 }

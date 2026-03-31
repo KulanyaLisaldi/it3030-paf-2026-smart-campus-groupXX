@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createResource, disableResource, getAdminResources, updateResource, updateResourceStatus } from "../../api/adminResources";
+import { createResource, deleteResource, getAdminResources, updateResource, updateResourceStatus } from "../../api/adminResources";
 
 const pageCardStyle = {
   maxWidth: "100%",
@@ -157,12 +157,12 @@ export default function AdminResourcesTable() {
     }
   };
 
-  const onDisable = async (resource) => {
-    const ok = window.confirm(`Disable ${resource.name || resource.code || "this resource"}?`);
+  const onDelete = async (resource) => {
+    const ok = window.confirm(`Delete ${resource.name || resource.code || "this resource"}? This cannot be undone.`);
     if (!ok) return;
     setBusyId(resource.id);
     try {
-      await disableResource(resource.id);
+      await deleteResource(resource.id);
       await load();
     } catch {
       setResources((prev) => prev.filter((r) => r.id !== resource.id));
@@ -364,7 +364,7 @@ export default function AdminResourcesTable() {
                       <button type="button" style={smallBtnStyle()} onClick={() => navigate(`/adminresources/${encodeURIComponent(r.id || "")}`)} disabled={!r.id}>View</button>
                       <button type="button" style={smallBtnStyle()} onClick={() => openEditModal(r)}>Edit</button>
                       <button type="button" style={smallBtnStyle("primary")} disabled={busyId === r.id} onClick={() => onToggleStatus(r)}>{(r.status || "OUT_OF_SERVICE") === "ACTIVE" ? "Change to Out of Service" : "Change to Active"}</button>
-                      <button type="button" style={smallBtnStyle("danger")} disabled={busyId === r.id} onClick={() => onDisable(r)}>Delete / Disable</button>
+                      <button type="button" style={smallBtnStyle("danger")} disabled={busyId === r.id} onClick={() => onDelete(r)}>Delete</button>
                     </div>
                   </td>
                 </tr>
