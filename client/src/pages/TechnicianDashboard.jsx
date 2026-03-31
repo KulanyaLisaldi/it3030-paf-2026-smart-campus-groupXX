@@ -24,10 +24,18 @@ import { formatDurationSeconds, formatTicketInstant } from "../utils/slaFormat";
 import { appFontFamily as techFontUi } from "../utils/appFont";
 
 const PHONE_PATTERN = /^[0-9+\-()\s]{7,20}$/;
+const PASSWORD_POLICY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
 
 function isValidPhone(value) {
   const t = (value || "").trim();
   return t.length > 0 && PHONE_PATTERN.test(t);
+}
+function getPasswordChecks(value) {
+  const v = value || "";
+  return {
+    minLength: v.length >= 8,
+    hasComplexity: /[a-z]/.test(v) && /[A-Z]/.test(v) && /\d/.test(v) && /[^A-Za-z\d]/.test(v),
+  };
 }
 
 const pageStyleBase = {
@@ -355,8 +363,12 @@ function TechnicianAppShell({ children }) {
       setPasswordState({ busy: false, message: "", error: "All fields are required." });
       return;
     }
-    if (newPassword.length < 6) {
-      setPasswordState({ busy: false, message: "", error: "New password must be at least 6 characters." });
+    if (newPassword.length < 8) {
+      setPasswordState({ busy: false, message: "", error: "Password must be at least 8 characters." });
+      return;
+    }
+    if (!PASSWORD_POLICY_REGEX.test(newPassword)) {
+      setPasswordState({ busy: false, message: "", error: "Must include uppercase, lowercase, number, and symbol." });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -372,6 +384,7 @@ function TechnicianAppShell({ children }) {
       setPasswordState({ busy: false, message: "", error: err?.message || "Could not change password" });
     }
   };
+  const passwordChecks = getPasswordChecks(passwordDraft.newPassword);
 
   useEffect(() => {
     if (!profileMenuOpen) return undefined;
@@ -654,7 +667,14 @@ function TechnicianAppShell({ children }) {
             </div>
             <div style={{ padding: "18px", display: "grid", gap: "12px" }}>
               <div><label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>Current password</label><input type="password" value={passwordDraft.currentPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, currentPassword: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb" }} /></div>
-              <div><label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>New password</label><input type="password" value={passwordDraft.newPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, newPassword: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb" }} /></div>
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>New password</label>
+                <input type="password" value={passwordDraft.newPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, newPassword: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb" }} />
+                <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.45 }}>
+                  <div style={{ color: passwordChecks.minLength ? "#15803d" : "#6b7280" }}>Password must be at least 8 characters</div>
+                  <div style={{ color: passwordChecks.hasComplexity ? "#15803d" : "#6b7280" }}>Must include uppercase, lowercase, number, symbol</div>
+                </div>
+              </div>
               <div><label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>Confirm new password</label><input type="password" value={passwordDraft.confirmPassword} onChange={(e) => setPasswordDraft((s) => ({ ...s, confirmPassword: e.target.value }))} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb" }} /></div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
                 <div>
