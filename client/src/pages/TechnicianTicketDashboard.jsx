@@ -107,20 +107,14 @@ function TechnicianAppShell({ children }) {
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [profileMenuPos, setProfileMenuPos] = useState({ top: 0, left: 0 });
+  const [profileMenuPos, setProfileMenuPos] = useState({ top: 0 });
   const profileMenuTriggerRef = useRef(null);
   const profileMenuPopoverRef = useRef(null);
   const user = readCampusUser();
   const path = location.pathname;
-  const isTicketDashboardActive =
-    path === "/technician/tickets" || path.startsWith("/technician/tickets/");
-  const isTechnicianHomeActive =
-    path === "/technician" &&
-    location.hash !== "#technician-personal-details" &&
-    location.hash !== "#technician-assigned-tickets";
-  const isMyAssignmentActive =
-    path === "/technician" && location.hash === "#technician-assigned-tickets";
-  const isPersonalDetailsActive = path === "/technician" && location.hash === "#technician-personal-details";
+  const isDashboardActive = path === "/technician/tickets" || path.startsWith("/technician/tickets/");
+  const isMyAssignmentActive = path === "/technician" && location.hash !== "#technician-notifications";
+  const isNotificationsActive = path === "/technician" && location.hash === "#technician-notifications";
 
   const sidebarDisplayName = technicianWelcomeName(user);
   const sidebarEmail = (user?.email || "").trim() || "—";
@@ -128,6 +122,11 @@ function TechnicianAppShell({ children }) {
   const openMyProfile = () => {
     setProfileMenuOpen(false);
     navigate("/technician#technician-personal-details");
+  };
+
+  const openChangePassword = () => {
+    setProfileMenuOpen(false);
+    window.alert("Change Password will be available soon.");
   };
 
   useEffect(() => {
@@ -148,7 +147,7 @@ function TechnicianAppShell({ children }) {
       const el = profileMenuTriggerRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      setProfileMenuPos({ top: r.bottom + 8, left: r.left });
+      setProfileMenuPos({ top: r.bottom + 8 });
     };
     update();
     window.addEventListener("resize", update);
@@ -172,12 +171,13 @@ function TechnicianAppShell({ children }) {
   return (
     <div
       style={{
-        minHeight: "100vh",
+        height: "100vh",
         display: "flex",
         alignItems: "stretch",
         backgroundColor: "#f1f5f9",
         fontFamily: appFontFamily,
         boxSizing: "border-box",
+        overflow: "hidden",
       }}
     >
       <aside
@@ -186,7 +186,9 @@ function TechnicianAppShell({ children }) {
           minWidth: sidebarCollapsed ? "56px" : "272px",
           flexShrink: 0,
           alignSelf: "stretch",
-          minHeight: "100vh",
+          position: "sticky",
+          top: 0,
+          height: "100vh",
           transition: "width 0.2s ease, min-width 0.2s ease",
           background: "linear-gradient(180deg, #14213D 0%, #1a2d4d 100%)",
           color: "#e2e8f0",
@@ -239,48 +241,7 @@ function TechnicianAppShell({ children }) {
               gap: "12px",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                minWidth: 0,
-              }}
-            >
-              <button
-                type="button"
-                ref={profileMenuTriggerRef}
-                aria-haspopup="menu"
-                aria-expanded={profileMenuOpen}
-                aria-label="Account menu"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setProfileMenuOpen((o) => !o);
-                }}
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 12,
-                  background: "linear-gradient(135deg, #FA8112, #F5E7C6)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#fff",
-                  fontWeight: 800,
-                  fontSize: 18,
-                  border: "none",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                  boxShadow: profileMenuOpen ? "0 0 0 2px #FA8112" : "none",
-                }}
-              >
-                {techSidebarInitial(user)}
-              </button>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 800, fontSize: "16px", color: "#f8fafc" }}>Technician</div>
-                <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600, marginTop: "2px" }}>Smart Campus</div>
-              </div>
-            </div>
+            <div />
             <button
               type="button"
               onClick={(e) => {
@@ -311,56 +272,21 @@ function TechnicianAppShell({ children }) {
           {!sidebarCollapsed && <div style={techSectionLabelStyle}>MENU</div>}
           {!sidebarCollapsed && (
             <>
-              <Link
-                to="/technician/tickets"
-                style={{ ...techSidebarNavRowStyle(isTicketDashboardActive), textDecoration: "none", display: "block" }}
-              >
+              <Link to="/technician/tickets" style={{ ...techSidebarNavRowStyle(isDashboardActive), textDecoration: "none", display: "block" }}>
                 Dashboard
-              </Link>
-              <Link
-                to="/technician#technician-personal-details"
-                style={{ ...techSidebarNavRowStyle(isPersonalDetailsActive), textDecoration: "none", display: "block" }}
-              >
-                Personal details
-              </Link>
-              <div style={techSectionLabelStyle}>Assign tickets</div>
-              <Link
-                to="/technician"
-                style={{ ...techSidebarNavRowStyle(isTechnicianHomeActive), textDecoration: "none", display: "block" }}
-              >
-                Assign technician
               </Link>
               <Link
                 to="/technician#technician-assigned-tickets"
                 style={{ ...techSidebarNavRowStyle(isMyAssignmentActive), textDecoration: "none", display: "block" }}
               >
-                My assignment
+                My Assignments
+              </Link>
+              <Link to="/technician#technician-notifications" style={{ ...techSidebarNavRowStyle(isNotificationsActive), textDecoration: "none", display: "block" }}>
+                Notifications
               </Link>
             </>
           )}
         </nav>
-
-        {!sidebarCollapsed && (
-          <div style={{ padding: "12px 14px 20px", borderTop: "1px solid rgba(148, 163, 184, 0.15)" }}>
-            <button
-              type="button"
-              onClick={handleLogout}
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                borderRadius: "10px",
-                border: "1px solid rgba(248, 113, 113, 0.35)",
-                background: "rgba(127, 29, 29, 0.35)",
-                color: "#fecaca",
-                fontWeight: 700,
-                fontSize: "14px",
-                cursor: "pointer",
-              }}
-            >
-              Logout
-            </button>
-          </div>
-        )}
       </aside>
 
       {profileMenuOpen ? (
@@ -370,7 +296,7 @@ function TechnicianAppShell({ children }) {
           style={{
             position: "fixed",
             top: profileMenuPos.top,
-            left: profileMenuPos.left,
+            right: 12,
             width: "min(280px, calc(100vw - 24px))",
             zIndex: 10020,
             backgroundColor: "#ffffff",
@@ -425,20 +351,119 @@ function TechnicianAppShell({ children }) {
           >
             My profile
           </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={openChangePassword}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 8,
+              border: "1px solid #e5e7eb",
+              background: "#ffffff",
+              fontWeight: 700,
+              fontSize: 14,
+              color: "#0f172a",
+              cursor: "pointer",
+              textAlign: "left",
+              fontFamily: appFontFamily,
+              marginTop: 8,
+            }}
+          >
+            Change Password
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={handleLogout}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 8,
+              border: "1px solid rgba(248, 113, 113, 0.35)",
+              background: "#ffffff",
+              fontWeight: 700,
+              fontSize: 14,
+              color: "#b91c1c",
+              cursor: "pointer",
+              textAlign: "left",
+              fontFamily: appFontFamily,
+              marginTop: 8,
+            }}
+          >
+            Logout
+          </button>
         </div>
       ) : null}
-
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          overflowY: "auto",
-          overflowX: "hidden",
-          padding: "clamp(16px, 3vw, 28px) clamp(14px, 3vw, 24px)",
-          boxSizing: "border-box",
-        }}
-      >
-        {children}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <header
+          style={{
+            flexShrink: 0,
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: "12px",
+            padding: "12px 24px",
+            backgroundColor: "#ffffff",
+            borderBottom: "1px solid #e2e8f0",
+          }}
+        >
+          <button
+            type="button"
+            aria-label="Notifications"
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              border: "1px solid #e2e8f0",
+              background: "#fff",
+              color: "#0f172a",
+              cursor: "pointer",
+              fontSize: 18,
+            }}
+          >
+            🔔
+          </button>
+          <button
+            type="button"
+            ref={profileMenuTriggerRef}
+            aria-haspopup="menu"
+            aria-expanded={profileMenuOpen}
+            aria-label="Profile menu"
+            onClick={(e) => {
+              e.stopPropagation();
+              setProfileMenuOpen((o) => !o);
+            }}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              border: "none",
+              backgroundColor: "#475569",
+              color: "#fff",
+              fontWeight: 800,
+              fontSize: 16,
+              cursor: "pointer",
+            }}
+          >
+            {techSidebarInitial(user)}
+          </button>
+        </header>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+            padding: "clamp(16px, 3vw, 28px) clamp(14px, 3vw, 24px)",
+            boxSizing: "border-box",
+          }}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { signIn } from '../api/auth';
 import { getAuthToken, setAuthToken } from '../api/http';
 import { persistCampusUser, readCampusUser } from '../utils/campusUserStorage';
-import { ADMIN_DASHBOARD_PATH, navigateAfterLogin } from '../utils/authRedirect';
+import { navigateAfterAuth, navigateAfterLogin } from '../utils/authRedirect';
 import PasswordInput from '../components/PasswordInput';
 
 const SignIn = () => {
@@ -17,9 +17,8 @@ const SignIn = () => {
   useEffect(() => {
     if (!getAuthToken()) return;
     const user = readCampusUser();
-    if (user?.role === 'ADMIN') {
-      navigate(ADMIN_DASHBOARD_PATH, { replace: true });
-    }
+    if (!user?.role) return;
+    navigateAfterAuth(user, navigate);
   }, [navigate]);
 
   const pageStyle = {
