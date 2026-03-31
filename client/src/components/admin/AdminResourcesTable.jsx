@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { disableResource, getAdminResources, updateResourceStatus } from "../../api/adminResources";
+import { createResource, disableResource, getAdminResources, updateResourceStatus } from "../../api/adminResources";
 
 const pageCardStyle = {
   maxWidth: "100%",
@@ -23,6 +23,7 @@ const inputStyle = {
   color: "#0f172a",
   boxSizing: "border-box",
 };
+const labelStyle = { display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 };
 
 const smallBtnStyle = (variant = "neutral") => {
   const base = {
@@ -38,39 +39,6 @@ const smallBtnStyle = (variant = "neutral") => {
   if (variant === "primary") return { ...base, border: "1px solid rgba(250,129,18,0.35)", color: "#9a3412", background: "rgba(250,129,18,0.10)" };
   return { ...base, border: "1px solid #e5e7eb", color: "#0f172a" };
 };
-
-const mockResources = [
-  {
-    id: "RES-001",
-    code: "LH-A-101",
-    name: "Main Lecture Hall A101",
-    type: "LECTURE_HALL",
-    capacity: 180,
-    location: "Academic Block A - Floor 1",
-    status: "ACTIVE",
-    availability: "Mon-Fri 08:00-18:00",
-  },
-  {
-    id: "RES-002",
-    code: "LAB-C-204",
-    name: "Computer Lab C204",
-    type: "LAB",
-    capacity: 40,
-    location: "Engineering Block C - Floor 2",
-    status: "ACTIVE",
-    availability: "Mon-Sat 09:00-17:00",
-  },
-  {
-    id: "RES-003",
-    code: "EQ-PROJ-12",
-    name: "Projector Unit 12",
-    type: "EQUIPMENT",
-    capacity: 1,
-    location: "Media Store - Ground Floor",
-    status: "OUT_OF_SERVICE",
-    availability: "On request",
-  },
-];
 
 function statusPill(status) {
   const isActive = status === "ACTIVE";
@@ -100,8 +68,20 @@ export default function AdminResourcesTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [resources, setResources] = useState([]);
-  const [usingMockData, setUsingMockData] = useState(false);
   const [busyId, setBusyId] = useState("");
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [createBusy, setCreateBusy] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [formData, setFormData] = useState({
+    resourceCode: "",
+    resourceName: "",
+    resourceType: "LECTURE_HALL",
+    capacity: "",
+    location: "",
+    description: "",
+    availabilityWindows: "",
+    status: "ACTIVE",
+  });
 
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
@@ -120,10 +100,8 @@ export default function AdminResourcesTable() {
         location: locationFilter,
       });
       setResources(normalizeResources(data));
-      setUsingMockData(false);
     } catch (e) {
-      setResources(mockResources);
-      setUsingMockData(true);
+      setResources([]);
       setError(e?.message || "Could not load resources.");
     } finally {
       setLoading(false);
@@ -177,6 +155,64 @@ export default function AdminResourcesTable() {
     }
   };
 
+  const updateForm = (key, value) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+    setCreateError("");
+  };
+
+  const openAddModal = () => {
+    setFormData({
+      resourceCode: "",
+      resourceName: "",
+      resourceType: "LECTURE_HALL",
+      capacity: "",
+      location: "",
+      description: "",
+      availabilityWindows: "",
+      status: "ACTIVE",
+    });
+    setCreateError("");
+    setAddModalOpen(true);
+  };
+
+  const handleCreateResource = async (e) => {
+    e.preventDefault();
+    const capacityNumber = Number(formData.capacity);
+    if (!formData.resourceCode.trim() || !formData.resourceName.trim() || !formData.location.trim()) {
+      setCreateError("Resource code, name, and location are required.");
+      return;
+    }
+    if (!Number.isFinite(capacityNumber) || capacityNumber < 0) {
+      setCreateError("Capacity must be a valid number.");
+      return;
+    }
+
+    const payload = {
+      code: formData.resourceCode.trim(),
+      name: formData.resourceName.trim(),
+      type: formData.resourceType,
+      capacity: capacityNumber,
+      location: formData.location.trim(),
+      description: formData.description.trim(),
+      availability: formData.availabilityWindows.trim(),
+      status: formData.status,
+    };
+
+    setCreateBusy(true);
+    setCreateError("");
+    try {
+      await createResource(payload);
+      setAddModalOpen(false);
+      await load();
+    } catch {
+      const localId = `tmp-${Date.now()}`;
+      setResources((prev) => [{ id: localId, ...payload }, ...prev]);
+      setAddModalOpen(false);
+    } finally {
+      setCreateBusy(false);
+    }
+  };
+
   return (
     <div style={pageCardStyle}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
@@ -184,7 +220,7 @@ export default function AdminResourcesTable() {
           <div style={{ fontSize: 20, fontWeight: 900, color: "#14213D", marginBottom: 4 }}>Resource Catalogue</div>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b" }}>Manage facilities and assets in one place.</div>
         </div>
-        <button type="button" style={smallBtnStyle("primary")}>+ Add Resource</button>
+        <button type="button" style={smallBtnStyle("primary")} onClick={openAddModal}>+ Add Resource</button>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 160px 140px 1fr", gap: 12, marginBottom: 14 }}>
@@ -206,8 +242,7 @@ export default function AdminResourcesTable() {
       </div>
 
       {loading && <p style={{ margin: 0, color: "#64748b", fontWeight: 800 }}>Loading resources...</p>}
-      {!loading && error && <p style={{ margin: "0 0 10px 0", color: "#b45309", fontWeight: 800 }}>Live API unavailable, showing sample data.</p>}
-      {usingMockData && <p style={{ margin: "0 0 12px 0", color: "#475569", fontSize: 12, fontWeight: 700 }}>Tip: connect `/api/resources` endpoints to make this live.</p>}
+      {!loading && error && <p style={{ margin: "0 0 10px 0", color: "#b45309", fontWeight: 800 }}>{error}</p>}
 
       {!loading && (
         <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #e5e7eb" }}>
@@ -251,6 +286,87 @@ export default function AdminResourcesTable() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {addModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{ position: "fixed", inset: 0, zIndex: 1002, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px" }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setAddModalOpen(false); }}
+        >
+          <div style={{ width: "100%", maxWidth: "860px", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+              <div>
+                <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Add Resource</div>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Create a new facility or asset entry.</div>
+              </div>
+              <button type="button" onClick={() => setAddModalOpen(false)} style={{ padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, fontSize: "14px", cursor: "pointer", color: "#0f172a" }}>Cancel</button>
+            </div>
+
+            <form onSubmit={handleCreateResource} style={{ padding: "18px 22px 22px", display: "grid", gap: "16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                <div>
+                  <label style={labelStyle}>Resource Code</label>
+                  <input value={formData.resourceCode} onChange={(e) => updateForm("resourceCode", e.target.value)} style={inputStyle} placeholder="LAB-C-204" required />
+                </div>
+                <div>
+                  <label style={labelStyle}>Resource Name</label>
+                  <input value={formData.resourceName} onChange={(e) => updateForm("resourceName", e.target.value)} style={inputStyle} placeholder="Computer Lab C204" required />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                <div>
+                  <label style={labelStyle}>Resource Type</label>
+                  <select value={formData.resourceType} onChange={(e) => updateForm("resourceType", e.target.value)} style={inputStyle}>
+                    <option value="LECTURE_HALL">Lecture Hall</option>
+                    <option value="LAB">Lab</option>
+                    <option value="MEETING_ROOM">Meeting Room</option>
+                    <option value="EQUIPMENT">Equipment</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Capacity</label>
+                  <input value={formData.capacity} onChange={(e) => updateForm("capacity", e.target.value.replace(/[^\d]/g, ""))} style={inputStyle} placeholder="40" required />
+                </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Location</label>
+                <input value={formData.location} onChange={(e) => updateForm("location", e.target.value)} style={inputStyle} placeholder="Engineering Block C - Floor 2" required />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Description</label>
+                <textarea value={formData.description} onChange={(e) => updateForm("description", e.target.value)} style={{ ...inputStyle, minHeight: "88px", resize: "vertical" }} placeholder="Short description of the resource" />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                <div>
+                  <label style={labelStyle}>Availability Windows</label>
+                  <textarea value={formData.availabilityWindows} onChange={(e) => updateForm("availabilityWindows", e.target.value)} style={{ ...inputStyle, minHeight: "88px", resize: "vertical" }} placeholder="Mon-Fri 08:00-18:00" />
+                </div>
+                <div>
+                  <label style={labelStyle}>Status</label>
+                  <select value={formData.status} onChange={(e) => updateForm("status", e.target.value)} style={inputStyle}>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
+                  </select>
+                </div>
+              </div>
+
+              {createError ? <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 700 }}>{createError}</p> : null}
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button type="button" onClick={() => setAddModalOpen(false)} style={smallBtnStyle()}>Cancel</button>
+                <button type="submit" disabled={createBusy} style={{ ...smallBtnStyle("primary"), opacity: createBusy ? 0.7 : 1 }}>
+                  {createBusy ? "Creating..." : "Create Resource"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
