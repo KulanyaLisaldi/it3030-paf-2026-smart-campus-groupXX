@@ -184,7 +184,6 @@ const SignIn = () => {
     color: '#0f172a',
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
     outline: 'none',
-    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
     boxSizing: 'border-box',
   };
 
@@ -250,16 +249,6 @@ const SignIn = () => {
     lineHeight: 1.45,
   };
 
-  const handleInputFocus = (e) => {
-    e.target.style.borderColor = ACCENT;
-    e.target.style.boxShadow = `0 0 0 3px rgba(250, 129, 18, 0.25)`;
-  };
-
-  const handleInputBlur = (e) => {
-    e.target.style.borderColor = 'rgba(245, 231, 198, 0.35)';
-    e.target.style.boxShadow = 'none';
-  };
-
   const handleButtonHover = (e, isHover) => {
     if (isHover) {
       e.target.style.backgroundColor = '#E66A0A';
@@ -309,6 +298,14 @@ const SignIn = () => {
   return (
     <>
       <style>{`
+        .signin-field,
+        .signin-field:hover,
+        .signin-field:focus,
+        .signin-field:focus-visible {
+          border-color: rgba(245, 231, 198, 0.35) !important;
+          box-shadow: none !important;
+          outline: none !important;
+        }
         .signin-google-btn:hover {
           background-color: rgba(255, 255, 255, 0.92) !important;
           border-color: rgba(245, 231, 198, 0.4) !important;
@@ -363,11 +360,10 @@ const SignIn = () => {
               </label>
               <input
                 id="signin-email"
+                className="signin-field"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                onFocus={handleInputFocus}
-                onBlur={handleInputBlur}
                 style={inputStyle}
                 placeholder="Email"
                 autoComplete="username"
@@ -381,10 +377,9 @@ const SignIn = () => {
               </label>
               <PasswordInput
                 id="signin-password"
+                className="signin-field"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                onFocus={handleInputFocus}
-                onBlur={handleInputBlur}
                 style={inputStyle}
                 placeholder="Password"
                 autoComplete="current-password"
