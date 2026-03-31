@@ -4,6 +4,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.List;
 
 @Document(collection = "users")
 public class User {
@@ -27,6 +28,8 @@ public class User {
 
     /** Set for {@link UserRole#TECHNICIAN} when created by admin; null for other roles or legacy users. */
     private TechnicianCategory technicianCategory;
+    /** Optional multi-specialty list for technicians; primary specialty remains in technicianCategory. */
+    private List<TechnicianCategory> technicianCategories;
 
     /**
      * For technicians: if null or true, available for assignments; false = unavailable.
@@ -152,6 +155,14 @@ public class User {
 
     public void setTechnicianCategory(TechnicianCategory technicianCategory) {
         this.technicianCategory = technicianCategory;
+    }
+
+    public List<TechnicianCategory> getTechnicianCategories() {
+        return technicianCategories;
+    }
+
+    public void setTechnicianCategories(List<TechnicianCategory> technicianCategories) {
+        this.technicianCategories = technicianCategories;
     }
 
     public Boolean getTechnicianAvailable() {

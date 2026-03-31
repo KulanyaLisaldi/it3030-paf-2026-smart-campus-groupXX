@@ -309,10 +309,19 @@ const TICKET_CATEGORY_TO_TECHNICIAN = {
   "Other": "GENERAL",
 };
 
-function normalizedTechnicianCategory(tech) {
+function normalizedTechnicianCategories(tech) {
+  const list = Array.isArray(tech?.technicianCategories) ? tech.technicianCategories : [];
+  const normalized = list
+    .map((c) => String(c || "").toUpperCase().trim())
+    .filter(Boolean);
+  if (normalized.length > 0) return normalized;
   const c = tech?.technicianCategory;
-  if (c == null || String(c).trim() === "") return "GENERAL";
-  return String(c).toUpperCase();
+  if (c == null || String(c).trim() === "") return ["GENERAL"];
+  return [String(c).toUpperCase()];
+}
+
+function technicianSpecialtyLabel(tech) {
+  return normalizedTechnicianCategories(tech).map((cat) => technicianCategoryLabel(cat)).join(", ");
 }
 
 /** Technicians whose stored specialty matches this ticket category (ignores availability). */
@@ -321,7 +330,7 @@ function techniciansMatchingTicketCategory(allTechnicians, ticketCategory) {
   const mapped = TICKET_CATEGORY_TO_TECHNICIAN[ticketCategory];
   if (mapped == null) return [];
   const target = String(mapped).toUpperCase();
-  return list.filter((t) => normalizedTechnicianCategory(t) === target);
+  return list.filter((t) => normalizedTechnicianCategories(t).includes(target));
 }
 
 /** True = can receive new assignments; false = marked unavailable; null/undefined = treat as available. */
@@ -1847,7 +1856,7 @@ export default function AdminTicketDashboard() {
                           <div style={{ fontWeight: 800, color: "#14213D", fontSize: 13 }}>{technicianDisplayName(tech)}</div>
                           <div style={{ marginTop: 2, fontSize: 12, color: "#374151", wordBreak: "break-word" }}>{tech.email || "—"}</div>
                           <div style={{ marginTop: 4, fontSize: 11, color: "#6b7280" }}>
-                            {technicianCategoryLabel(tech.technicianCategory)}
+                            {technicianSpecialtyLabel(tech)}
                           </div>
                         </div>
                         <div style={{ fontSize: 11, fontWeight: 700, color: availColor, textAlign: "right", whiteSpace: "nowrap" }}>{avail}</div>

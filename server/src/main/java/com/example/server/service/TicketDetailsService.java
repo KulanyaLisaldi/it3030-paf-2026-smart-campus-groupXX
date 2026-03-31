@@ -6,6 +6,7 @@ import com.example.server.dto.ticket.TicketDetailsResponse;
 import com.example.server.dto.ticket.UpdateTicketCommentRequest;
 import com.example.server.model.Ticket;
 import com.example.server.model.TicketComment;
+import com.example.server.model.TechnicianCategory;
 import com.example.server.model.User;
 import com.example.server.repository.TicketChatRepo;
 import com.example.server.repository.TicketCommentRepo;
@@ -14,9 +15,12 @@ import com.example.server.repository.UserRepo;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class TicketDetailsService {
@@ -99,6 +103,21 @@ public class TicketDetailsService {
         d.setPhoneNumber(u.getPhoneNumber());
         if (u.getTechnicianCategory() != null) {
             d.setTechnicianCategory(u.getTechnicianCategory().name());
+        }
+        List<TechnicianCategory> multi = u.getTechnicianCategories();
+        if (multi != null && !multi.isEmpty()) {
+            Set<String> seen = new LinkedHashSet<>();
+            List<String> names = new ArrayList<>();
+            for (TechnicianCategory c : multi) {
+                if (c == null) {
+                    continue;
+                }
+                String n = c.name();
+                if (seen.add(n)) {
+                    names.add(n);
+                }
+            }
+            d.setTechnicianCategories(names);
         }
         return d;
     }

@@ -184,6 +184,15 @@ function normalizeTicketAttachments(raw) {
   return [];
 }
 
+function technicianSpecialtyText(source) {
+  const list = Array.isArray(source?.technicianCategories) ? source.technicianCategories : [];
+  const normalized = list.map((v) => String(v || "").toUpperCase().trim()).filter(Boolean);
+  if (normalized.length > 0) {
+    return normalized.map((v) => technicianCategoryLabel(v)).join(", ");
+  }
+  return technicianCategoryLabel(source?.technicianCategory);
+}
+
 function formatModalDate(value) {
   try {
     const d = new Date(value);
@@ -1088,7 +1097,7 @@ function TechnicianWorkspace() {
                 <div>
                   <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "4px" }}>Specialty</div>
                   <div style={{ fontSize: "15px", fontWeight: 600, color: "#222222" }}>
-                    {technicianCategoryLabel(techUser?.technicianCategory)}
+                    {technicianSpecialtyText(techUser)}
                   </div>
                 </div>
                 <div>
@@ -2347,7 +2356,7 @@ function AdminTechnicianForm() {
                     Phone: {(t.phoneNumber || "").trim() || "—"}
                   </div>
                   <div style={{ fontSize: "12px", fontWeight: 700, color: "#14213D", marginTop: "6px" }}>
-                    Specialty: {technicianCategoryLabel(t.technicianCategory)}
+                    Specialty: {technicianSpecialtyText(t)}
                   </div>
                 </div>
               </div>

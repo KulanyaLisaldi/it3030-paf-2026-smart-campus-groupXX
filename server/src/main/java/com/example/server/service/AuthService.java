@@ -26,9 +26,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -113,9 +116,22 @@ public class AuthService {
             Instant.now()
         );
         user.setRole(UserRole.TECHNICIAN);
-        user.setTechnicianCategory(request.getCategory());
+        List<com.example.server.model.TechnicianCategory> specialties = normalizedTechnicianCategories(request);
+        user.setTechnicianCategory(specialties.isEmpty() ? request.getCategory() : specialties.get(0));
+        user.setTechnicianCategories(specialties);
         User saved = userRepo.save(user);
         return toUserResponse(saved);
+    }
+
+    private List<com.example.server.model.TechnicianCategory> normalizedTechnicianCategories(CreateTechnicianRequest request) {
+        LinkedHashSet<com.example.server.model.TechnicianCategory> out = new LinkedHashSet<>();
+        if (request.getCategories() != null) {
+            out.addAll(request.getCategories().stream().filter(Objects::nonNull).toList());
+        }
+        if (request.getCategory() != null) {
+            out.add(request.getCategory());
+        }
+        return new ArrayList<>(out);
     }
 
     public List<AuthUserResponse> listTechnicians() {
@@ -341,6 +357,15 @@ public class AuthService {
 
     private AuthUserResponse toUserResponse(User user) {
         String category = user.getTechnicianCategory() != null ? user.getTechnicianCategory().name() : null;
+        List<String> categories = null;
+        if (user.getTechnicianCategories() != null && !user.getTechnicianCategories().isEmpty()) {
+            categories = user.getTechnicianCategories().stream()
+                .filter(Objects::nonNull)
+                .map(Enum::name)
+                .toList();
+        } else if (category != null) {
+            categories = List.of(category);
+        }
         Boolean technicianAvailable = null;
         if (user.getEffectiveRole() == UserRole.TECHNICIAN) {
             technicianAvailable = user.getTechnicianAvailable() == null || user.getTechnicianAvailable();
@@ -354,6 +379,7 @@ public class AuthService {
             user.getEffectiveRole().name(),
             user.getProfileImageUrl(),
             category,
+            categories,
             technicianAvailable
         );
     }
