@@ -5,6 +5,22 @@ import { getAuthToken } from "../api/http";
 import { persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import { appFontFamily } from "../utils/appFont";
 
+/** YYYY-MM-DD in the user's local timezone (aligned with weekday labels on the chart). */
+function localCalendarDayKey(isoOrMs) {
+  const d = new Date(isoOrMs);
+  if (Number.isNaN(d.getTime())) return null;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function volumeDayKeyForAssignedTicket(ticket) {
+  const raw = ticket?.technicianAssignedAt || ticket?.createdAt;
+  if (!raw) return null;
+  return localCalendarDayKey(raw);
+}
+
 const shellStyle = {
   width: "100%",
   maxWidth: "1180px",
@@ -540,7 +556,7 @@ export default function TechnicianTicketDashboard() {
   const inProgressCount = dashboardStats.statusCounts.IN_PROGRESS;
   const acceptedCount = dashboardStats.statusCounts.ACCEPTED;
 
-  /** Ticket `createdAt` counts per calendar day — last 7 days (vertical bar chart). */
+  /** Count per local calendar day — last 7 days; uses `technicianAssignedAt` when set, else `createdAt`. */
   const last7DaysBars = useMemo(() => {
     const today = new Date();
     const days = [];
@@ -548,7 +564,8 @@ export default function TechnicianTicketDashboard() {
       const d = new Date(today);
       d.setHours(0, 0, 0, 0);
       d.setDate(today.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
+      const key = localCalendarDayKey(d.getTime());
+      if (!key) continue;
       days.push({
         key,
         shortLabel: d.toLocaleDateString(undefined, { weekday: "short" }),
@@ -557,9 +574,8 @@ export default function TechnicianTicketDashboard() {
     }
     const map = Object.fromEntries(days.map((x) => [x.key, x]));
     for (const t of Array.isArray(tickets) ? tickets : []) {
-      if (!t?.createdAt) continue;
-      const key = new Date(t.createdAt).toISOString().slice(0, 10);
-      if (map[key]) map[key].count += 1;
+      const key = volumeDayKeyForAssignedTicket(t);
+      if (key && map[key]) map[key].count += 1;
     }
     return days;
   }, [tickets]);
@@ -687,7 +703,8 @@ export default function TechnicianTicketDashboard() {
               <div style={{ ...chartCardStyle, minWidth: 0 }}>
                 <div style={sectionTitleStyle}>Ticket volume by day</div>
                 <p style={{ margin: "0 0 14px 0", color: "#6b7280", fontSize: "12px", fontWeight: 600 }}>
-                  How many assigned tickets were originally reported on each day (last 7 days).
+                  How many tickets landed in your queue each day (last 7 days), using assignment time when available,
+                  otherwise report time.
                 </p>
                 <div
                   style={{

@@ -192,6 +192,13 @@ function primaryTechnicianCategoryForApi(selectedValues) {
   return ordered[0] || DEFAULT_TECHNICIAN_CATEGORY;
 }
 
+function allTechnicianCategoriesForApi(selectedValues) {
+  const picked = new Set(selectedValues);
+  return TECHNICIAN_CATEGORIES.map((c) => c.value)
+    .filter((v) => picked.has(v))
+    .map((v) => toApiTechnicianCategory(v));
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [panel, setPanel] = useState("dashboard");
@@ -293,6 +300,7 @@ export default function AdminDashboard() {
         phoneNumber: phoneNumber.trim(),
         password,
         category: toApiTechnicianCategory(primaryTechnicianCategoryForApi(selectedCategories)),
+        categories: allTechnicianCategoriesForApi(selectedCategories),
       });
       setMessage("Technician created. They can sign in with email and password on the main Sign In page.");
       setUsersTableRev((n) => n + 1);

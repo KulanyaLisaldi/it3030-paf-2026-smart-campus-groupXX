@@ -122,6 +122,7 @@ public class AdminUsersController {
         user.setRole(newRole);
         if (newRole != UserRole.TECHNICIAN) {
             user.setTechnicianCategory(null);
+            user.setTechnicianCategories(null);
         }
         userRepo.save(user);
         return ResponseEntity.ok(toRow(user));

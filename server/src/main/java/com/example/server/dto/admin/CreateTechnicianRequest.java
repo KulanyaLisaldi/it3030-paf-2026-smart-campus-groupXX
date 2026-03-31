@@ -7,6 +7,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+
 public class CreateTechnicianRequest {
 
     @NotBlank(message = "First name is required")
@@ -29,6 +31,8 @@ public class CreateTechnicianRequest {
 
     @NotNull(message = "Category is required")
     private TechnicianCategory category;
+    /** Optional multi-specialty list for technicians. */
+    private List<TechnicianCategory> categories;
 
     public String getFirstName() {
         return firstName;
@@ -76,5 +80,13 @@ public class CreateTechnicianRequest {
 
     public void setCategory(TechnicianCategory category) {
         this.category = category;
+    }
+
+    public List<TechnicianCategory> getCategories() {
+        return categories;
+    }
+
+    public void setCategories(List<TechnicianCategory> categories) {
+        this.categories = categories;
     }
 }
