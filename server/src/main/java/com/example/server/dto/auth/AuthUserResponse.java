@@ -10,6 +10,7 @@ public class AuthUserResponse {
     private String email;
     private String phoneNumber;
     private String role;
+    private String provider;
     private String profileImageUrl;
     /** {@link com.example.server.model.TechnicianCategory} name for technicians; null otherwise. */
     private String technicianCategory;
@@ -28,6 +29,7 @@ public class AuthUserResponse {
         String email,
         String phoneNumber,
         String role,
+        String provider,
         String profileImageUrl,
         String technicianCategory,
         List<String> technicianCategories,
@@ -39,6 +41,7 @@ public class AuthUserResponse {
         this.email = email;
         this.phoneNumber = phoneNumber;
         this.role = role;
+        this.provider = provider;
         this.profileImageUrl = profileImageUrl;
         this.technicianCategory = technicianCategory;
         this.technicianCategories = technicianCategories;
@@ -67,6 +70,10 @@ public class AuthUserResponse {
 
     public String getRole() {
         return role;
+    }
+
+    public String getProvider() {
+        return provider;
     }
 
     public String getProfileImageUrl() {
