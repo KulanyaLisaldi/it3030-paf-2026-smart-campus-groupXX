@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getTechnicianAssignedTickets } from "../api/technicianTickets";
+import { fetchCurrentUser, removeProfileAvatar, updateProfilePhone, uploadProfileAvatar } from "../api/auth";
 import { getAuthToken } from "../api/http";
 import { persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import { appFontFamily } from "../utils/appFont";
@@ -56,6 +57,8 @@ const metricCardStyle = {
   boxShadow: "0 2px 8px rgba(20, 33, 61, 0.04)",
 };
 
+const PHONE_PATTERN = /^[0-9+\-()\s]{7,20}$/;
+
 function technicianWelcomeName(user) {
   if (!user) return "Technician";
   const first = (user.firstName || "").trim();
@@ -108,8 +111,17 @@ function TechnicianAppShell({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileMenuPos, setProfileMenuPos] = useState({ top: 0 });
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profileUser, setProfileUser] = useState(() => readCampusUser());
+  const [phoneDraft, setPhoneDraft] = useState("");
+  const [saveState, setSaveState] = useState({ busy: false, message: "", error: "" });
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarRemoveBusy, setAvatarRemoveBusy] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const [avatarSuccess, setAvatarSuccess] = useState("");
   const profileMenuTriggerRef = useRef(null);
   const profileMenuPopoverRef = useRef(null);
+  const avatarFileRef = useRef(null);
   const user = readCampusUser();
   const path = location.pathname;
   const isDashboardActive = path === "/technician/tickets" || path.startsWith("/technician/tickets/");
@@ -121,7 +133,8 @@ function TechnicianAppShell({ children }) {
 
   const openMyProfile = () => {
     setProfileMenuOpen(false);
-    navigate("/technician#technician-personal-details");
+    setProfileUser(readCampusUser());
+    setProfileModalOpen(true);
   };
 
   const openChangePassword = () => {
@@ -162,10 +175,99 @@ function TechnicianAppShell({ children }) {
     if (sidebarCollapsed) setProfileMenuOpen(false);
   }, [sidebarCollapsed]);
 
+  useEffect(() => {
+    if (!profileModalOpen) return;
+    const fromStorage = readCampusUser();
+    setProfileUser(fromStorage);
+    setPhoneDraft((fromStorage?.phoneNumber || "").trim());
+    setSaveState({ busy: false, message: "", error: "" });
+    setAvatarBusy(false);
+    setAvatarRemoveBusy(false);
+    setAvatarError("");
+    setAvatarSuccess("");
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const fresh = await fetchCurrentUser();
+        if (!cancelled && fresh) {
+          setProfileUser(fresh);
+          setPhoneDraft((fresh.phoneNumber || "").trim());
+          persistCampusUser(fresh);
+        }
+      } catch {
+        // keep local cached profile
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profileModalOpen]);
+
   const handleLogout = () => {
     persistCampusUser(null);
     localStorage.removeItem("smartCampusAuthToken");
     navigate("/signin", { replace: true });
+  };
+
+  const canSavePhone = (() => {
+    const basePhone = (profileUser?.phoneNumber || "").trim();
+    const draft = phoneDraft.trim();
+    if (!draft || !PHONE_PATTERN.test(draft)) return false;
+    return draft !== basePhone;
+  })();
+
+  const handleSavePhone = async () => {
+    if (!canSavePhone) return;
+    setSaveState({ busy: true, message: "", error: "" });
+    try {
+      const updated = await updateProfilePhone({ phoneNumber: phoneDraft.trim() });
+      setProfileUser(updated);
+      persistCampusUser(updated);
+      setSaveState({ busy: false, message: "Changes saved.", error: "" });
+    } catch (e) {
+      setSaveState({ busy: false, message: "", error: e?.message || "Save failed" });
+    }
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setAvatarError("");
+    setAvatarSuccess("");
+    setAvatarBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const updated = await uploadProfileAvatar(fd);
+      setProfileUser(updated);
+      persistCampusUser(updated);
+      setAvatarSuccess("Profile photo saved.");
+    } catch (err) {
+      setAvatarError(err?.message || "Upload failed");
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!profileUser?.profileImageUrl) return;
+    const ok = window.confirm("Remove your profile photo from Smart Campus?");
+    if (!ok) return;
+    setAvatarError("");
+    setAvatarSuccess("");
+    setAvatarRemoveBusy(true);
+    try {
+      const updated = await removeProfileAvatar();
+      setProfileUser(updated);
+      persistCampusUser(updated);
+      setAvatarSuccess("Profile photo removed.");
+    } catch (err) {
+      setAvatarError(err?.message || "Could not remove photo");
+    } finally {
+      setAvatarRemoveBusy(false);
+    }
   };
 
   return (
@@ -299,13 +401,14 @@ function TechnicianAppShell({ children }) {
             right: 12,
             width: "min(280px, calc(100vw - 24px))",
             zIndex: 10020,
-            backgroundColor: "#ffffff",
+            backgroundColor: "rgba(15, 23, 42, 0.08)",
             borderRadius: 12,
-            border: "1px solid #e5e7eb",
+            border: "1px solid rgba(148, 163, 184, 0.45)",
             boxShadow: "0 12px 40px rgba(15, 23, 42, 0.14)",
             padding: 14,
             boxSizing: "border-box",
             fontFamily: appFontFamily,
+            backdropFilter: "blur(10px)",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
@@ -340,7 +443,7 @@ function TechnicianAppShell({ children }) {
               padding: "10px 12px",
               borderRadius: 8,
               border: "1px solid #e5e7eb",
-              background: "#ffffff",
+              background: "rgba(255, 255, 255, 0.15)",
               fontWeight: 700,
               fontSize: 14,
               color: "#0f172a",
@@ -360,7 +463,7 @@ function TechnicianAppShell({ children }) {
               padding: "10px 12px",
               borderRadius: 8,
               border: "1px solid #e5e7eb",
-              background: "#ffffff",
+              background: "rgba(255, 255, 255, 0.15)",
               fontWeight: 700,
               fontSize: 14,
               color: "#0f172a",
@@ -381,7 +484,7 @@ function TechnicianAppShell({ children }) {
               padding: "10px 12px",
               borderRadius: 8,
               border: "1px solid rgba(248, 113, 113, 0.35)",
-              background: "#ffffff",
+              background: "rgba(255, 255, 255, 0.15)",
               fontWeight: 700,
               fontSize: 14,
               color: "#b91c1c",
@@ -395,6 +498,174 @@ function TechnicianAppShell({ children }) {
           </button>
         </div>
       ) : null}
+      {profileModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10030,
+            padding: "18px",
+            boxSizing: "border-box",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setProfileModalOpen(false);
+          }}
+        >
+          <div
+            style={{
+              width: "min(860px, 96vw)",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              background: "#fff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 12,
+              boxShadow: "0 24px 60px rgba(15, 23, 42, 0.24)",
+              fontFamily: appFontFamily,
+            }}
+          >
+            <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#111827" }}>My profile</div>
+                <div style={{ fontSize: 13, color: "#6b7280", fontWeight: 700, marginTop: 2 }}>Personal info</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProfileModalOpen(false)}
+                style={{ border: "none", background: "transparent", fontWeight: 800, cursor: "pointer", color: "#111827" }}
+              >
+                Close
+              </button>
+            </div>
+            <div style={{ padding: 18 }}>
+              <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 18, flexWrap: "wrap" }}>
+                <div
+                  style={{
+                    width: 76,
+                    height: 76,
+                    borderRadius: "50%",
+                    backgroundColor: "#e5e7eb",
+                    overflow: "hidden",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#6b7280",
+                    fontSize: 30,
+                    fontWeight: 700,
+                  }}
+                >
+                  {profileUser?.profileImageUrl ? (
+                    <img src={profileUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    (profileUser?.firstName || profileUser?.email || "T").charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div style={{ minWidth: 220, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <input ref={avatarFileRef} type="file" accept="image/*" hidden onChange={handleAvatarChange} />
+                  <button
+                    type="button"
+                    onClick={() => avatarFileRef.current?.click()}
+                    disabled={avatarBusy || avatarRemoveBusy}
+                    style={{ padding: "9px 14px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", fontWeight: 700, cursor: "pointer" }}
+                  >
+                    {avatarBusy ? "Saving..." : profileUser?.profileImageUrl ? "Change photo" : "Upload photo"}
+                  </button>
+                  {profileUser?.profileImageUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveAvatar}
+                      disabled={avatarBusy || avatarRemoveBusy}
+                      style={{
+                        padding: "9px 14px",
+                        borderRadius: 8,
+                        border: "1px solid #fecaca",
+                        background: "#fff",
+                        color: "#b91c1c",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {avatarRemoveBusy ? "Removing..." : "Remove photo"}
+                    </button>
+                  )}
+                  {avatarSuccess && <div style={{ color: "#059669", fontSize: 12, width: "100%" }}>{avatarSuccess}</div>}
+                  {avatarError && <div style={{ color: "#b91c1c", fontSize: 12, width: "100%" }}>{avatarError}</div>}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#374151" }}>Email</label>
+                  <input
+                    readOnly
+                    disabled
+                    value={profileUser?.email || ""}
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#f3f4f6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#374151" }}>Phone number</label>
+                  <input
+                    type="tel"
+                    value={phoneDraft}
+                    onChange={(e) => {
+                      setPhoneDraft(e.target.value);
+                      setSaveState((s) => ({ ...s, message: "", error: "" }));
+                    }}
+                    placeholder="+94 77 123 4567"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff" }}
+                  />
+                  <p style={{ margin: "6px 0 0 0", fontSize: 11, color: "#6b7280" }}>7-20 characters: digits, spaces, +, -, ( )</p>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#374151" }}>First name</label>
+                  <input
+                    readOnly
+                    disabled
+                    value={profileUser?.firstName || ""}
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#f3f4f6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#374151" }}>Last name</label>
+                  <input
+                    readOnly
+                    disabled
+                    value={profileUser?.lastName || ""}
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#f3f4f6" }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
+                {saveState.message && <span style={{ fontSize: 13, color: "#059669" }}>{saveState.message}</span>}
+                {saveState.error && <span style={{ fontSize: 13, color: "#b91c1c" }}>{saveState.error}</span>}
+                <button
+                  type="button"
+                  onClick={handleSavePhone}
+                  disabled={!canSavePhone || saveState.busy}
+                  style={{
+                    padding: "10px 16px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: canSavePhone && !saveState.busy ? "#FA8112" : "#d1d5db",
+                    color: "#fff",
+                    fontWeight: 700,
+                    cursor: canSavePhone && !saveState.busy ? "pointer" : "not-allowed",
+                  }}
+                >
+                  {saveState.busy ? "Saving..." : "Save changes"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <header
           style={{

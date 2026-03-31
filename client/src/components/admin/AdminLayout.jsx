@@ -146,7 +146,7 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
               {adminUser.profileImageUrl ? <img src={adminUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initial}
             </button>
             {profileMenuOpen && (
-              <div role="menu" style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: "min(280px, calc(100vw - 48px))", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: "12px", boxShadow: "0 12px 40px rgba(15, 23, 42, 0.12)", padding: "16px", zIndex: 50 }}>
+              <div role="menu" style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: "min(280px, calc(100vw - 48px))", backgroundColor: "rgba(15, 23, 42, 0.08)", border: "1px solid rgba(148, 163, 184, 0.45)", borderRadius: "12px", boxShadow: "0 12px 40px rgba(15, 23, 42, 0.12)", padding: "16px", zIndex: 50, backdropFilter: "blur(10px)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
                   <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: adminUser.profileImageUrl ? "#f1f5f9" : "#475569", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "18px", overflow: "hidden" }}>{adminUser.profileImageUrl ? <img src={adminUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initial}</div>
                   <div style={{ minWidth: 0 }}>
@@ -154,7 +154,7 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                     <div style={{ fontSize: "12px", color: "#64748b", wordBreak: "break-word" }}>{adminUser.email || "—"}</div>
                   </div>
                 </div>
-                <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); setProfileModalOpen(true); }} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "#fff", fontWeight: 600, fontSize: "14px", color: "#0f172a", cursor: "pointer", textAlign: "left" }}>My profile</button>
+                <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); setProfileModalOpen(true); }} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(226, 232, 240, 0.9)", background: "rgba(255, 255, 255, 0.15)", fontWeight: 600, fontSize: "14px", color: "#0f172a", cursor: "pointer", textAlign: "left" }}>My profile</button>
               </div>
             )}
           </div>
