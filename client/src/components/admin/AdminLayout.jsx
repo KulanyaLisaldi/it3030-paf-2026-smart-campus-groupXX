@@ -4,6 +4,7 @@ import { getAuthToken } from "../../api/http";
 import { changeMyPassword, removeProfileAvatar, updateProfilePhone, uploadProfileAvatar, verifyMyPasswordChange } from "../../api/auth";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../../utils/campusUserStorage";
 import PasswordInput from "../PasswordInput.jsx";
+import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../../utils/profilePhone";
 
 const shellStyle = {
   height: "100vh",
@@ -30,8 +31,6 @@ const mainScrollStyle = { flex: 1, overflowY: "auto", overflowX: "hidden", paddi
 const sectionLabelStyle = { fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", color: "#94a3b8", padding: "0 16px", marginTop: "20px", marginBottom: "8px" };
 const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "2px solid #F5E7C6", fontSize: "15px", outline: "none", boxSizing: "border-box", backgroundColor: "#FFFFFF", color: "#222222" };
 const labelStyle = { display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" };
-const PHONE_PATTERN = /^[0-9+\-()\s]{7,20}$/;
-const isValidPhone = (v) => (v || "").trim().length > 0 && PHONE_PATTERN.test((v || "").trim());
 const PASSWORD_POLICY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
 const getPasswordChecks = (value) => {
   const v = value || "";
@@ -110,7 +109,7 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
   }, []);
   useEffect(() => {
     if (!profileModalOpen) return;
-    setProfilePhoneDraft((adminUser?.phoneNumber || "").trim());
+    setProfilePhoneDraft(phoneFromServer(adminUser?.phoneNumber));
     setAvatarBusy(false);
     setAvatarRemoveBusy(false);
     setAvatarError("");
@@ -119,8 +118,8 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
   }, [profileModalOpen, adminUser]);
 
   if (!getAuthToken() || !adminUser || adminUser.role !== "ADMIN") return null;
-  const serverPhone = (adminUser?.phoneNumber || "").trim();
-  const canSavePhone = isValidPhone(profilePhoneDraft) && profilePhoneDraft.trim() !== serverPhone;
+  const serverPhone = phoneFromServer(adminUser?.phoneNumber);
+  const canSavePhone = isValidProfilePhone(profilePhoneDraft) && profilePhoneDraft !== serverPhone;
   const displayName = `${(adminUser.firstName || "").trim()} ${(adminUser.lastName || "").trim()}`.trim() || adminUser.email || "Admin";
   const initial = ((adminUser.firstName || adminUser.email || "A").trim().charAt(0) || "A").toUpperCase();
   const handleLogout = () => {
@@ -292,14 +291,31 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                   <div style={{ flex: 1, minWidth: "280px" }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                       <div><label style={labelStyle}>Email address</label><input type="email" readOnly disabled value={adminUser.email || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }} /></div>
-                      <div><label style={labelStyle}>Phone number</label><input type="tel" value={profilePhoneDraft} onChange={(e) => { setProfilePhoneDraft(e.target.value); setProfileSaveState((s) => ({ ...s, message: "", error: "" })); }} placeholder="+94 77 123 4567" style={inputStyle} /></div>
+                      <div>
+                        <label style={labelStyle}>Phone number</label>
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          maxLength={PROFILE_PHONE_DIGITS}
+                          value={profilePhoneDraft}
+                          onChange={(e) => {
+                            setProfilePhoneDraft(sanitizeProfilePhoneInput(e.target.value));
+                            setProfileSaveState((s) => ({ ...s, message: "", error: "" }));
+                          }}
+                          placeholder="0771234567"
+                          style={inputStyle}
+                        />
+                        <p style={{ margin: "6px 0 0 0", fontSize: "12px", color: "#9ca3af", fontWeight: 600 }}>
+                          {PROFILE_PHONE_DIGITS} digits only (no letters).
+                        </p>
+                      </div>
                     </div>
                     <div style={{ marginTop: "16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                       <div><label style={labelStyle}>First name</label><input type="text" readOnly disabled value={adminUser.firstName || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }} /></div>
                       <div><label style={labelStyle}>Last name</label><input type="text" readOnly disabled value={adminUser.lastName || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }} /></div>
                     </div>
                     <div style={{ marginTop: "18px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                      <button type="button" disabled={!canSavePhone || profileSaveState.busy} onClick={async () => { if (!canSavePhone || profileSaveState.busy) return; setProfileSaveState({ busy: true, message: "", error: "" }); try { const updated = await updateProfilePhone({ phoneNumber: profilePhoneDraft.trim() }); persistCampusUser(updated); setProfileSaveState({ busy: false, message: "Changes saved.", error: "" }); } catch (err) { setProfileSaveState({ busy: false, message: "", error: err?.message || "Save failed" }); } }} style={{ padding: "12px 16px", borderRadius: "10px", border: "none", backgroundColor: "#FA8112", color: "#fff", fontWeight: 800, fontSize: "14px", cursor: !canSavePhone || profileSaveState.busy ? "not-allowed" : "pointer", opacity: !canSavePhone || profileSaveState.busy ? 0.6 : 1 }}>{profileSaveState.busy ? "Saving..." : "Save changes"}</button>
+                      <button type="button" disabled={!canSavePhone || profileSaveState.busy} onClick={async () => { if (!canSavePhone || profileSaveState.busy) return; setProfileSaveState({ busy: true, message: "", error: "" }); try { const updated = await updateProfilePhone({ phoneNumber: profilePhoneDraft }); persistCampusUser(updated); setProfileSaveState({ busy: false, message: "Changes saved.", error: "" }); } catch (err) { setProfileSaveState({ busy: false, message: "", error: err?.message || "Save failed" }); } }} style={{ padding: "12px 16px", borderRadius: "10px", border: "none", backgroundColor: "#FA8112", color: "#fff", fontWeight: 800, fontSize: "14px", cursor: !canSavePhone || profileSaveState.busy ? "not-allowed" : "pointer", opacity: !canSavePhone || profileSaveState.busy ? 0.6 : 1 }}>{profileSaveState.busy ? "Saving..." : "Save changes"}</button>
                       {profileSaveState.message ? <span style={{ color: "#15803d", fontWeight: 700, fontSize: "13px" }}>{profileSaveState.message}</span> : null}
                       {profileSaveState.error ? <span style={{ color: "#b91c1c", fontWeight: 700, fontSize: "13px" }}>{profileSaveState.error}</span> : null}
                     </div>

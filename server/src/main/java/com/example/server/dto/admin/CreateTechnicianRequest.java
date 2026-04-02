@@ -22,7 +22,7 @@ public class CreateTechnicianRequest {
     private String email;
 
     /** Optional; stored for contact. */
-    @Pattern(regexp = "^$|^[0-9+\\-\\s()]{7,20}$", message = "Phone number format is invalid")
+    @Pattern(regexp = "^$|^[0-9]{10}$", message = "Phone number must be exactly 10 digits or empty")
     private String phoneNumber = "";
 
     @NotBlank(message = "Password is required")

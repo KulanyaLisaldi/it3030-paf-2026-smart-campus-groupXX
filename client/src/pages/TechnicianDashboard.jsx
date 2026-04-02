@@ -23,14 +23,9 @@ import PasswordInput from "../components/PasswordInput.jsx";
 import TicketTechnicianChat from "../components/TicketTechnicianChat.jsx";
 import { formatDurationSeconds, formatTicketInstant } from "../utils/slaFormat";
 import { appFontFamily as techFontUi } from "../utils/appFont";
+import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../utils/profilePhone";
 
-const PHONE_PATTERN = /^[0-9+\-()\s]{7,20}$/;
 const PASSWORD_POLICY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
-
-function isValidPhone(value) {
-  const t = (value || "").trim();
-  return t.length > 0 && PHONE_PATTERN.test(t);
-}
 function getPasswordChecks(value) {
   const v = value || "";
   return {
@@ -996,7 +991,7 @@ function TechnicianWorkspace() {
 
   useEffect(() => {
     if (!profileModalOpen) return;
-    setPhoneDraft((techUser?.phoneNumber || "").trim());
+    setPhoneDraft(phoneFromServer(techUser?.phoneNumber));
     setSaveState({ busy: false, message: "", error: "" });
     setAvatarBusy(false);
     setAvatarRemoveBusy(false);
@@ -1150,11 +1145,10 @@ function TechnicianWorkspace() {
     });
   };
 
-  const serverPhone = (techUser?.phoneNumber || "").trim();
+  const serverPhone = phoneFromServer(techUser?.phoneNumber);
   const canSavePhone = useMemo(() => {
-    const draft = phoneDraft.trim();
-    if (!isValidPhone(draft)) return false;
-    return draft !== serverPhone;
+    if (!isValidProfilePhone(phoneDraft)) return false;
+    return phoneDraft !== serverPhone;
   }, [phoneDraft, serverPhone]);
 
   return (
@@ -1823,17 +1817,19 @@ function TechnicianWorkspace() {
                   </label>
                   <input
                     type="tel"
+                    inputMode="numeric"
+                    maxLength={PROFILE_PHONE_DIGITS}
                     value={phoneDraft}
                     onChange={(e) => {
-                      setPhoneDraft(e.target.value);
+                      setPhoneDraft(sanitizeProfilePhoneInput(e.target.value));
                       setSaveState((s) => ({ ...s, message: "", error: "" }));
                     }}
                     style={selectStyle}
-                    placeholder="+94 77 123 4567"
+                    placeholder="0771234567"
                     autoComplete="tel"
                   />
                   <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 6, fontWeight: 700 }}>
-                    7–20 characters: digits, spaces, +, -, ( )
+                    {PROFILE_PHONE_DIGITS} digits only (no letters).
                   </div>
                 </div>
               </div>
@@ -1876,7 +1872,7 @@ function TechnicianWorkspace() {
                     if (!canSavePhone) return;
                     setSaveState({ busy: true, message: "", error: "" });
                     try {
-                      const updated = await updateProfilePhone({ phoneNumber: phoneDraft.trim() });
+                      const updated = await updateProfilePhone({ phoneNumber: phoneDraft });
                       persistCampusUser(updated);
                       setSaveState({ busy: false, message: "Changes saved.", error: "" });
                     } catch (err) {

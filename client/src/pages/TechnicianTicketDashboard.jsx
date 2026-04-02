@@ -6,6 +6,7 @@ import { getAuthToken } from "../api/http";
 import { persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import { appFontFamily } from "../utils/appFont";
 import PasswordInput from "../components/PasswordInput.jsx";
+import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../utils/profilePhone";
 
 /** YYYY-MM-DD in the user's local timezone (aligned with weekday labels on the chart). */
 function localCalendarDayKey(isoOrMs) {
@@ -58,7 +59,6 @@ const metricCardStyle = {
   boxShadow: "0 2px 8px rgba(20, 33, 61, 0.04)",
 };
 
-const PHONE_PATTERN = /^[0-9+\-()\s]{7,20}$/;
 const PASSWORD_POLICY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
 function getPasswordChecks(value) {
   const v = value || "";
@@ -261,7 +261,7 @@ function TechnicianAppShell({ children }) {
     if (!profileModalOpen) return;
     const fromStorage = readCampusUser();
     setProfileUser(fromStorage);
-    setPhoneDraft((fromStorage?.phoneNumber || "").trim());
+    setPhoneDraft(phoneFromServer(fromStorage?.phoneNumber));
     setSaveState({ busy: false, message: "", error: "" });
     setAvatarBusy(false);
     setAvatarRemoveBusy(false);
@@ -274,7 +274,7 @@ function TechnicianAppShell({ children }) {
         const fresh = await fetchCurrentUser();
         if (!cancelled && fresh) {
           setProfileUser(fresh);
-          setPhoneDraft((fresh.phoneNumber || "").trim());
+          setPhoneDraft(phoneFromServer(fresh.phoneNumber));
           persistCampusUser(fresh);
         }
       } catch {
@@ -293,17 +293,16 @@ function TechnicianAppShell({ children }) {
   };
 
   const canSavePhone = (() => {
-    const basePhone = (profileUser?.phoneNumber || "").trim();
-    const draft = phoneDraft.trim();
-    if (!draft || !PHONE_PATTERN.test(draft)) return false;
-    return draft !== basePhone;
+    const basePhone = phoneFromServer(profileUser?.phoneNumber);
+    if (!isValidProfilePhone(phoneDraft)) return false;
+    return phoneDraft !== basePhone;
   })();
 
   const handleSavePhone = async () => {
     if (!canSavePhone) return;
     setSaveState({ busy: true, message: "", error: "" });
     try {
-      const updated = await updateProfilePhone({ phoneNumber: phoneDraft.trim() });
+      const updated = await updateProfilePhone({ phoneNumber: phoneDraft });
       setProfileUser(updated);
       persistCampusUser(updated);
       setSaveState({ busy: false, message: "Changes saved.", error: "" });
@@ -694,15 +693,19 @@ function TechnicianAppShell({ children }) {
                   <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#374151" }}>Phone number</label>
                   <input
                     type="tel"
+                    inputMode="numeric"
+                    maxLength={PROFILE_PHONE_DIGITS}
                     value={phoneDraft}
                     onChange={(e) => {
-                      setPhoneDraft(e.target.value);
+                      setPhoneDraft(sanitizeProfilePhoneInput(e.target.value));
                       setSaveState((s) => ({ ...s, message: "", error: "" }));
                     }}
-                    placeholder="+94 77 123 4567"
+                    placeholder="0771234567"
                     style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff" }}
                   />
-                  <p style={{ margin: "6px 0 0 0", fontSize: 11, color: "#6b7280" }}>7-20 characters: digits, spaces, +, -, ( )</p>
+                  <p style={{ margin: "6px 0 0 0", fontSize: 11, color: "#6b7280" }}>
+                    {PROFILE_PHONE_DIGITS} digits only (no letters).
+                  </p>
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "#374151" }}>First name</label>

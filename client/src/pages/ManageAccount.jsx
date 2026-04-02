@@ -10,13 +10,7 @@ import {
 import { getAuthToken } from "../api/http";
 import { ACCOUNT_PATH, rememberPostLoginPath } from "../utils/authRedirect";
 import { persistCampusUser } from "../utils/campusUserStorage";
-
-const PHONE_PATTERN = /^[0-9+\-()\s]{7,20}$/;
-
-function isValidPhone(value) {
-  const t = (value || "").trim();
-  return t.length > 0 && PHONE_PATTERN.test(t);
-}
+import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../utils/profilePhone";
 
 const pageWrap = {
   minHeight: "100vh",
@@ -126,7 +120,7 @@ export default function ManageAccount() {
     try {
       const u = await fetchCurrentUser();
       setProfile(u);
-      setPhoneDraft((u.phoneNumber || "").trim());
+      setPhoneDraft(phoneFromServer(u.phoneNumber));
       persistCampusUser(u);
     } catch (e) {
       setLoadError(e.message || "Could not load profile");
@@ -142,7 +136,7 @@ export default function ManageAccount() {
     loadProfile();
   }, [navigate, loadProfile]);
 
-  const serverPhone = (profile?.phoneNumber || "").trim();
+  const serverPhone = phoneFromServer(profile?.phoneNumber);
   const roleText = useMemo(() => {
     const role = String(profile?.role || "").trim().toUpperCase();
     return role || "USER";
@@ -156,9 +150,8 @@ export default function ManageAccount() {
   }, [profile]);
   const canSave = useMemo(() => {
     if (!profile) return false;
-    const draft = phoneDraft.trim();
-    if (!isValidPhone(draft)) return false;
-    return draft !== serverPhone;
+    if (!isValidProfilePhone(phoneDraft)) return false;
+    return phoneDraft !== serverPhone;
   }, [profile, phoneDraft, serverPhone]);
 
   const isAdminAccount = roleText === "ADMIN";
@@ -171,7 +164,7 @@ export default function ManageAccount() {
     if (!canSave) return;
     setSaveState({ busy: true, message: "", error: "" });
     try {
-      const updated = await updateProfilePhone({ phoneNumber: phoneDraft.trim() });
+      const updated = await updateProfilePhone({ phoneNumber: phoneDraft });
       setProfile(updated);
       persistCampusUser(updated);
       setSaveState({ busy: false, message: "Changes saved.", error: "" });
@@ -579,17 +572,19 @@ export default function ManageAccount() {
                     <label style={labelStyle}>Phone number</label>
                     <input
                       type="tel"
+                      inputMode="numeric"
+                      maxLength={PROFILE_PHONE_DIGITS}
                       value={phoneDraft}
                       onChange={(e) => {
-                        setPhoneDraft(e.target.value);
+                        setPhoneDraft(sanitizeProfilePhoneInput(e.target.value));
                         setSaveState((s) => ({ ...s, message: "", error: "" }));
                       }}
-                      placeholder="+94 77 123 4567"
+                      placeholder="0771234567"
                       style={inputEditable}
                       autoComplete="tel"
                     />
                     <p style={{ fontSize: "12px", color: "#9ca3af", marginTop: "6px", marginBottom: 0 }}>
-                      7–20 characters: digits, spaces, +, -, ( )
+                      {PROFILE_PHONE_DIGITS} digits only (no letters). Enter a full mobile number to save.
                     </p>
                   </div>
                   <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "16px" }}>

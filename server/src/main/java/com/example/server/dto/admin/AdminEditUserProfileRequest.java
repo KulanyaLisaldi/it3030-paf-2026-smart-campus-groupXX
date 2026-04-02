@@ -15,7 +15,7 @@ public class AdminEditUserProfileRequest {
      * Optional phone number (same format as user profile).
      * If null/blank is sent, controller keeps or clears depending on implementation.
      */
-    @Pattern(regexp = "^[0-9+\\-()\\s]{7,20}$", message = "Please provide a valid phone number")
+    @Pattern(regexp = "^$|^[0-9]{10}$", message = "Phone number must be exactly 10 digits or empty")
     private String phoneNumber;
 
     public String getFirstName() {
