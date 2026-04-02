@@ -6,6 +6,7 @@ import {
   getAdminUsers,
 } from "../../api/adminUsers";
 import { readCampusUser } from "../../utils/campusUserStorage";
+import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../../utils/profilePhone";
 
 const pageCardStyle = {
   maxWidth: "100%",
@@ -170,7 +171,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     if (!editModalOpen || !selectedUser) return;
     setEditFirstName(selectedUser.firstName || "");
     setEditLastName(selectedUser.lastName || "");
-    setEditPhoneNumber(selectedUser.phoneNumber || "");
+    setEditPhoneNumber(phoneFromServer(selectedUser.phoneNumber));
     setActionError("");
   }, [editModalOpen, selectedUser]);
 
@@ -186,13 +187,18 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
 
   const handleEditSave = async () => {
     if (!selectedUser) return;
+    const phoneDigits = editPhoneNumber || "";
+    if (phoneDigits && !isValidProfilePhone(phoneDigits)) {
+      setActionError("Phone number must be exactly 10 digits or left empty.");
+      return;
+    }
     setActionBusy(true);
     setActionError("");
     try {
       await adminUpdateUserProfile(selectedUser.userId, {
         firstName: editFirstName.trim(),
         lastName: editLastName.trim(),
-        phoneNumber: editPhoneNumber.trim() ? editPhoneNumber.trim() : null,
+        phoneNumber: phoneDigits ? phoneDigits : null,
       });
       closeModals();
       refresh();
@@ -569,11 +575,17 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                   Phone number <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
                 </label>
                 <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={PROFILE_PHONE_DIGITS}
                   value={editPhoneNumber}
-                  onChange={(e) => setEditPhoneNumber(e.target.value)}
+                  onChange={(e) => setEditPhoneNumber(sanitizeProfilePhoneInput(e.target.value))}
                   style={modalInputStyle}
-                  placeholder="+94 77 000 0000"
+                  placeholder="0771234567"
                 />
+                <p style={{ margin: "6px 0 0 0", fontSize: "11px", color: "#64748b", fontWeight: 600 }}>
+                  Optional. {PROFILE_PHONE_DIGITS} digits only.
+                </p>
               </div>
 
               {actionError && (

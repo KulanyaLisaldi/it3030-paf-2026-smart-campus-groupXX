@@ -4,6 +4,7 @@ import AdminUsersTable from "../components/admin/AdminUsersTable.jsx";
 import { createTechnician } from "../api/adminTechnicians";
 import { DEFAULT_TECHNICIAN_CATEGORY, TECHNICIAN_CATEGORIES, toApiTechnicianCategory } from "../constants/technicianCategories";
 import PasswordInput from "../components/PasswordInput.jsx";
+import { isValidProfilePhone, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../utils/profilePhone";
 
 const inputStyle = {
   width: "100%",
@@ -64,13 +65,17 @@ export default function AdminUsersPage() {
       setError("Select at least one category.");
       return;
     }
+    if (phoneNumber && !isValidProfilePhone(phoneNumber)) {
+      setError("Phone number must be exactly 10 digits or leave empty.");
+      return;
+    }
     setSubmitting(true);
     try {
       await createTechnician({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
-        phoneNumber: phoneNumber.trim(),
+        phoneNumber: phoneNumber || "",
         password,
         category: toApiTechnicianCategory(primaryCategoryForApi(selectedCategories)),
         categories: allCategoriesForApi(selectedCategories),
@@ -110,7 +115,23 @@ export default function AdminUsersPage() {
                       {TECHNICIAN_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                     </select>
                   </div>
-                  <div><label style={labelStyle}>Phone <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span></label><input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} style={inputStyle} placeholder="+94 77 000 0000" /></div>
+                  <div>
+                    <label style={labelStyle}>
+                      Phone <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
+                    </label>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={PROFILE_PHONE_DIGITS}
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(sanitizeProfilePhoneInput(e.target.value))}
+                      style={inputStyle}
+                      placeholder="0771234567"
+                    />
+                    <p style={{ margin: "6px 0 0 0", fontSize: "12px", color: "#6b7280", fontWeight: 600 }}>
+                      {PROFILE_PHONE_DIGITS} digits only, or leave empty.
+                    </p>
+                  </div>
                 </div>
                 <div><label style={labelStyle}>Initial password</label><PasswordInput required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} placeholder="At least 6 characters" autoComplete="new-password" /></div>
                 {error ? <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 600 }} role="alert">{error}</p> : null}
