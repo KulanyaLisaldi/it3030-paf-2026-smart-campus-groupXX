@@ -63,9 +63,11 @@ function saveAdminReplyForMessage(m, replyText) {
   if (trimmed) {
     nextItem.adminReply = trimmed;
     nextItem.adminRepliedAt = new Date().toISOString();
+    nextItem.status = "Replied";
   } else {
     delete nextItem.adminReply;
     delete nextItem.adminRepliedAt;
+    nextItem.status = "Submitted";
   }
   const next = [...all.slice(0, idx), nextItem, ...all.slice(idx + 1)];
   writeAllContactMessages(next);
@@ -85,6 +87,33 @@ function formatWhen(iso) {
 function displayName(m) {
   const n = [m?.firstName, m?.lastName].filter(Boolean).join(" ").trim();
   return n || "—";
+}
+
+function hasSavedAdminReply(m) {
+  return typeof m?.adminReply === "string" && m.adminReply.trim().length > 0;
+}
+
+/** Status shown and used for filtering: storage field or implied Replied when a reply exists. */
+function effectiveContactStatus(m) {
+  if (hasSavedAdminReply(m)) return "Replied";
+  return String(m?.status || "Submitted").trim() || "Submitted";
+}
+
+function messageSearchHaystack(m) {
+  const name = [m?.firstName, m?.lastName].filter(Boolean).join(" ").trim();
+  return [m?.id, name, m?.email, m?.phone, m?.subject, m?.message, m?.status, effectiveContactStatus(m)]
+    .filter((x) => x != null && String(x).length > 0)
+    .join(" ")
+    .toLowerCase();
+}
+
+function applyContactMessageFilters(list, { search, statusFilter }) {
+  const q = search.trim().toLowerCase();
+  return list.filter((m) => {
+    if (q && !messageSearchHaystack(m).includes(q)) return false;
+    if (statusFilter !== "all" && effectiveContactStatus(m) !== statusFilter) return false;
+    return true;
+  });
 }
 
 /** Last updated column: time the support reply was saved, else user’s last edit. */
@@ -284,11 +313,106 @@ const replyModalSecondaryBtnStyle = {
   cursor: "pointer",
 };
 
+const filterToolbarStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "flex-end",
+  gap: "12px 20px",
+  marginBottom: "16px",
+  padding: "14px 18px",
+  backgroundColor: "#FFFFFF",
+  borderRadius: "12px",
+  border: "1px solid #e5e7eb",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+  position: "relative",
+  zIndex: 1,
+};
+
+const filterFieldStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "6px",
+  minWidth: 0,
+};
+
+const filterLabelStyle = {
+  fontSize: "11px",
+  fontWeight: 700,
+  color: "#6b7280",
+  letterSpacing: "0.04em",
+};
+
+const filterSearchInputStyle = {
+  border: "2px solid #F5E7C6",
+  borderRadius: "10px",
+  padding: "10px 12px",
+  fontSize: "14px",
+  fontWeight: 500,
+  fontFamily: appFontFamily,
+  color: "#222222",
+  backgroundColor: "#FFFFFF",
+  outline: "none",
+  minWidth: "min(100%, 260px)",
+  width: "min(100%, 320px)",
+  boxSizing: "border-box",
+};
+
+const filterSelectStyle = {
+  border: "2px solid #F5E7C6",
+  borderRadius: "10px",
+  padding: "10px 32px 10px 12px",
+  fontSize: "14px",
+  fontWeight: 600,
+  fontFamily: appFontFamily,
+  color: "#222222",
+  backgroundColor: "#FFFFFF",
+  outline: "none",
+  minWidth: "168px",
+  maxWidth: "100%",
+  boxSizing: "border-box",
+  cursor: "pointer",
+  WebkitAppearance: "none",
+  MozAppearance: "none",
+  appearance: "none",
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23374151' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 12px center",
+};
+
+const filterClearBtnStyle = {
+  padding: "10px 14px",
+  borderRadius: "8px",
+  border: "1px solid #d1d5db",
+  backgroundColor: "#ffffff",
+  color: "#374151",
+  fontWeight: 600,
+  fontSize: "13px",
+  fontFamily: appFontFamily,
+  cursor: "pointer",
+  lineHeight: 1,
+};
+
+const filterMetaStyle = {
+  fontSize: "13px",
+  color: "#6b7280",
+  fontWeight: 600,
+  width: "100%",
+  paddingTop: "4px",
+  textAlign: "right",
+};
+
+const noFilterMatchStyle = {
+  ...emptyCardStyle,
+  maxWidth: "none",
+};
+
 export default function AdminContactMessagesPage() {
   const [inboxRev, setInboxRev] = useState(0);
   const [detailMessage, setDetailMessage] = useState(null);
   const [replyTarget, setReplyTarget] = useState(null);
   const [replyDraft, setReplyDraft] = useState("");
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
 
   useEffect(() => {
     const reload = () => setInboxRev((n) => n + 1);
@@ -304,6 +428,30 @@ export default function AdminContactMessagesPage() {
       return tb - ta;
     });
   }, [inboxRev]);
+
+  const statusOptions = useMemo(() => {
+    const set = new Set(["Submitted", "Replied"]);
+    rows.forEach((m) => {
+      set.add(effectiveContactStatus(m));
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [rows]);
+
+  const filteredRows = useMemo(
+    () =>
+      applyContactMessageFilters(rows, {
+        search: filterSearch,
+        statusFilter: filterStatus,
+      }),
+    [rows, filterSearch, filterStatus]
+  );
+
+  const filtersActive = filterSearch.trim().length > 0 || filterStatus !== "all";
+
+  const clearFilters = () => {
+    setFilterSearch("");
+    setFilterStatus("all");
+  };
 
   const handleDelete = (m) => {
     const ok = window.confirm("Delete this contact message from local storage? This cannot be undone.");
@@ -358,6 +506,69 @@ export default function AdminContactMessagesPage() {
       {rows.length === 0 ? (
         <div style={emptyCardStyle}>No contact messages have been submitted yet.</div>
       ) : (
+        <>
+          <div style={filterToolbarStyle}>
+            <div style={filterFieldStyle}>
+              <label htmlFor="contact-filter-search" style={filterLabelStyle}>
+                SEARCH
+              </label>
+              <input
+                id="contact-filter-search"
+                type="search"
+                value={filterSearch}
+                onChange={(e) => setFilterSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.preventDefault();
+                }}
+                placeholder="Reference, name, email, subject, message…"
+                style={filterSearchInputStyle}
+                autoComplete="off"
+              />
+            </div>
+            <div style={filterFieldStyle}>
+              <label htmlFor="contact-filter-status" style={filterLabelStyle}>
+                STATUS
+              </label>
+              <select
+                id="contact-filter-status"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                style={filterSelectStyle}
+              >
+                <option value="all">All statuses</option>
+                {statusOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {filtersActive ? (
+              <button type="button" style={filterClearBtnStyle} onClick={clearFilters}>
+                Clear filters
+              </button>
+            ) : null}
+            <div style={filterMetaStyle}>
+              Showing {filteredRows.length} of {rows.length} message{rows.length === 1 ? "" : "s"}
+            </div>
+          </div>
+
+          {filteredRows.length === 0 ? (
+            <div style={noFilterMatchStyle}>
+              No messages match your filters.{" "}
+              <button
+                type="button"
+                onClick={clearFilters}
+                style={{
+                  ...filterClearBtnStyle,
+                  marginTop: "12px",
+                  display: "inline-block",
+                }}
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : (
         <div style={tableWrapStyle}>
           <table style={tableStyle}>
             <colgroup>
@@ -385,7 +596,7 @@ export default function AdminContactMessagesPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((m) => (
+              {filteredRows.map((m) => (
                 <tr key={m.id || `${m.submittedAt}-${m.email}-${m.subject}`}>
                   <td style={tdNowrapEllipsisStyle} title={m.id || undefined}>
                     {m.id || "—"}
@@ -399,16 +610,18 @@ export default function AdminContactMessagesPage() {
                   </td>
                   <td style={tdNowrapStyle}>{m.phone || "—"}</td>
                   <td style={tdSubjectStyle}>{m.subject || "—"}</td>
-                  <td style={tdNowrapStyle}>{m.status || "Submitted"}</td>
+                  <td style={tdNowrapStyle}>{effectiveContactStatus(m)}</td>
                   <td style={tdNowrapStyle}>{formatLastUpdatedCell(m)}</td>
                   <td style={actionsCellStyle}>
                     <div style={actionsRowStyle}>
                       <button type="button" style={btnDetailStyle} onClick={() => setDetailMessage(m)}>
                         Show detail
                       </button>
-                      <button type="button" style={btnReplyStyle} onClick={() => openReplyComposer(m)}>
-                        Reply
-                      </button>
+                      {!hasSavedAdminReply(m) ? (
+                        <button type="button" style={btnReplyStyle} onClick={() => openReplyComposer(m)}>
+                          Reply
+                        </button>
+                      ) : null}
                       <button type="button" style={btnDeleteStyle} onClick={() => handleDelete(m)}>
                         Delete
                       </button>
@@ -419,6 +632,8 @@ export default function AdminContactMessagesPage() {
             </tbody>
           </table>
         </div>
+          )}
+        </>
       )}
 
       {detailMessage ? (
