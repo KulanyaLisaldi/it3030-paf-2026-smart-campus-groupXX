@@ -351,15 +351,17 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
         <div>
           <div style={{ fontSize: 20, fontWeight: 900, color: "#14213D", marginBottom: 4 }}>All Users</div>
         </div>
-
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <button type="button" onClick={onAddTechnician} style={smallBtnStyle("primary")}>
-            Add technician
-          </button>
-        </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 180px 180px 180px", gap: 12, alignItems: "end", marginBottom: 14 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(240px, 1fr) 170px 170px 170px 150px",
+          gap: 12,
+          alignItems: "end",
+          marginBottom: 10,
+        }}
+      >
         <div>
           <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#475569", marginBottom: 6 }}>Search</label>
           <input
@@ -445,7 +447,16 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
             <option value="Disabled">Disabled</option>
           </select>
         </div>
+
+        <div>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#475569", marginBottom: 6 }}>Add User</label>
+          <button type="button" onClick={onAddTechnician} style={{ ...smallBtnStyle("primary"), width: "100%", padding: "10px 12px" }}>
+            Add technician
+          </button>
+        </div>
       </div>
+
+      <div style={{ marginBottom: 14 }} />
 
       {loading && <p style={{ margin: 0, color: "#64748b", fontWeight: 800 }}>Loading users…</p>}
       {error && <p style={{ margin: 0, color: "#b91c1c", fontWeight: 900 }}>{error}</p>}
