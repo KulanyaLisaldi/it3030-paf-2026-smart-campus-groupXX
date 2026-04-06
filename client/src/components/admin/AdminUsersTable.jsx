@@ -188,6 +188,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
   const [editPhoneNumber, setEditPhoneNumber] = useState("");
   const [hoveredRowId, setHoveredRowId] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [addUserMenuOpen, setAddUserMenuOpen] = useState(false);
 
   const [roleDraft, setRoleDraft] = useState("USER");
 
@@ -450,9 +451,58 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
 
         <div>
           <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#475569", marginBottom: 6 }}>Add User</label>
-          <button type="button" onClick={onAddTechnician} style={{ ...smallBtnStyle("primary"), width: "100%", padding: "10px 12px" }}>
-            Add User
-          </button>
+          <div style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={() => setAddUserMenuOpen((v) => !v)}
+              style={{ ...smallBtnStyle("neutral"), width: "100%", padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              aria-haspopup="menu"
+              aria-expanded={addUserMenuOpen}
+            >
+              <span>Add User</span>
+              <span style={{ fontSize: 10, color: "#64748b" }}>{addUserMenuOpen ? "▲" : "▼"}</span>
+            </button>
+            {addUserMenuOpen && (
+              <div
+                role="menu"
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  left: 0,
+                  right: 0,
+                  zIndex: 30,
+                  background: "#fff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 10,
+                  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.12)",
+                  overflow: "hidden",
+                }}
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAddUserMenuOpen(false);
+                    onAddTechnician?.("ADMIN");
+                  }}
+                  style={{ width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "1px solid #f1f5f9", background: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", color: "#0f172a" }}
+                >
+                  ADMIN
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAddUserMenuOpen(false);
+                    onAddTechnician?.("TECHNICIAN");
+                  }}
+                  style={{ width: "100%", textAlign: "left", padding: "10px 12px", border: "none", background: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", color: "#0f172a" }}
+                >
+                  TECHNICIAN
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

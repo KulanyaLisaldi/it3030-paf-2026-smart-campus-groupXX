@@ -47,7 +47,6 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     if (!addUserModalOpen) return;
-    setSelectedRole("TECHNICIAN");
     setFirstName("");
     setLastName("");
     setEmail("");
@@ -95,24 +94,33 @@ export default function AdminUsersPage() {
 
   return (
     <AdminLayout activeSection="users" pageTitle="User Management">
-      <AdminUsersTable refreshKey={usersTableRev} onAddTechnician={() => setAddUserModalOpen(true)} onRequestRefresh={() => setUsersTableRev((n) => n + 1)} />
+      <AdminUsersTable
+        refreshKey={usersTableRev}
+        onAddTechnician={(role) => {
+          setSelectedRole(role === "ADMIN" ? "ADMIN" : "TECHNICIAN");
+          setAddUserModalOpen(true);
+        }}
+        onRequestRefresh={() => setUsersTableRev((n) => n + 1)}
+      />
 
       {addUserModalOpen && (
         <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 1001, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px" }} onMouseDown={(e) => { if (e.target === e.currentTarget) setAddUserModalOpen(false); }}>
           <div style={{ width: "100%", maxWidth: "760px", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden" }}>
             <div style={{ padding: "16px 22px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
-              <div><div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Add User</div><div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Create ADMIN or TECHNICIAN account (email/password)</div></div>
+              <div>
+                <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>
+                  {selectedRole === "ADMIN" ? "Add Admin User" : "Add Technician User"}
+                </div>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>
+                  {selectedRole === "ADMIN"
+                    ? "Create an ADMIN account (email/password)"
+                    : "Create a TECHNICIAN account (email/password)"}
+                </div>
+              </div>
               <button type="button" onClick={() => setAddUserModalOpen(false)} style={{ padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, fontSize: "14px", cursor: "pointer", color: "#0f172a" }}>Cancel</button>
             </div>
             <div style={{ padding: "18px 22px 22px" }}>
               <form onSubmit={handleSubmitUser} style={{ display: "grid", gap: "16px" }}>
-                <div>
-                  <label style={labelStyle}>Role</label>
-                  <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} style={selectFieldStyle}>
-                    <option value="ADMIN">ADMIN</option>
-                    <option value="TECHNICIAN">TECHNICIAN</option>
-                  </select>
-                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                   <div><label style={labelStyle}>First name</label><input required value={firstName} onChange={(e) => setFirstName(e.target.value)} style={inputStyle} placeholder="First name" /></div>
                   <div><label style={labelStyle}>Last name</label><input required value={lastName} onChange={(e) => setLastName(e.target.value)} style={inputStyle} placeholder="Last name" /></div>
