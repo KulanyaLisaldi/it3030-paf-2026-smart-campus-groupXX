@@ -26,6 +26,14 @@ function readStoredContactMessages() {
   }
 }
 
+function writeStoredContactMessages(list) {
+  try {
+    localStorage.setItem(CONTACT_MESSAGES_STORAGE_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 function formatContactSubmittedAt(iso) {
   if (!iso) return "—";
   try {
@@ -138,6 +146,10 @@ export default function ManageAccount() {
   const [avatarSuccess, setAvatarSuccess] = useState("");
   const [deleteBusy, setDeleteBusy] = useState(false);
   const fileRef = useRef(null);
+  const [contactMessagesRev, setContactMessagesRev] = useState(0);
+  const [editingContactId, setEditingContactId] = useState(null);
+  const [editContactDraft, setEditContactDraft] = useState(null);
+  const [editContactError, setEditContactError] = useState("");
 
   const loadProfile = useCallback(async () => {
     setLoadError("");
@@ -159,6 +171,14 @@ export default function ManageAccount() {
     }
     loadProfile();
   }, [navigate, loadProfile]);
+
+  useEffect(() => {
+    if (view !== "contactMessages") {
+      setEditingContactId(null);
+      setEditContactDraft(null);
+      setEditContactError("");
+    }
+  }, [view]);
 
   const serverPhone = phoneFromServer(profile?.phoneNumber);
   const roleText = useMemo(() => {
@@ -187,7 +207,82 @@ export default function ManageAccount() {
     return readStoredContactMessages().filter(
       (m) => (m?.email || "").trim().toLowerCase() === myEmail
     );
-  }, [view, profile?.email]);
+  }, [view, profile?.email, contactMessagesRev]);
+
+  const bumpContactMessages = () => setContactMessagesRev((n) => n + 1);
+
+  const startEditContact = (msg) => {
+    if (!msg?.id) return;
+    setEditContactError("");
+    setEditingContactId(msg.id);
+    setEditContactDraft({
+      firstName: msg.firstName || "",
+      lastName: msg.lastName || "",
+      phone: msg.phone || "",
+      subject: msg.subject || "",
+      message: msg.message || "",
+    });
+  };
+
+  const cancelEditContact = () => {
+    setEditingContactId(null);
+    setEditContactDraft(null);
+    setEditContactError("");
+  };
+
+  const saveEditContact = (msgId) => {
+    if (!editContactDraft || !msgId) return;
+    const subject = editContactDraft.subject.trim();
+    const message = editContactDraft.message.trim();
+    if (!subject || !message) {
+      setEditContactError("Subject and message are required.");
+      return;
+    }
+    const myEmail = (profile?.email || "").trim().toLowerCase();
+    if (!myEmail) return;
+    const all = readStoredContactMessages();
+    const idx = all.findIndex((m) => m.id === msgId);
+    if (idx === -1) return;
+    const existing = all[idx];
+    if ((existing?.email || "").trim().toLowerCase() !== myEmail) return;
+    const updated = {
+      ...existing,
+      firstName: editContactDraft.firstName.trim(),
+      lastName: editContactDraft.lastName.trim(),
+      phone: editContactDraft.phone.trim(),
+      subject,
+      message,
+      lastEditedAt: new Date().toISOString(),
+    };
+    const next = [...all.slice(0, idx), updated, ...all.slice(idx + 1)];
+    writeStoredContactMessages(next);
+    cancelEditContact();
+    bumpContactMessages();
+  };
+
+  const deleteContactMessage = (msgId) => {
+    if (!msgId) return;
+    const ok = window.confirm("Delete this contact message? This cannot be undone.");
+    if (!ok) return;
+    const myEmail = (profile?.email || "").trim().toLowerCase();
+    if (!myEmail) return;
+    const all = readStoredContactMessages();
+    const target = all.find((m) => m.id === msgId);
+    if (!target || (target?.email || "").trim().toLowerCase() !== myEmail) return;
+    writeStoredContactMessages(all.filter((m) => m.id !== msgId));
+    if (editingContactId === msgId) cancelEditContact();
+    bumpContactMessages();
+  };
+
+  const contactEditInputStyle = {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    border: "1px solid #d1d5db",
+    fontSize: "14px",
+    boxSizing: "border-box",
+    fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  };
 
   const setView = (next) => {
     setSearchParams(next === "personal" ? {} : { view: next });
@@ -727,88 +822,266 @@ export default function ManageAccount() {
               </div>
             ) : (
               <div style={{ display: "grid", gap: "16px" }}>
-                {storedContactMessages.map((msg) => (
-                  <div key={msg.id || `${msg.submittedAt}-${msg.subject}`} style={cardStyle}>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        gap: "10px",
-                        marginBottom: "12px",
-                        paddingBottom: "12px",
-                        borderBottom: "1px solid #e5e7eb",
-                      }}
-                    >
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827", marginBottom: "4px" }}>
-                          {msg.subject || "—"}
-                        </div>
-                        <div style={{ fontSize: "12px", color: "#6b7280", fontWeight: 600 }}>
-                          Reference: {msg.id || "—"} · Submitted: {formatContactSubmittedAt(msg.submittedAt)}
-                        </div>
-                      </div>
-                      <span
+                {storedContactMessages.map((msg) => {
+                  const isEditing = editingContactId === msg.id;
+                  const anotherEditing = editingContactId !== null && editingContactId !== msg.id;
+                  return (
+                    <div key={msg.id || `${msg.submittedAt}-${msg.subject}`} style={cardStyle}>
+                      <div
                         style={{
-                          fontSize: "11px",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.04em",
-                          color: "#166534",
-                          backgroundColor: "#dcfce7",
-                          padding: "4px 10px",
-                          borderRadius: "999px",
-                          flexShrink: 0,
+                          display: "flex",
+                          flexWrap: "wrap",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          gap: "10px",
+                          marginBottom: "12px",
+                          paddingBottom: "12px",
+                          borderBottom: "1px solid #e5e7eb",
                         }}
                       >
-                        {msg.status || "Submitted"}
-                      </span>
-                    </div>
-                    <div style={{ display: "grid", gap: "12px", fontSize: "14px", color: "#374151" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "12px" }}>
-                        <div>
-                          <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "2px" }}>
-                            FROM
+                        <div style={{ minWidth: 0, flex: "1 1 200px" }}>
+                          <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827", marginBottom: "4px" }}>
+                            {isEditing ? editContactDraft?.subject : msg.subject || "—"}
                           </div>
-                          <div style={{ fontWeight: 600 }}>
-                            {[msg.firstName, msg.lastName].filter(Boolean).join(" ").trim() || "—"}
+                          <div style={{ fontSize: "12px", color: "#6b7280", fontWeight: 600 }}>
+                            Reference: {msg.id || "—"} · Submitted: {formatContactSubmittedAt(msg.submittedAt)}
+                            {msg.lastEditedAt ? ` · Updated: ${formatContactSubmittedAt(msg.lastEditedAt)}` : ""}
                           </div>
                         </div>
-                        <div>
-                          <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "2px" }}>
-                            EMAIL
-                          </div>
-                          <div style={{ fontWeight: 600, wordBreak: "break-word" }}>{msg.email || "—"}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "2px" }}>
-                            PHONE
-                          </div>
-                          <div style={{ fontWeight: 600 }}>{msg.phone || "—"}</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                              color: "#166534",
+                              backgroundColor: "#dcfce7",
+                              padding: "4px 10px",
+                              borderRadius: "999px",
+                            }}
+                          >
+                            {msg.status || "Submitted"}
+                          </span>
+                          {msg.id ? (
+                            <>
+                              {isEditing ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => saveEditContact(msg.id)}
+                                    style={{
+                                      padding: "6px 12px",
+                                      borderRadius: "8px",
+                                      border: "none",
+                                      backgroundColor: "#FA8112",
+                                      color: "#fff",
+                                      fontWeight: 700,
+                                      fontSize: "13px",
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={cancelEditContact}
+                                    style={{
+                                      padding: "6px 12px",
+                                      borderRadius: "8px",
+                                      border: "1px solid #d1d5db",
+                                      backgroundColor: "#fff",
+                                      fontWeight: 600,
+                                      fontSize: "13px",
+                                      cursor: "pointer",
+                                      color: "#374151",
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={anotherEditing}
+                                    onClick={() => startEditContact(msg)}
+                                    style={{
+                                      padding: "6px 12px",
+                                      borderRadius: "8px",
+                                      border: "none",
+                                      backgroundColor: "#FA8112",
+                                      fontWeight: 700,
+                                      fontSize: "13px",
+                                      cursor: anotherEditing ? "not-allowed" : "pointer",
+                                      color: "#ffffff",
+                                      opacity: anotherEditing ? 0.5 : 1,
+                                    }}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={anotherEditing}
+                                    onClick={() => deleteContactMessage(msg.id)}
+                                    style={{
+                                      padding: "6px 12px",
+                                      borderRadius: "8px",
+                                      border: "none",
+                                      backgroundColor: "#dc2626",
+                                      color: "#fff",
+                                      fontWeight: 700,
+                                      fontSize: "13px",
+                                      cursor: anotherEditing ? "not-allowed" : "pointer",
+                                      opacity: anotherEditing ? 0.5 : 1,
+                                    }}
+                                  >
+                                    Delete
+                                  </button>
+                                </>
+                              )}
+                            </>
+                          ) : null}
                         </div>
                       </div>
-                      <div>
-                        <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "6px" }}>
-                          MESSAGE
+                      {isEditing && editContactDraft ? (
+                        <div style={{ display: "grid", gap: "12px", fontSize: "14px", color: "#374151" }}>
+                          {editContactError ? (
+                            <div
+                              style={{
+                                padding: "10px 12px",
+                                borderRadius: "8px",
+                                backgroundColor: "#fef2f2",
+                                border: "1px solid #fecaca",
+                                color: "#b91c1c",
+                                fontWeight: 600,
+                                fontSize: "13px",
+                              }}
+                            >
+                              {editContactError}
+                            </div>
+                          ) : null}
+                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "12px" }}>
+                            <div>
+                              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "6px" }}>
+                                FIRST NAME
+                              </div>
+                              <input
+                                type="text"
+                                value={editContactDraft.firstName}
+                                onChange={(e) =>
+                                  setEditContactDraft((d) => (d ? { ...d, firstName: e.target.value } : d))
+                                }
+                                style={contactEditInputStyle}
+                              />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "6px" }}>
+                                LAST NAME
+                              </div>
+                              <input
+                                type="text"
+                                value={editContactDraft.lastName}
+                                onChange={(e) =>
+                                  setEditContactDraft((d) => (d ? { ...d, lastName: e.target.value } : d))
+                                }
+                                style={contactEditInputStyle}
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "6px" }}>
+                              EMAIL (read-only)
+                            </div>
+                            <input type="email" readOnly disabled value={msg.email || ""} style={{ ...contactEditInputStyle, backgroundColor: "#f9fafb", color: "#6b7280" }} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "6px" }}>
+                              PHONE
+                            </div>
+                            <input
+                              type="tel"
+                              value={editContactDraft.phone}
+                              onChange={(e) =>
+                                setEditContactDraft((d) => (d ? { ...d, phone: e.target.value } : d))
+                              }
+                              style={contactEditInputStyle}
+                            />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "6px" }}>
+                              SUBJECT
+                            </div>
+                            <input
+                              type="text"
+                              value={editContactDraft.subject}
+                              onChange={(e) =>
+                                setEditContactDraft((d) => (d ? { ...d, subject: e.target.value } : d))
+                              }
+                              style={contactEditInputStyle}
+                            />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "6px" }}>
+                              MESSAGE
+                            </div>
+                            <textarea
+                              value={editContactDraft.message}
+                              onChange={(e) =>
+                                setEditContactDraft((d) => (d ? { ...d, message: e.target.value } : d))
+                              }
+                              rows={6}
+                              style={{ ...contactEditInputStyle, resize: "vertical", minHeight: "120px" }}
+                            />
+                          </div>
                         </div>
-                        <div
-                          style={{
-                            whiteSpace: "pre-wrap",
-                            lineHeight: 1.5,
-                            padding: "12px 14px",
-                            backgroundColor: "#f9fafb",
-                            borderRadius: "8px",
-                            border: "1px solid #e5e7eb",
-                            color: "#1f2937",
-                          }}
-                        >
-                          {msg.message || "—"}
+                      ) : (
+                        <div style={{ display: "grid", gap: "12px", fontSize: "14px", color: "#374151" }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "12px" }}>
+                            <div>
+                              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "2px" }}>
+                                FROM
+                              </div>
+                              <div style={{ fontWeight: 600 }}>
+                                {[msg.firstName, msg.lastName].filter(Boolean).join(" ").trim() || "—"}
+                              </div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "2px" }}>
+                                EMAIL
+                              </div>
+                              <div style={{ fontWeight: 600, wordBreak: "break-word" }}>{msg.email || "—"}</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "2px" }}>
+                                PHONE
+                              </div>
+                              <div style={{ fontWeight: 600 }}>{msg.phone || "—"}</div>
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "6px" }}>
+                              MESSAGE
+                            </div>
+                            <div
+                              style={{
+                                whiteSpace: "pre-wrap",
+                                lineHeight: 1.5,
+                                padding: "12px 14px",
+                                backgroundColor: "#f9fafb",
+                                borderRadius: "8px",
+                                border: "1px solid #e5e7eb",
+                                color: "#1f2937",
+                              }}
+                            >
+                              {msg.message || "—"}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
