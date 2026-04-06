@@ -180,6 +180,13 @@ export default function ManageAccount() {
     }
   }, [view]);
 
+  useEffect(() => {
+    if (view !== "contactMessages") return;
+    const reload = () => setContactMessagesRev((n) => n + 1);
+    window.addEventListener("focus", reload);
+    return () => window.removeEventListener("focus", reload);
+  }, [view]);
+
   const serverPhone = phoneFromServer(profile?.phoneNumber);
   const roleText = useMemo(() => {
     const role = String(profile?.role || "").trim().toUpperCase();
@@ -1077,6 +1084,31 @@ export default function ManageAccount() {
                               {msg.message || "—"}
                             </div>
                           </div>
+                          {msg.adminReply ? (
+                            <div>
+                              <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "6px" }}>
+                                RESPONSE FROM SUPPORT
+                              </div>
+                              <div
+                                style={{
+                                  whiteSpace: "pre-wrap",
+                                  lineHeight: 1.5,
+                                  padding: "12px 14px",
+                                  backgroundColor: "#ecfdf5",
+                                  borderRadius: "8px",
+                                  border: "1px solid #a7f3d0",
+                                  color: "#166534",
+                                }}
+                              >
+                                {msg.adminReply}
+                              </div>
+                              {msg.adminRepliedAt ? (
+                                <div style={{ marginTop: "8px", fontSize: "12px", color: "#6b7280", fontWeight: 600 }}>
+                                  Replied: {formatContactSubmittedAt(msg.adminRepliedAt)}
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
                         </div>
                       )}
                     </div>

@@ -24,6 +24,15 @@ function writeAllContactMessages(list) {
   }
 }
 
+function messagesMatch(a, b) {
+  if (a?.id && b?.id) return a.id === b.id;
+  return (
+    String(a?.submittedAt || "") === String(b?.submittedAt || "") &&
+    String(a?.email || "") === String(b?.email || "") &&
+    String(a?.subject || "") === String(b?.subject || "")
+  );
+}
+
 /** Remove one row; matches by id when present, else by submittedAt + email + subject. */
 function removeMessageFromStorage(m) {
   const all = readAllContactMessages();
@@ -43,6 +52,26 @@ function removeMessageFromStorage(m) {
   writeAllContactMessages(next);
 }
 
+/** Persist support reply on the matching contact record (same browser localStorage). */
+function saveAdminReplyForMessage(m, replyText) {
+  const all = readAllContactMessages();
+  const idx = all.findIndex((x) => messagesMatch(x, m));
+  if (idx === -1) return null;
+  const trimmed = replyText.trim();
+  const prev = all[idx];
+  const nextItem = { ...prev };
+  if (trimmed) {
+    nextItem.adminReply = trimmed;
+    nextItem.adminRepliedAt = new Date().toISOString();
+  } else {
+    delete nextItem.adminReply;
+    delete nextItem.adminRepliedAt;
+  }
+  const next = [...all.slice(0, idx), nextItem, ...all.slice(idx + 1)];
+  writeAllContactMessages(next);
+  return nextItem;
+}
+
 function formatWhen(iso) {
   if (!iso) return "—";
   try {
@@ -58,6 +87,12 @@ function displayName(m) {
   return n || "—";
 }
 
+/** Last updated column: time the support reply was saved, else user’s last edit. */
+function formatLastUpdatedCell(m) {
+  if (m?.adminRepliedAt) return formatWhen(m.adminRepliedAt);
+  return formatWhen(m.lastEditedAt);
+}
+
 const tableWrapStyle = {
   overflowX: "auto",
   borderRadius: "12px",
@@ -66,9 +101,14 @@ const tableWrapStyle = {
   boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
 };
 
+/** Min table width (colgroup sum); wrapper scrolls horizontally on narrow viewports */
+const CONTACT_TABLE_MIN_WIDTH = 1700;
+
 const tableStyle = {
   width: "100%",
+  minWidth: CONTACT_TABLE_MIN_WIDTH,
   borderCollapse: "collapse",
+  tableLayout: "fixed",
   fontSize: "14px",
   fontFamily: appFontFamily,
 };
@@ -84,25 +124,60 @@ const thStyle = {
   letterSpacing: "0.04em",
   borderBottom: "2px solid #F5E7C6",
   whiteSpace: "nowrap",
+  verticalAlign: "middle",
+  boxSizing: "border-box",
 };
 
-const tdStyle = {
+const tdBaseStyle = {
   padding: "12px 14px",
   borderBottom: "1px solid #f1f5f9",
   color: "#1f2937",
-  verticalAlign: "top",
-  wordBreak: "break-word",
+  verticalAlign: "middle",
+  boxSizing: "border-box",
+};
+
+/** Default body cell (subject etc.): wrap only at word boundaries */
+const tdStyle = {
+  ...tdBaseStyle,
+  wordBreak: "normal",
+  overflowWrap: "break-word",
+};
+
+/** Single-line cells with sensible column width */
+const tdNowrapStyle = {
+  ...tdBaseStyle,
+  whiteSpace: "nowrap",
+};
+
+/** Long tokens (reference, email, name): ellipsis when space is tight */
+const tdNowrapEllipsisStyle = {
+  ...tdBaseStyle,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  maxWidth: 0,
+};
+
+const tdSubjectStyle = {
+  ...tdBaseStyle,
+  wordBreak: "normal",
+  overflowWrap: "break-word",
+  hyphens: "auto",
 };
 
 const actionsThStyle = {
   ...thStyle,
-  minWidth: "280px",
+  width: 292,
+  minWidth: 292,
+  textAlign: "left",
 };
 
 const actionsCellStyle = {
-  ...tdStyle,
-  verticalAlign: "middle",
+  ...tdBaseStyle,
+  width: 292,
+  minWidth: 292,
   whiteSpace: "nowrap",
+  textAlign: "left",
 };
 
 const actionsRowStyle = {
@@ -110,6 +185,7 @@ const actionsRowStyle = {
   flexDirection: "row",
   flexWrap: "nowrap",
   alignItems: "center",
+  justifyContent: "flex-start",
   gap: "6px",
 };
 
@@ -182,9 +258,37 @@ const modalCloseButtonStyle = {
   justifyContent: "center",
 };
 
+const replyModalPrimaryBtnStyle = {
+  padding: "10px 16px",
+  borderRadius: "8px",
+  border: "none",
+  backgroundColor: "#15803d",
+  color: "#ffffff",
+  fontWeight: 600,
+  fontSize: "14px",
+  fontFamily: appFontFamily,
+  lineHeight: 1,
+  cursor: "pointer",
+};
+
+const replyModalSecondaryBtnStyle = {
+  padding: "10px 16px",
+  borderRadius: "8px",
+  border: "1px solid #d1d5db",
+  backgroundColor: "#ffffff",
+  color: "#374151",
+  fontWeight: 600,
+  fontSize: "14px",
+  fontFamily: appFontFamily,
+  lineHeight: 1,
+  cursor: "pointer",
+};
+
 export default function AdminContactMessagesPage() {
   const [inboxRev, setInboxRev] = useState(0);
   const [detailMessage, setDetailMessage] = useState(null);
+  const [replyTarget, setReplyTarget] = useState(null);
+  const [replyDraft, setReplyDraft] = useState("");
 
   useEffect(() => {
     const reload = () => setInboxRev((n) => n + 1);
@@ -218,21 +322,30 @@ export default function AdminContactMessagesPage() {
       }
       return cur;
     });
+    setReplyTarget((cur) => (cur && messagesMatch(cur, m) ? null : cur));
     setInboxRev((n) => n + 1);
   };
 
-  const handleReply = (m) => {
-    const to = (m?.email || "").trim();
-    if (!to) {
-      window.alert("No email address is available for this message.");
+  const openReplyComposer = (m) => {
+    setReplyTarget(m);
+    setReplyDraft(typeof m?.adminReply === "string" ? m.adminReply : "");
+  };
+
+  const closeReplyComposer = () => {
+    setReplyTarget(null);
+    setReplyDraft("");
+  };
+
+  const submitAdminReply = () => {
+    if (!replyTarget) return;
+    const updated = saveAdminReplyForMessage(replyTarget, replyDraft);
+    if (!updated) {
+      window.alert("Could not save reply; message was not found in storage.");
       return;
     }
-    const ref = m?.id ? String(m.id) : "—";
-    const subject = encodeURIComponent(`Re: ${m?.subject || "Your contact message"}`);
-    const body = encodeURIComponent(
-      `Hello,\n\nThank you for contacting the Smart Campus Support Desk.\n\nRegarding your message (reference ${ref}):\n\n`
-    );
-    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+    setDetailMessage((cur) => (cur && messagesMatch(cur, replyTarget) ? updated : cur));
+    closeReplyComposer();
+    setInboxRev((n) => n + 1);
   };
 
   return (
@@ -247,6 +360,17 @@ export default function AdminContactMessagesPage() {
       ) : (
         <div style={tableWrapStyle}>
           <table style={tableStyle}>
+            <colgroup>
+              <col style={{ width: 140 }} />
+              <col style={{ width: 170 }} />
+              <col style={{ width: 140 }} />
+              <col style={{ width: 240 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 300 }} />
+              <col style={{ width: 112 }} />
+              <col style={{ width: 176 }} />
+              <col style={{ width: 292 }} />
+            </colgroup>
             <thead>
               <tr>
                 <th style={thStyle}>Reference</th>
@@ -263,20 +387,26 @@ export default function AdminContactMessagesPage() {
             <tbody>
               {rows.map((m) => (
                 <tr key={m.id || `${m.submittedAt}-${m.email}-${m.subject}`}>
-                  <td style={tdStyle}>{m.id || "—"}</td>
-                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{formatWhen(m.submittedAt)}</td>
-                  <td style={tdStyle}>{displayName(m)}</td>
-                  <td style={tdStyle}>{m.email || "—"}</td>
-                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{m.phone || "—"}</td>
-                  <td style={tdStyle}>{m.subject || "—"}</td>
-                  <td style={tdStyle}>{m.status || "Submitted"}</td>
-                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{formatWhen(m.lastEditedAt)}</td>
+                  <td style={tdNowrapEllipsisStyle} title={m.id || undefined}>
+                    {m.id || "—"}
+                  </td>
+                  <td style={tdNowrapStyle}>{formatWhen(m.submittedAt)}</td>
+                  <td style={tdNowrapEllipsisStyle} title={displayName(m) !== "—" ? displayName(m) : undefined}>
+                    {displayName(m)}
+                  </td>
+                  <td style={tdNowrapEllipsisStyle} title={m.email || undefined}>
+                    {m.email || "—"}
+                  </td>
+                  <td style={tdNowrapStyle}>{m.phone || "—"}</td>
+                  <td style={tdSubjectStyle}>{m.subject || "—"}</td>
+                  <td style={tdNowrapStyle}>{m.status || "Submitted"}</td>
+                  <td style={tdNowrapStyle}>{formatLastUpdatedCell(m)}</td>
                   <td style={actionsCellStyle}>
                     <div style={actionsRowStyle}>
                       <button type="button" style={btnDetailStyle} onClick={() => setDetailMessage(m)}>
                         Show detail
                       </button>
-                      <button type="button" style={btnReplyStyle} onClick={() => handleReply(m)}>
+                      <button type="button" style={btnReplyStyle} onClick={() => openReplyComposer(m)}>
                         Reply
                       </button>
                       <button type="button" style={btnDeleteStyle} onClick={() => handleDelete(m)}>
@@ -334,27 +464,162 @@ export default function AdminContactMessagesPage() {
               }}
             >
               <div id="contact-detail-title" style={{ fontSize: "16px", fontWeight: 800, color: "#14213D" }}>
-                Message
+                Contact message
               </div>
               <button type="button" onClick={() => setDetailMessage(null)} style={modalCloseButtonStyle}>
                 Close
               </button>
             </div>
-            <div style={{ padding: "18px 20px 22px" }}>
-              <div
-                style={{
-                  whiteSpace: "pre-wrap",
-                  lineHeight: 1.55,
-                  padding: "14px 16px",
-                  backgroundColor: "#f9fafb",
-                  borderRadius: "10px",
-                  border: "1px solid #e5e7eb",
-                  color: "#1f2937",
-                  fontSize: "14px",
-                  fontWeight: 500,
-                }}
-              >
-                {detailMessage.message || "—"}
+            <div style={{ padding: "18px 20px 22px", display: "grid", gap: "18px" }}>
+              <div>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    color: "#6b7280",
+                    letterSpacing: "0.04em",
+                    marginBottom: "8px",
+                  }}
+                >
+                  SUBMITTED MESSAGE
+                </div>
+                <div
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    lineHeight: 1.55,
+                    padding: "14px 16px",
+                    backgroundColor: "#f9fafb",
+                    borderRadius: "10px",
+                    border: "1px solid #e5e7eb",
+                    color: "#1f2937",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                  }}
+                >
+                  {detailMessage.message || "—"}
+                </div>
+              </div>
+              {detailMessage.adminReply ? (
+                <div>
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      color: "#6b7280",
+                      letterSpacing: "0.04em",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    SUPPORT REPLY
+                  </div>
+                  <div
+                    style={{
+                      whiteSpace: "pre-wrap",
+                      lineHeight: 1.55,
+                      padding: "14px 16px",
+                      backgroundColor: "#ecfdf5",
+                      borderRadius: "10px",
+                      border: "1px solid #a7f3d0",
+                      color: "#166534",
+                      fontSize: "14px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {detailMessage.adminReply}
+                  </div>
+                  {detailMessage.adminRepliedAt ? (
+                    <div style={{ marginTop: "8px", fontSize: "12px", color: "#6b7280", fontWeight: 600 }}>
+                      Replied: {formatWhen(detailMessage.adminRepliedAt)}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {replyTarget ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="contact-reply-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 4100,
+            backgroundColor: "rgba(15, 23, 42, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+          }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeReplyComposer();
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "520px",
+              maxHeight: "90vh",
+              overflow: "auto",
+              backgroundColor: "#ffffff",
+              borderRadius: "14px",
+              border: "1px solid #e5e7eb",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.22)",
+              fontFamily: appFontFamily,
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: "16px 18px",
+                borderBottom: "1px solid #e5e7eb",
+              }}
+            >
+              <div id="contact-reply-title" style={{ fontSize: "16px", fontWeight: 800, color: "#14213D" }}>
+                Write support reply
+              </div>
+              <div style={{ marginTop: "8px", fontSize: "13px", color: "#6b7280", fontWeight: 500, lineHeight: 1.45 }}>
+                Reference: {replyTarget.id || "—"}
+                {replyTarget.email ? ` · ${replyTarget.email}` : ""}
+                <br />
+                This text is saved with this contact message and is visible to the user under My contact messages.
+              </div>
+            </div>
+            <div style={{ padding: "18px 20px 22px", display: "grid", gap: "14px" }}>
+              <label style={{ display: "grid", gap: "8px", margin: 0 }}>
+                <span style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", letterSpacing: "0.04em" }}>
+                  REPLY MESSAGE
+                </span>
+                <textarea
+                  value={replyDraft}
+                  onChange={(e) => setReplyDraft(e.target.value)}
+                  rows={8}
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    border: "1px solid #e5e7eb",
+                    fontSize: "14px",
+                    fontFamily: appFontFamily,
+                    lineHeight: 1.5,
+                    resize: "vertical",
+                    minHeight: "140px",
+                    color: "#1f2937",
+                  }}
+                  placeholder="Type your reply to the user…"
+                />
+              </label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", justifyContent: "flex-end" }}>
+                <button type="button" style={replyModalSecondaryBtnStyle} onClick={closeReplyComposer}>
+                  Cancel
+                </button>
+                <button type="button" style={replyModalPrimaryBtnStyle} onClick={submitAdminReply}>
+                  Save reply
+                </button>
               </div>
             </div>
           </div>
