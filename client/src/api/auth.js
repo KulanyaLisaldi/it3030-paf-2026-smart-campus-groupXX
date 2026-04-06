@@ -4,6 +4,16 @@ export function signIn(payload) {
   return apiPost("/api/auth/signin", payload);
 }
 
+/** Admin/technician email accounts — sends OTP to email */
+export function requestForgotPassword(payload) {
+  return apiPost("/api/auth/forgot-password", payload);
+}
+
+/** Complete reset with email, 6-digit code, and new password */
+export function completeForgotPassword(payload) {
+  return apiPost("/api/auth/forgot-password/complete", payload);
+}
+
 export function fetchCurrentUser() {
   return apiGet("/api/auth/me");
 }

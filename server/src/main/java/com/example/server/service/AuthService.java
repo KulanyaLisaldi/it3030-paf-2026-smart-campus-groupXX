@@ -424,6 +424,109 @@ public class AuthService {
         return true;
     }
 
+    /**
+     * Sends a 6-digit OTP to the email for admin/technician accounts that use email/password (not Google).
+     * Uses {@link User#getPasswordChangePendingHash()} == null to distinguish forgot-password OTP from
+     * logged-in password-change OTP (which stages the new hash in pending).
+     */
+    public void requestForgotPassword(String rawEmail) {
+        String email = normalizeEmail(rawEmail);
+        Optional<User> maybe = userRepo.findByEmail(email);
+        if (maybe.isEmpty()) {
+            return;
+        }
+        User user = maybe.get();
+        if (user.isDisabled()) {
+            return;
+        }
+        UserRole role = user.getEffectiveRole();
+        if (role != UserRole.ADMIN && role != UserRole.TECHNICIAN) {
+            return;
+        }
+        if (user.getGoogleSubject() != null && !user.getGoogleSubject().isBlank()) {
+            return;
+        }
+
+        String code = String.format("%06d", new Random().nextInt(1_000_000));
+        user.setPasswordChangeOtpHash(sha256Hex(code));
+        user.setPasswordChangePendingHash(null);
+        user.setPasswordChangeOtpExpiresAt(Instant.now().plusSeconds(PASSWORD_OTP_TTL_SECONDS));
+        user.setPasswordChangeOtpAttempts(0);
+        userRepo.save(user);
+
+        try {
+            passwordOtpEmailService.sendForgotPasswordOtp(user.getEmail(), code);
+        } catch (Exception e) {
+            clearPendingPasswordChange(user);
+            userRepo.save(user);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not send reset email");
+        }
+    }
+
+    public void completeForgotPassword(String rawEmail, String rawCode, String rawNewPassword) {
+        String email = normalizeEmail(rawEmail);
+        Optional<User> maybe = userRepo.findByEmail(email);
+        if (maybe.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired verification code");
+        }
+        User user = maybe.get();
+        UserRole role = user.getEffectiveRole();
+        if (role != UserRole.ADMIN && role != UserRole.TECHNICIAN) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired verification code");
+        }
+        if (user.getGoogleSubject() != null && !user.getGoogleSubject().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This account uses Google sign-in");
+        }
+        if (user.getPasswordChangePendingHash() != null) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "A different password change is in progress. Use the code from your latest email or try again later."
+            );
+        }
+        if (user.getPasswordChangeOtpHash() == null || user.getPasswordChangeOtpExpiresAt() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No reset request found. Request a new code.");
+        }
+        if (Instant.now().isAfter(user.getPasswordChangeOtpExpiresAt())) {
+            clearPendingPasswordChange(user);
+            userRepo.save(user);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Verification code expired. Request a new code.");
+        }
+        int attempts = user.getPasswordChangeOtpAttempts() == null ? 0 : user.getPasswordChangeOtpAttempts();
+        if (attempts >= PASSWORD_OTP_MAX_ATTEMPTS) {
+            clearPendingPasswordChange(user);
+            userRepo.save(user);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Too many invalid attempts. Request a new code.");
+        }
+
+        String code = rawCode == null ? "" : rawCode.trim();
+        if (!code.matches("^\\d{6}$")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Verification code must be 6 digits");
+        }
+        String next = rawNewPassword == null ? "" : rawNewPassword.trim();
+        if (!next.matches(PASSWORD_COMPLEXITY_REGEX)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Password must include uppercase, lowercase, number, and symbol"
+            );
+        }
+
+        String submittedHash = sha256Hex(code);
+        if (!submittedHash.equals(user.getPasswordChangeOtpHash())) {
+            user.setPasswordChangeOtpAttempts(attempts + 1);
+            userRepo.save(user);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid verification code");
+        }
+
+        String existingHash = user.getPasswordHash();
+        if (existingHash != null && !existingHash.isBlank() && passwordEncoder.matches(next, existingHash)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be different from your current password");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(next));
+        clearPendingPasswordChange(user);
+        userRepo.save(user);
+    }
+
     public void resetTechnicianPasswordByAdmin(String targetUserId, String newPassword) {
         Optional<User> maybe = userRepo.findById(targetUserId);
         if (maybe.isEmpty()) {
