@@ -216,7 +216,7 @@ public class TicketNotificationEmailService {
         return "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"/></head><body style=\"margin:0;padding:0;background:#f1f5f9;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;\">"
             + "<table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"background:#f1f5f9;padding:24px 12px;\"><tr><td align=\"center\">"
             + "<table role=\"presentation\" width=\"600\" cellspacing=\"0\" cellpadding=\"0\" style=\"max-width:600px;background:#ffffff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;\">"
-            + "<tr><td style=\"background:#14213d;color:#fff;padding:20px 24px;font-size:18px;font-weight:700;\">Smart Campus — IT Support</td></tr>"
+            + "<tr><td style=\"background:#14213d;color:#fff;padding:20px 24px;font-size:18px;font-weight:700;\">Smart Campus — Support Desk</td></tr>"
             + "<tr><td style=\"padding:24px;color:#334155;font-size:15px;line-height:1.5;\">"
             + "<h1 style=\"margin:0 0 16px 0;font-size:20px;color:#0f172a;\">"
             + escapeHtml(heading)
@@ -228,7 +228,6 @@ public class TicketNotificationEmailService {
     private String ticketSummaryTable(Ticket t) {
         StringBuilder sb = new StringBuilder();
         sb.append("<table style=\"width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;\">");
-        row(sb, "Ticket ID", t.getId() != null ? t.getId() : "—");
         row(sb, "Title", t.getIssueTitle());
         row(sb, "Category", t.getCategory());
         row(sb, "Priority", t.getPriority());
