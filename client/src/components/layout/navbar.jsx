@@ -261,6 +261,16 @@ const Navbar = () => {
       </div>
 
       <div style={centerMenuStyle}>
+        <a
+          href="/"
+          style={centerLinkStyle}
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/");
+          }}
+        >
+          Home
+        </a>
         <div
           ref={dropdownWrapperRef}
           style={{ position: "relative" }}
