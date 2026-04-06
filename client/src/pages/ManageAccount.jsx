@@ -12,6 +12,30 @@ import { ACCOUNT_PATH, rememberPostLoginPath } from "../utils/authRedirect";
 import { persistCampusUser } from "../utils/campusUserStorage";
 import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../utils/profilePhone";
 
+/** Same localStorage key as ContactUs.jsx uses when saving submissions. */
+const CONTACT_MESSAGES_STORAGE_KEY = "smartCampusContactMessages";
+
+function readStoredContactMessages() {
+  try {
+    const raw = localStorage.getItem(CONTACT_MESSAGES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function formatContactSubmittedAt(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+  } catch {
+    return "—";
+  }
+}
+
 const pageWrap = {
   minHeight: "100vh",
   display: "flex",
@@ -155,6 +179,15 @@ export default function ManageAccount() {
   }, [profile, phoneDraft, serverPhone]);
 
   const isAdminAccount = roleText === "ADMIN";
+
+  const storedContactMessages = useMemo(() => {
+    if (view !== "contactMessages") return [];
+    const myEmail = (profile?.email || "").trim().toLowerCase();
+    if (!myEmail) return [];
+    return readStoredContactMessages().filter(
+      (m) => (m?.email || "").trim().toLowerCase() === myEmail
+    );
+  }, [view, profile?.email]);
 
   const setView = (next) => {
     setSearchParams(next === "personal" ? {} : { view: next });
@@ -357,6 +390,13 @@ export default function ManageAccount() {
               </button>
               <button type="button" style={navItem(view === "bookings")} onClick={() => setView("bookings")}>
                 My bookings
+              </button>
+              <button
+                type="button"
+                style={navItem(view === "contactMessages")}
+                onClick={() => setView("contactMessages")}
+              >
+                My contact message
               </button>
               <button
                 type="button"
@@ -671,6 +711,106 @@ export default function ManageAccount() {
             <div style={cardStyle}>
               <p style={{ margin: 0, color: "#6b7280", fontSize: "15px" }}>No bookings yet.</p>
             </div>
+          </>
+        )}
+
+        {view === "contactMessages" && (
+          <>
+            <h1 style={sectionHeading}>My contact messages</h1>
+            <p style={subtleNote}>
+              Only contact messages submitted with the same email address as this account are shown (this browser’s
+              saved submissions, filtered by your profile email).
+            </p>
+            {storedContactMessages.length === 0 ? (
+              <div style={cardStyle}>
+                <p style={{ margin: 0, color: "#6b7280", fontSize: "15px" }}>No submitted contact messages yet.</p>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: "16px" }}>
+                {storedContactMessages.map((msg) => (
+                  <div key={msg.id || `${msg.submittedAt}-${msg.subject}`} style={cardStyle}>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        gap: "10px",
+                        marginBottom: "12px",
+                        paddingBottom: "12px",
+                        borderBottom: "1px solid #e5e7eb",
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827", marginBottom: "4px" }}>
+                          {msg.subject || "—"}
+                        </div>
+                        <div style={{ fontSize: "12px", color: "#6b7280", fontWeight: 600 }}>
+                          Reference: {msg.id || "—"} · Submitted: {formatContactSubmittedAt(msg.submittedAt)}
+                        </div>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                          color: "#166534",
+                          backgroundColor: "#dcfce7",
+                          padding: "4px 10px",
+                          borderRadius: "999px",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {msg.status || "Submitted"}
+                      </span>
+                    </div>
+                    <div style={{ display: "grid", gap: "12px", fontSize: "14px", color: "#374151" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "12px" }}>
+                        <div>
+                          <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "2px" }}>
+                            FROM
+                          </div>
+                          <div style={{ fontWeight: 600 }}>
+                            {[msg.firstName, msg.lastName].filter(Boolean).join(" ").trim() || "—"}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "2px" }}>
+                            EMAIL
+                          </div>
+                          <div style={{ fontWeight: 600, wordBreak: "break-word" }}>{msg.email || "—"}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "2px" }}>
+                            PHONE
+                          </div>
+                          <div style={{ fontWeight: 600 }}>{msg.phone || "—"}</div>
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "11px", fontWeight: 700, color: "#6b7280", marginBottom: "6px" }}>
+                          MESSAGE
+                        </div>
+                        <div
+                          style={{
+                            whiteSpace: "pre-wrap",
+                            lineHeight: 1.5,
+                            padding: "12px 14px",
+                            backgroundColor: "#f9fafb",
+                            borderRadius: "8px",
+                            border: "1px solid #e5e7eb",
+                            color: "#1f2937",
+                          }}
+                        >
+                          {msg.message || "—"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
 

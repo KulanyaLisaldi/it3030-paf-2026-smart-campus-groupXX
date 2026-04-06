@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { appFontFamily } from "../utils/appFont";
 
 const pageStyle = {
@@ -134,7 +135,68 @@ const footerNoteStyle = {
   lineHeight: 1.45,
 };
 
+const CONTACT_MESSAGES_STORAGE_KEY = "smartCampusContactMessages";
+
+const submitFeedbackStyle = {
+  marginTop: "10px",
+  padding: "10px 12px",
+  borderRadius: "8px",
+  border: "1px solid #F5E7C6",
+  backgroundColor: "#FFF7ED",
+  color: "#9A3412",
+  fontSize: "13px",
+  fontWeight: 600,
+};
+
 export default function ContactUs() {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    subject: "",
+    message: "",
+  });
+  const [submitError, setSubmitError] = useState("");
+
+  const handleChange = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const payload = {
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      subject: form.subject.trim(),
+      message: form.message.trim(),
+    };
+    if (!payload.firstName || !payload.email || !payload.subject || !payload.message) {
+      setSubmitError("Please fill first name, email, subject, and message.");
+      return;
+    }
+
+    setSubmitError("");
+    const item = {
+      id: `CM-${Date.now()}`,
+      status: "Submitted",
+      submittedAt: new Date().toISOString(),
+      ...payload,
+    };
+    try {
+      const raw = localStorage.getItem(CONTACT_MESSAGES_STORAGE_KEY);
+      const existing = raw ? JSON.parse(raw) : [];
+      const next = Array.isArray(existing) ? [item, ...existing] : [item];
+      localStorage.setItem(CONTACT_MESSAGES_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      localStorage.setItem(CONTACT_MESSAGES_STORAGE_KEY, JSON.stringify([item]));
+    }
+    navigate("/account?view=contactMessages");
+  };
+
   return (
     <div style={pageStyle}>
       <div style={containerStyle}>
@@ -186,31 +248,63 @@ export default function ContactUs() {
               Complete this form and our Support Desk will get back to you with a clear next step.
             </p>
 
-            <form onSubmit={(e) => e.preventDefault()} aria-label="Contact support form">
+            <form onSubmit={handleSubmit} aria-label="Contact support form">
               <div style={formGridStyle}>
                 <div>
                   <label htmlFor="contact-first-name" style={labelStyle}>
                     First name
                   </label>
-                  <input id="contact-first-name" name="firstName" type="text" style={inputStyle} placeholder="Enter first name" />
+                  <input
+                    id="contact-first-name"
+                    name="firstName"
+                    type="text"
+                    style={inputStyle}
+                    placeholder="Enter first name"
+                    value={form.firstName}
+                    onChange={(e) => handleChange("firstName", e.target.value)}
+                  />
                 </div>
                 <div>
                   <label htmlFor="contact-last-name" style={labelStyle}>
                     Last name
                   </label>
-                  <input id="contact-last-name" name="lastName" type="text" style={inputStyle} placeholder="Enter last name" />
+                  <input
+                    id="contact-last-name"
+                    name="lastName"
+                    type="text"
+                    style={inputStyle}
+                    placeholder="Enter last name"
+                    value={form.lastName}
+                    onChange={(e) => handleChange("lastName", e.target.value)}
+                  />
                 </div>
                 <div>
                   <label htmlFor="contact-email" style={labelStyle}>
                     Email address
                   </label>
-                  <input id="contact-email" name="email" type="email" style={inputStyle} placeholder="name@campus.edu" />
+                  <input
+                    id="contact-email"
+                    name="email"
+                    type="email"
+                    style={inputStyle}
+                    placeholder="name@campus.edu"
+                    value={form.email}
+                    onChange={(e) => handleChange("email", e.target.value)}
+                  />
                 </div>
                 <div>
                   <label htmlFor="contact-phone" style={labelStyle}>
                     Phone number
                   </label>
-                  <input id="contact-phone" name="phone" type="tel" style={inputStyle} placeholder="+94 xx xxx xxxx" />
+                  <input
+                    id="contact-phone"
+                    name="phone"
+                    type="tel"
+                    style={inputStyle}
+                    placeholder="+94 xx xxx xxxx"
+                    value={form.phone}
+                    onChange={(e) => handleChange("phone", e.target.value)}
+                  />
                 </div>
               </div>
 
@@ -218,7 +312,15 @@ export default function ContactUs() {
                 <label htmlFor="contact-subject" style={labelStyle}>
                   Subject
                 </label>
-                <input id="contact-subject" name="subject" type="text" style={inputStyle} placeholder="Brief summary of your request" />
+                <input
+                  id="contact-subject"
+                  name="subject"
+                  type="text"
+                  style={inputStyle}
+                  placeholder="Brief summary of your request"
+                  value={form.subject}
+                  onChange={(e) => handleChange("subject", e.target.value)}
+                />
               </div>
 
               <div style={{ marginTop: "12px" }}>
@@ -231,6 +333,8 @@ export default function ContactUs() {
                   rows={7}
                   style={{ ...inputStyle, resize: "vertical", minHeight: "130px" }}
                   placeholder="Describe your issue or request in detail..."
+                  value={form.message}
+                  onChange={(e) => handleChange("message", e.target.value)}
                 />
               </div>
 
@@ -238,9 +342,9 @@ export default function ContactUs() {
                 Submit Request
               </button>
               <p style={footerNoteStyle}>
-                This page provides the professional form structure only. You can connect submission handling
-                to your backend later without changing the visual layout.
+                After submitting, you will be redirected to your <strong>My contact messages</strong> section.
               </p>
+              {submitError ? <div style={submitFeedbackStyle}>{submitError}</div> : null}
             </form>
           </div>
         </div>
