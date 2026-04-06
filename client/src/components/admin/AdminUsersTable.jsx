@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  adminChangeUserRole,
   adminSetUserStatus,
   adminUpdateUserProfile,
   getAdminUsers,
@@ -76,22 +75,11 @@ const iconBtnStyle = (variant = "neutral") => ({
   justifyContent: "center",
 });
 
-function EditIcon() {
+function EyeIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M4 20h4l10-10-4-4L4 16v4z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M13 7l4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function RoleIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M8 7h10M8 12h6M8 17h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="5" cy="7" r="1" fill="currentColor" />
-      <circle cx="5" cy="12" r="1" fill="currentColor" />
-      <circle cx="5" cy="17" r="1" fill="currentColor" />
+      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
     </svg>
   );
 }
@@ -177,9 +165,9 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
   const [providerFilter, setProviderFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [editPanelOpen, setEditPanelOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [detailsUser, setDetailsUser] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
 
@@ -189,8 +177,6 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
   const [hoveredRowId, setHoveredRowId] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [addUserMenuOpen, setAddUserMenuOpen] = useState(false);
-
-  const [roleDraft, setRoleDraft] = useState("USER");
 
   const modalInputStyle = {
     width: "100%",
@@ -207,26 +193,19 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
   const modalSelectStyle = { ...modalInputStyle, cursor: "pointer", minHeight: "46px" };
 
   const closeModals = () => {
-    setEditModalOpen(false);
-    setRoleModalOpen(false);
+    setEditPanelOpen(false);
     setSelectedUser(null);
     setActionBusy(false);
     setActionError("");
   };
 
   useEffect(() => {
-    if (!editModalOpen || !selectedUser) return;
+    if (!editPanelOpen || !selectedUser) return;
     setEditFirstName(selectedUser.firstName || "");
     setEditLastName(selectedUser.lastName || "");
     setEditPhoneNumber(phoneFromServer(selectedUser.phoneNumber));
     setActionError("");
-  }, [editModalOpen, selectedUser]);
-
-  useEffect(() => {
-    if (!roleModalOpen || !selectedUser) return;
-    setRoleDraft(selectedUser.role || "USER");
-    setActionError("");
-  }, [roleModalOpen, selectedUser]);
+  }, [editPanelOpen, selectedUser]);
 
   const refresh = () => {
     if (typeof onRequestRefresh === "function") onRequestRefresh();
@@ -242,30 +221,18 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     setActionBusy(true);
     setActionError("");
     try {
-      await adminUpdateUserProfile(selectedUser.userId, {
+      const updated = await adminUpdateUserProfile(selectedUser.userId, {
         firstName: editFirstName.trim(),
         lastName: editLastName.trim(),
         phoneNumber: phoneDigits ? phoneDigits : null,
       });
-      closeModals();
+      setUsers((prev) => prev.map((u) => (u.userId === updated.userId ? updated : u)));
+      setDetailsUser((prev) => (prev && prev.userId === updated.userId ? updated : prev));
+      setSelectedUser(updated);
+      setEditPanelOpen(false);
       refresh();
     } catch (e) {
       setActionError(e.message || "Failed to update user.");
-    } finally {
-      setActionBusy(false);
-    }
-  };
-
-  const handleRoleSave = async () => {
-    if (!selectedUser) return;
-    setActionBusy(true);
-    setActionError("");
-    try {
-      await adminChangeUserRole(selectedUser.userId, { role: roleDraft });
-      closeModals();
-      refresh();
-    } catch (e) {
-      setActionError(e.message || "Failed to change role.");
     } finally {
       setActionBusy(false);
     }
@@ -564,27 +531,13 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                           type="button"
                           style={iconBtnStyle("neutral")}
                           disabled={actionBusy}
-                          title="Edit profile"
-                          aria-label="Edit profile"
+                          title="View details"
+                          aria-label="View details"
                           onClick={() => {
-                            setSelectedUser(u);
-                            setEditModalOpen(true);
+                            setDetailsUser(u);
                           }}
                         >
-                          <EditIcon />
-                        </button>
-                        <button
-                          type="button"
-                          style={iconBtnStyle("neutral")}
-                          disabled={actionBusy}
-                          title="Role change"
-                          aria-label="Role change"
-                          onClick={() => {
-                            setSelectedUser(u);
-                            setRoleModalOpen(true);
-                          }}
-                        >
-                          <RoleIcon />
+                          <EyeIcon />
                         </button>
                         <button
                           type="button"
@@ -660,220 +613,174 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
         </>
       )}
 
-      {editModalOpen && selectedUser && (
+      {detailsUser && (
         <div
           role="dialog"
           aria-modal="true"
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 1002,
-            backgroundColor: "rgba(15, 23, 42, 0.55)",
+            zIndex: 1001,
+            backgroundColor: "rgba(15, 23, 42, 0.38)",
             display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "18px",
+            justifyContent: "flex-end",
           }}
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) closeModals();
+            if (e.target === e.currentTarget) setDetailsUser(null);
           }}
         >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "760px",
-              backgroundColor: "#ffffff",
-              borderRadius: "16px",
-              border: "1px solid #e5e7eb",
-              boxShadow: "0 24px 90px rgba(0,0,0,0.25)",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                padding: "16px 22px",
-                borderBottom: "1px solid #e5e7eb",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "12px",
-              }}
-            >
-              <div>
-                <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Edit profile</div>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>
-                  {selectedUser.email || selectedUser.userId}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={closeModals}
+          <div style={{ display: "flex", height: "100%", justifyContent: "flex-end" }}>
+            {editPanelOpen && selectedUser && (
+              <div
                 style={{
-                  padding: "10px 12px",
-                  borderRadius: "10px",
-                  border: "1px solid #e5e7eb",
+                  width: "min(460px, 100vw)",
+                  height: "100%",
                   background: "#fff",
-                  fontWeight: 900,
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  color: "#0f172a",
+                  borderLeft: "1px solid #e5e7eb",
+                  boxShadow: "-10px 0 35px rgba(15, 23, 42, 0.14)",
+                  padding: "20px 18px 18px",
+                  boxSizing: "border-box",
+                  overflowY: "auto",
+                  animation: "adminUserDetailsSlideIn 0.2s ease-out",
                 }}
               >
-                Cancel
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>Edit User</div>
+                  <button
+                    type="button"
+                    onClick={() => closeModals()}
+                    style={{ ...smallBtnStyle("neutral"), padding: "8px 12px" }}
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleEditSave();
+                  }}
+                  style={{ marginTop: 14, display: "grid", gap: 14 }}
+                >
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                        First name
+                      </label>
+                      <input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} style={modalInputStyle} placeholder="First name" />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                        Last name
+                      </label>
+                      <input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} style={modalInputStyle} placeholder="Last name" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                      Phone number <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
+                    </label>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={PROFILE_PHONE_DIGITS}
+                      value={editPhoneNumber}
+                      onChange={(e) => setEditPhoneNumber(sanitizeProfilePhoneInput(e.target.value))}
+                      style={modalInputStyle}
+                      placeholder="0771234567"
+                    />
+                    <p style={{ margin: "6px 0 0 0", fontSize: "11px", color: "#64748b", fontWeight: 600 }}>
+                      Optional. {PROFILE_PHONE_DIGITS} digits only.
+                    </p>
+                  </div>
+
+                  {actionError && (
+                    <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 900 }}>{actionError}</p>
+                  )}
+
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                    <button type="button" onClick={() => setEditPanelOpen(false)} style={smallBtnStyle("neutral")}>Cancel</button>
+                    <button type="submit" disabled={actionBusy} style={{ ...smallBtnStyle("primary"), opacity: actionBusy ? 0.85 : 1 }}>
+                      {actionBusy ? "Saving..." : "Save changes"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+            <div
+              style={{
+                width: "min(460px, 100vw)",
+                height: "100%",
+                background: "#fff",
+                borderLeft: "1px solid #e5e7eb",
+                boxShadow: "-10px 0 35px rgba(15, 23, 42, 0.18)",
+                padding: "20px 18px 18px",
+                boxSizing: "border-box",
+                overflowY: "auto",
+                animation: "adminUserDetailsSlideIn 0.2s ease-out",
+              }}
+            >
+            <style>{`@keyframes adminUserDetailsSlideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }`}</style>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>User Details</div>
+              <button
+                type="button"
+                onClick={() => setDetailsUser(null)}
+                style={{ ...smallBtnStyle("neutral"), padding: "8px 12px" }}
+              >
+                Close
               </button>
             </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleEditSave();
-              }}
-              style={{ padding: "18px 22px 22px", display: "grid", gap: "16px" }}
-            >
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
-                    First name
-                  </label>
-                  <input
-                    value={editFirstName}
-                    onChange={(e) => setEditFirstName(e.target.value)}
-                    style={modalInputStyle}
-                    placeholder="First name"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
-                    Last name
-                  </label>
-                  <input
-                    value={editLastName}
-                    onChange={(e) => setEditLastName(e.target.value)}
-                    style={modalInputStyle}
-                    placeholder="Last name"
-                  />
-                </div>
+            <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12 }}>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "#475569",
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 20,
+                  fontWeight: 800,
+                }}
+              >
+                {String(detailsUser.name || detailsUser.email || "U").trim().charAt(0).toUpperCase()}
               </div>
-
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
-                  Phone number <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
-                </label>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={PROFILE_PHONE_DIGITS}
-                  value={editPhoneNumber}
-                  onChange={(e) => setEditPhoneNumber(sanitizeProfilePhoneInput(e.target.value))}
-                  style={modalInputStyle}
-                  placeholder="0771234567"
-                />
-                <p style={{ margin: "6px 0 0 0", fontSize: "11px", color: "#64748b", fontWeight: 600 }}>
-                  Optional. {PROFILE_PHONE_DIGITS} digits only.
-                </p>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{detailsUser.name || "—"}</div>
+                <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>{detailsUser.userId}</div>
               </div>
+            </div>
 
-              {actionError && (
-                <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 900 }}>{actionError}</p>
-              )}
+            <div style={{ marginTop: 18, display: "grid", gap: 10 }}>
+              <div><strong style={{ color: "#0f172a" }}>Email:</strong> {detailsUser.email || "—"}</div>
+              <div><strong style={{ color: "#0f172a" }}>Role:</strong> {detailsUser.role || "—"}</div>
+              <div><strong style={{ color: "#0f172a" }}>Provider:</strong> {detailsUser.provider || "—"}</div>
+              <div><strong style={{ color: "#0f172a" }}>Account status:</strong> {(detailsUser.accountStatus || "").toUpperCase() === "DISABLED" ? "Suspended" : "Active"}</div>
+              <div><strong style={{ color: "#0f172a" }}>Created date:</strong> {formatDate(detailsUser.createdDate) || "—"}</div>
+              <div><strong style={{ color: "#0f172a" }}>Last login:</strong> {formatDate(detailsUser.lastLogin) || "—"}</div>
+              {(detailsUser.phoneNumber || "").trim() ? (
+                <div><strong style={{ color: "#0f172a" }}>Phone number:</strong> {detailsUser.phoneNumber}</div>
+              ) : null}
+            </div>
 
-              <button type="submit" disabled={actionBusy} style={{ ...smallBtnStyle("primary"), opacity: actionBusy ? 0.85 : 1 }}>
-                {actionBusy ? "Saving..." : "Save changes"}
+            <div style={{ marginTop: 18, display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button
+                type="button"
+                style={smallBtnStyle("primary")}
+                onClick={() => {
+                  setSelectedUser(detailsUser);
+                  setEditPanelOpen(true);
+                }}
+              >
+                Edit User
               </button>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
-
-      {roleModalOpen && selectedUser && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1002,
-            backgroundColor: "rgba(15, 23, 42, 0.55)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "18px",
-          }}
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) closeModals();
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "600px",
-              backgroundColor: "#ffffff",
-              borderRadius: "16px",
-              border: "1px solid #e5e7eb",
-              boxShadow: "0 24px 90px rgba(0,0,0,0.25)",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                padding: "16px 22px",
-                borderBottom: "1px solid #e5e7eb",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "12px",
-              }}
-            >
-              <div>
-                <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Role change</div>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>
-                  {selectedUser.email || selectedUser.userId}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={closeModals}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: "10px",
-                  border: "1px solid #e5e7eb",
-                  background: "#fff",
-                  fontWeight: 900,
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  color: "#0f172a",
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleRoleSave();
-              }}
-              style={{ padding: "18px 22px 22px", display: "grid", gap: "16px" }}
-            >
-              <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
-                  New role
-                </label>
-                <select value={roleDraft} onChange={(e) => setRoleDraft(e.target.value)} style={modalSelectStyle}>
-                  <option value="USER">USER</option>
-                  <option value="ADMIN">ADMIN</option>
-                  <option value="TECHNICIAN">TECHNICIAN</option>
-                </select>
-              </div>
-
-              {actionError && (
-                <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 900 }}>{actionError}</p>
-              )}
-
-              <button type="submit" disabled={actionBusy} style={{ ...smallBtnStyle("primary"), opacity: actionBusy ? 0.85 : 1 }}>
-                {actionBusy ? "Updating..." : "Update role"}
-              </button>
-            </form>
           </div>
         </div>
       )}
