@@ -19,6 +19,8 @@ import AdminResourceDetailsPage from "./pages/AdminResourceDetailsPage.jsx";
 import AdminBookingsPage from "./pages/AdminBookingsPage.jsx";
 import AdminNotificationsPage from "./pages/AdminNotificationsPage.jsx";
 import AdminAnalyticsPage from "./pages/AdminAnalyticsPage.jsx";
+import AdminContactMessagesPage from "./pages/AdminContactMessagesPage.jsx";
+import ContactUs from "./pages/ContactUs.jsx";
 import ManageAccount from "./pages/ManageAccount.jsx";
 
 function AppContent() {
@@ -38,6 +40,7 @@ function AppContent() {
         <Route path="/" element={<Home />} />
         <Route path="/resources" element={<ResourcesPage />} />
         <Route path="/resources/:id" element={<ResourceDetailsPage />} />
+        <Route path="/contact" element={<ContactUs />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/technician" element={<TechnicianDashboard />} />
@@ -47,6 +50,7 @@ function AppContent() {
         <Route path="/tickets/:id" element={<TicketDetails />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/adminusers" element={<AdminUsersPage />} />
+        <Route path="/admincontactmessages" element={<AdminContactMessagesPage />} />
         <Route path="/adminresources" element={<AdminResourcesPage />} />
         <Route path="/adminresources/:id" element={<AdminResourceDetailsPage />} />
         <Route path="/adminbookings" element={<AdminBookingsPage />} />

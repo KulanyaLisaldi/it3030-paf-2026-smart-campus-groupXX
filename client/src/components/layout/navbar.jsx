@@ -349,7 +349,14 @@ const Navbar = () => {
         <a href="#about" style={centerLinkStyle}>
           About
         </a>
-        <a href="#contact" style={centerLinkStyle}>
+        <a
+          href="/contact"
+          style={centerLinkStyle}
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/contact");
+          }}
+        >
           Contact Us
         </a>
       </div>

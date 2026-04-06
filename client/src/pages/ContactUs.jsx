@@ -1,0 +1,411 @@
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { appFontFamily } from "../utils/appFont";
+import {
+  ERR_LONG_TEXT_CHARS,
+  ERR_NAME_CHARS,
+  ERR_PHONE_CHARS,
+  ERR_SAME_CHAR_RUN,
+  ERR_SUBJECT_CHARS,
+  hasExcessiveConsecutiveSameChar,
+  longTextCharsValid,
+  nameCharsValid,
+  phoneCharsValid,
+  subjectCharsValid,
+} from "../utils/contactMessageValidation";
+
+const pageStyle = {
+  minHeight: "100vh",
+  backgroundColor: "#FFFFFF",
+  fontFamily: appFontFamily,
+  padding: "32px 16px",
+  boxSizing: "border-box",
+};
+
+const containerStyle = {
+  width: "100%",
+  maxWidth: "1320px",
+  margin: "0 auto",
+  border: "1px solid #E8E4DC",
+  borderRadius: "16px",
+  overflow: "hidden",
+  boxShadow: "0 12px 28px rgba(20, 33, 61, 0.08)",
+  backgroundColor: "#FFFFFF",
+};
+
+const heroStyle = {
+  backgroundColor: "#FFFFFF",
+  color: "#14213D",
+  padding: "30px 28px",
+};
+
+const heroTitleStyle = {
+  margin: 0,
+  fontSize: "clamp(26px, 3.8vw, 36px)",
+  fontWeight: 800,
+  lineHeight: 1.1,
+  color: "#FA8112",
+};
+
+const heroDescStyle = {
+  margin: "10px 0 0 0",
+  maxWidth: "760px",
+  color: "#475569",
+  fontSize: "15px",
+  lineHeight: 1.6,
+};
+
+const bodyStyle = {
+  display: "grid",
+  gridTemplateColumns: "minmax(260px, 360px) minmax(0, 1fr)",
+  gap: "22px",
+  padding: "24px",
+};
+
+const cardStyle = {
+  border: "1px solid #E8E4DC",
+  borderRadius: "12px",
+  padding: "16px",
+  backgroundColor: "#FFFFFF",
+};
+
+const sectionTitleStyle = {
+  margin: 0,
+  fontSize: "18px",
+  color: "#14213D",
+  fontWeight: 800,
+};
+
+const mutedTextStyle = {
+  margin: "8px 0 0 0",
+  color: "#64748B",
+  fontSize: "14px",
+  lineHeight: 1.5,
+};
+
+const infoLabelStyle = {
+  margin: "0 0 2px 0",
+  color: "#6B7280",
+  fontSize: "12px",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
+
+const infoValueStyle = {
+  margin: 0,
+  color: "#1F2937",
+  fontSize: "15px",
+  fontWeight: 600,
+};
+
+const formGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "12px",
+  marginTop: "14px",
+};
+
+const labelStyle = {
+  display: "block",
+  color: "#374151",
+  fontSize: "13px",
+  fontWeight: 700,
+  marginBottom: "6px",
+};
+
+const inputStyle = {
+  width: "100%",
+  boxSizing: "border-box",
+  border: "2px solid #F5E7C6",
+  borderRadius: "10px",
+  backgroundColor: "#FFFFFF",
+  color: "#1F2937",
+  fontSize: "14px",
+  padding: "11px 12px",
+  outline: "none",
+  fontFamily: appFontFamily,
+};
+
+const submitButtonStyle = {
+  marginTop: "14px",
+  backgroundColor: "#FA8112",
+  color: "#FFFFFF",
+  border: "none",
+  borderRadius: "10px",
+  padding: "12px 16px",
+  fontSize: "14px",
+  fontWeight: 700,
+  cursor: "pointer",
+  fontFamily: appFontFamily,
+};
+
+const footerNoteStyle = {
+  marginTop: "12px",
+  color: "#6B7280",
+  fontSize: "12px",
+  lineHeight: 1.45,
+};
+
+const CONTACT_MESSAGES_STORAGE_KEY = "smartCampusContactMessages";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_FIRST_NAME_LEN = 80;
+const MAX_LAST_NAME_LEN = 80;
+const MIN_SUBJECT_LEN = 3;
+const MAX_SUBJECT_LEN = 200;
+const MIN_MESSAGE_LEN = 10;
+const MAX_MESSAGE_LEN = 4000;
+
+function isValidOptionalPhone(phoneTrimmed) {
+  if (!phoneTrimmed) return true;
+  const digits = phoneTrimmed.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15 && phoneTrimmed.length <= 24;
+}
+
+function validateContactPayload(p) {
+  if (!p.firstName) return "First name is required.";
+  if (!nameCharsValid(p.firstName)) return ERR_NAME_CHARS;
+  if (hasExcessiveConsecutiveSameChar(p.firstName)) return ERR_SAME_CHAR_RUN;
+  if (p.firstName.length > MAX_FIRST_NAME_LEN) return `First name must be at most ${MAX_FIRST_NAME_LEN} characters.`;
+  if (!nameCharsValid(p.lastName)) return ERR_NAME_CHARS;
+  if (p.lastName && hasExcessiveConsecutiveSameChar(p.lastName)) return ERR_SAME_CHAR_RUN;
+  if (p.lastName.length > MAX_LAST_NAME_LEN) return `Last name must be at most ${MAX_LAST_NAME_LEN} characters.`;
+  if (!p.email) return "Email is required.";
+  if (!EMAIL_PATTERN.test(p.email)) return "Enter a valid email address.";
+  if (!phoneCharsValid(p.phone)) return ERR_PHONE_CHARS;
+  if (!isValidOptionalPhone(p.phone)) return "Enter a valid phone number (7–15 digits), or leave phone blank.";
+  if (!p.subject) return "Subject is required.";
+  if (!subjectCharsValid(p.subject)) return ERR_SUBJECT_CHARS;
+  if (hasExcessiveConsecutiveSameChar(p.subject)) return ERR_SAME_CHAR_RUN;
+  if (p.subject.length < MIN_SUBJECT_LEN) return `Subject must be at least ${MIN_SUBJECT_LEN} characters.`;
+  if (p.subject.length > MAX_SUBJECT_LEN) return `Subject must be at most ${MAX_SUBJECT_LEN} characters.`;
+  if (!p.message) return "Message is required.";
+  if (!longTextCharsValid(p.message)) return ERR_LONG_TEXT_CHARS;
+  if (hasExcessiveConsecutiveSameChar(p.message)) return ERR_SAME_CHAR_RUN;
+  if (p.message.length < MIN_MESSAGE_LEN) return `Message must be at least ${MIN_MESSAGE_LEN} characters.`;
+  if (p.message.length > MAX_MESSAGE_LEN) return `Message must be at most ${MAX_MESSAGE_LEN} characters.`;
+  return "";
+}
+
+const submitFeedbackStyle = {
+  marginTop: "10px",
+  padding: "10px 12px",
+  borderRadius: "8px",
+  border: "1px solid #F5E7C6",
+  backgroundColor: "#FFF7ED",
+  color: "#9A3412",
+  fontSize: "13px",
+  fontWeight: 600,
+};
+
+export default function ContactUs() {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    subject: "",
+    message: "",
+  });
+  const [submitError, setSubmitError] = useState("");
+
+  const handleChange = (key, value) => {
+    setSubmitError("");
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const payload = {
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      subject: form.subject.trim(),
+      message: form.message.trim(),
+    };
+    const validationError = validateContactPayload(payload);
+    if (validationError) {
+      setSubmitError(validationError);
+      return;
+    }
+
+    setSubmitError("");
+    const item = {
+      id: `CM-${Date.now()}`,
+      status: "Submitted",
+      submittedAt: new Date().toISOString(),
+      ...payload,
+    };
+    try {
+      const raw = localStorage.getItem(CONTACT_MESSAGES_STORAGE_KEY);
+      const existing = raw ? JSON.parse(raw) : [];
+      const next = Array.isArray(existing) ? [item, ...existing] : [item];
+      localStorage.setItem(CONTACT_MESSAGES_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      localStorage.setItem(CONTACT_MESSAGES_STORAGE_KEY, JSON.stringify([item]));
+    }
+    navigate("/account?view=contactMessages");
+  };
+
+  return (
+    <div style={pageStyle}>
+      <div style={containerStyle}>
+        <div style={heroStyle}>
+          <h1 style={heroTitleStyle}>Contact Support Desk</h1>
+          <p style={heroDescStyle}>
+            Reach our Smart Campus support team for technical help, service requests, and account-related
+            assistance. We typically respond within one business day.
+          </p>
+        </div>
+
+        <div style={bodyStyle}>
+          <div style={{ display: "grid", gap: "14px", alignContent: "start" }}>
+            <div style={cardStyle}>
+              <h2 style={sectionTitleStyle}>Support Information</h2>
+              <p style={mutedTextStyle}>Use these channels for urgent and non-urgent assistance.</p>
+              <div style={{ marginTop: "14px", display: "grid", gap: "12px" }}>
+                <div>
+                  <p style={infoLabelStyle}>Email</p>
+                  <p style={infoValueStyle}>campussync@gmail.com</p>
+                </div>
+                <div>
+                  <p style={infoLabelStyle}>Phone</p>
+                  <p style={infoValueStyle}>+94 11 234 5678</p>
+                </div>
+                <div>
+                  <p style={infoLabelStyle}>Office Hours</p>
+                  <p style={infoValueStyle}>Mon - Fri, 8:30 AM - 5:30 PM</p>
+                </div>
+                <div>
+                  <p style={infoLabelStyle}>Support Office</p>
+                  <p style={infoValueStyle}>Support Service Center, Building A</p>
+                </div>
+              </div>
+            </div>
+
+            <div style={cardStyle}>
+              <h2 style={sectionTitleStyle}>Guidance</h2>
+              <p style={mutedTextStyle}>
+                For faster help, include your location, the issue summary, and any relevant screenshots or
+                error messages.
+              </p>
+            </div>
+          </div>
+
+          <div style={cardStyle}>
+            <h2 style={sectionTitleStyle}>Send Us a Message</h2>
+            <p style={mutedTextStyle}>
+              Complete this form and our Support Desk will get back to you with a clear next step.
+            </p>
+
+            <form onSubmit={handleSubmit} aria-label="Contact support form">
+              <div style={formGridStyle}>
+                <div>
+                  <label htmlFor="contact-first-name" style={labelStyle}>
+                    First name
+                  </label>
+                  <input
+                    id="contact-first-name"
+                    name="firstName"
+                    type="text"
+                    style={inputStyle}
+                    placeholder="Enter first name"
+                    maxLength={MAX_FIRST_NAME_LEN}
+                    value={form.firstName}
+                    onChange={(e) => handleChange("firstName", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="contact-last-name" style={labelStyle}>
+                    Last name
+                  </label>
+                  <input
+                    id="contact-last-name"
+                    name="lastName"
+                    type="text"
+                    style={inputStyle}
+                    placeholder="Enter last name"
+                    maxLength={MAX_LAST_NAME_LEN}
+                    value={form.lastName}
+                    onChange={(e) => handleChange("lastName", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="contact-email" style={labelStyle}>
+                    Email address
+                  </label>
+                  <input
+                    id="contact-email"
+                    name="email"
+                    type="email"
+                    style={inputStyle}
+                    placeholder="name@campus.edu"
+                    value={form.email}
+                    onChange={(e) => handleChange("email", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="contact-phone" style={labelStyle}>
+                    Phone number
+                  </label>
+                  <input
+                    id="contact-phone"
+                    name="phone"
+                    type="tel"
+                    style={inputStyle}
+                    placeholder="+94 xx xxx xxxx"
+                    value={form.phone}
+                    onChange={(e) => handleChange("phone", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginTop: "12px" }}>
+                <label htmlFor="contact-subject" style={labelStyle}>
+                  Subject
+                </label>
+                <input
+                  id="contact-subject"
+                  name="subject"
+                  type="text"
+                  style={inputStyle}
+                  placeholder="Brief summary of your request"
+                  maxLength={MAX_SUBJECT_LEN}
+                  value={form.subject}
+                  onChange={(e) => handleChange("subject", e.target.value)}
+                />
+              </div>
+
+              <div style={{ marginTop: "12px" }}>
+                <label htmlFor="contact-message" style={labelStyle}>
+                  Message
+                </label>
+                <textarea
+                  id="contact-message"
+                  name="message"
+                  rows={7}
+                  style={{ ...inputStyle, resize: "vertical", minHeight: "130px" }}
+                  placeholder="Describe your issue or request in detail..."
+                  maxLength={MAX_MESSAGE_LEN}
+                  value={form.message}
+                  onChange={(e) => handleChange("message", e.target.value)}
+                />
+              </div>
+
+              <button type="submit" style={submitButtonStyle}>
+                Submit Request
+              </button>
+              <p style={footerNoteStyle}>
+                After submitting, you will be redirected to your <strong>My contact messages</strong> section.
+              </p>
+              {submitError ? <div style={submitFeedbackStyle}>{submitError}</div> : null}
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

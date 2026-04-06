@@ -26,3 +26,20 @@ export async function acceptAdminTicket(ticketId, body) {
   throw lastErr;
 }
 
+/** Persists REJECTED + reason on the server; returns { ticket, comments }. */
+export async function rejectAdminTicket(ticketId, body) {
+  const id = encodeURIComponent(ticketId);
+  const urls = [`/api/adminticket/tickets/${id}/reject`, `/api/admin/tickets/${id}/reject`];
+  let lastErr;
+  for (const url of urls) {
+    for (const call of [() => apiPatch(url, body), () => apiPost(url, body)]) {
+      try {
+        return await call();
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+  }
+  throw lastErr;
+}
+
