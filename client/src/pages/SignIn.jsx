@@ -404,7 +404,8 @@ const SignIn = () => {
   };
 
   const forgotLinkStyle = {
-    alignSelf: 'flex-end',
+    display: 'block',
+    width: 'fit-content',
     background: 'none',
     border: 'none',
     color: 'rgba(245, 231, 198, 0.92)',
@@ -413,7 +414,16 @@ const SignIn = () => {
     fontWeight: 600,
     textDecoration: 'underline',
     padding: 0,
-    marginTop: 6,
+    margin: 0,
+    textAlign: 'right',
+  };
+
+  const forgotLinkSignInRowStyle = {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    width: '100%',
+    marginTop: 8,
+    boxSizing: 'border-box',
   };
 
   const mutedHintStyle = {
@@ -530,14 +540,9 @@ const SignIn = () => {
                 </div>
 
                 <div style={inputContainerStyle}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
-                    <label style={labelStyle} htmlFor="signin-password">
-                      Password
-                    </label>
-                    <button type="button" style={forgotLinkStyle} onClick={openForgotPassword}>
-                      Forgot password?
-                    </button>
-                  </div>
+                  <label style={labelStyle} htmlFor="signin-password">
+                    Password
+                  </label>
                   <PasswordInput
                     id="signin-password"
                     className="signin-field"
@@ -548,6 +553,11 @@ const SignIn = () => {
                     autoComplete="current-password"
                     required
                   />
+                  <div style={forgotLinkSignInRowStyle}>
+                    <button type="button" style={forgotLinkStyle} onClick={openForgotPassword}>
+                      Forgot password?
+                    </button>
+                  </div>
                 </div>
 
                 <button
