@@ -45,6 +45,7 @@ const rowStyle = (isHovered) => ({
   backgroundColor: isHovered ? "#f8fafc" : "#ffffff",
   transition: "background-color 0.16s ease",
 });
+const PAGE_SIZE = 10;
 
 const smallBtnStyle = (variant = "neutral") => {
   const base = {
@@ -186,6 +187,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
   const [editLastName, setEditLastName] = useState("");
   const [editPhoneNumber, setEditPhoneNumber] = useState("");
   const [hoveredRowId, setHoveredRowId] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [roleDraft, setRoleDraft] = useState("USER");
 
@@ -326,6 +328,23 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     });
   }, [users, search, roleFilter, providerFilter, statusFilter]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedRows = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, safePage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, roleFilter, providerFilter, statusFilter, refreshKey]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   return (
     <div style={pageCardStyle}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
@@ -456,7 +475,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                     </td>
                   </tr>
                 )}
-                {filtered.map((u) => (
+                {pagedRows.map((u) => (
                   <tr
                     key={u.userId}
                     style={rowStyle(hoveredRowId === u.userId)}
@@ -527,6 +546,56 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               </tbody>
             </table>
           </div>
+          {filtered.length > 0 && (
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>
+                Showing {(safePage - 1) * PAGE_SIZE + 1}-
+                {Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length} users • {PAGE_SIZE} per page
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  style={{ ...smallBtnStyle("neutral"), opacity: safePage <= 1 ? 0.5 : 1 }}
+                >
+                  Prev
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    aria-current={safePage === page ? "page" : undefined}
+                    style={{
+                      ...smallBtnStyle(safePage === page ? "primary" : "neutral"),
+                      minWidth: 34,
+                      fontWeight: 900,
+                    }}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  style={{ ...smallBtnStyle("neutral"), opacity: safePage >= totalPages ? 0.5 : 1 }}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
