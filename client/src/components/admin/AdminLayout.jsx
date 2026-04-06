@@ -287,7 +287,8 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
               backgroundColor: "rgba(15, 23, 42, 0.32)",
               display: "flex",
               justifyContent: "flex-end",
-              alignItems: "stretch",
+              alignItems: "flex-start",
+              padding: "12px 12px 12px 0",
               boxSizing: "border-box",
             }}
             onMouseDown={(e) => {
@@ -302,50 +303,51 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
             `}</style>
             <div
               style={{
-                width: "min(440px, 100vw)",
+                width: "min(380px, calc(100vw - 16px))",
                 maxWidth: "100%",
-                height: "100%",
-                minHeight: 0,
-                background: "rgba(255, 255, 255, 0.96)",
-                backdropFilter: "blur(8px)",
-                borderLeft: "1px solid #e5e7eb",
-                boxShadow: "-10px 0 40px rgba(15, 23, 42, 0.12)",
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden",
+                maxHeight: "calc(100vh - 24px)",
+                overflowY: "auto",
+                WebkitOverflowScrolling: "touch",
+                background: "#ffffff",
+                border: "1px solid #e5e7eb",
+                borderRadius: "14px",
+                boxShadow: "-8px 12px 32px rgba(15, 23, 42, 0.12)",
                 animation: "adminProfileDrawerIn 0.22s ease-out",
+                alignSelf: "flex-start",
               }}
               onMouseDown={(e) => e.stopPropagation()}
             >
               <div
                 style={{
-                  flexShrink: 0,
-                  padding: "16px 18px",
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 1,
+                  padding: "12px 14px",
                   borderBottom: "1px solid #e5e7eb",
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "flex-start",
-                  gap: "12px",
+                  gap: "10px",
                   background: "#fff",
                 }}
               >
                 <div>
-                  <div id="admin-profile-drawer-title" style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>
+                  <div id="admin-profile-drawer-title" style={{ fontSize: "17px", fontWeight: 900, color: "#111827", lineHeight: 1.2 }}>
                     My profile
                   </div>
-                  <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Personal info (admin)</div>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Personal info (admin)</div>
                 </div>
                 <button
                   type="button"
                   aria-label="Close profile"
                   onClick={() => setProfileModalOpen(false)}
                   style={{
-                    padding: "8px 12px",
-                    borderRadius: "10px",
+                    padding: "6px 10px",
+                    borderRadius: "8px",
                     border: "1px solid #e5e7eb",
                     background: "#fff",
-                    fontWeight: 900,
-                    fontSize: "14px",
+                    fontWeight: 800,
+                    fontSize: "13px",
                     cursor: "pointer",
                     color: "#0f172a",
                     flexShrink: 0,
@@ -354,25 +356,29 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                   Close
                 </button>
               </div>
-              <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "18px 18px 28px" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-                  <div style={{ width: "100%", maxWidth: "280px", margin: "0 auto" }}>
+              <div
+                style={{
+                  padding: "12px 14px 14px",
+                }}
+              >
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div style={{ width: "100%" }}>
                     <input ref={avatarFileRef} type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; e.target.value = ""; if (!file) return; setAvatarError(""); setAvatarSuccess(""); setAvatarBusy(true); try { const fd = new FormData(); fd.append("file", file); const updated = await uploadProfileAvatar(fd); persistCampusUser(updated); setAvatarSuccess("Profile photo updated."); } catch (err) { setAvatarError(err?.message || "Upload failed"); } finally { setAvatarBusy(false); } }} style={{ display: "none" }} />
-                    <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", padding: "12px", textAlign: "center" }}>
-                      <div style={{ width: "110px", height: "110px", borderRadius: "999px", margin: "0 auto", backgroundColor: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", color: "#334155", fontSize: "34px", fontWeight: 800 }}>{adminUser.profileImageUrl ? <img src={adminUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initial}</div>
-                      <div style={{ marginTop: "12px", display: "flex", gap: "8px", justifyContent: "center", flexWrap: "wrap" }}>
-                        <button type="button" disabled={avatarBusy || avatarRemoveBusy} onClick={() => avatarFileRef.current?.click()} style={{ padding: "10px 14px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "#ffffff", fontWeight: 900, fontSize: "14px", cursor: avatarBusy || avatarRemoveBusy ? "wait" : "pointer", color: "#111827" }}>{avatarBusy ? "Saving…" : adminUser.profileImageUrl ? "Change photo" : "Upload photo"}</button>
-                        {adminUser.profileImageUrl ? <button type="button" disabled={avatarBusy || avatarRemoveBusy} onClick={async () => { const ok = window.confirm("Remove your profile photo from CampusSync?"); if (!ok) return; setAvatarError(""); setAvatarSuccess(""); setAvatarRemoveBusy(true); try { const updated = await removeProfileAvatar(); persistCampusUser(updated); setAvatarSuccess("Profile photo removed."); } catch (err) { setAvatarError(err?.message || "Could not remove photo"); } finally { setAvatarRemoveBusy(false); } }} style={{ padding: "10px 14px", borderRadius: "10px", border: "1px solid #fecaca", background: "#ffffff", fontWeight: 900, fontSize: "14px", cursor: avatarBusy || avatarRemoveBusy ? "wait" : "pointer", color: "#b91c1c" }}>{avatarRemoveBusy ? "Removing…" : "Remove photo"}</button> : null}
+                    <div style={{ border: "1px solid #e5e7eb", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ width: "88px", height: "88px", borderRadius: "999px", margin: "0 auto", backgroundColor: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", color: "#334155", fontSize: "28px", fontWeight: 800 }}>{adminUser.profileImageUrl ? <img src={adminUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initial}</div>
+                      <div style={{ marginTop: "8px", display: "flex", gap: "6px", justifyContent: "center", flexWrap: "wrap" }}>
+                        <button type="button" disabled={avatarBusy || avatarRemoveBusy} onClick={() => avatarFileRef.current?.click()} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "#ffffff", fontWeight: 800, fontSize: "13px", cursor: avatarBusy || avatarRemoveBusy ? "wait" : "pointer", color: "#111827" }}>{avatarBusy ? "Saving…" : adminUser.profileImageUrl ? "Change photo" : "Upload photo"}</button>
+                        {adminUser.profileImageUrl ? <button type="button" disabled={avatarBusy || avatarRemoveBusy} onClick={async () => { const ok = window.confirm("Remove your profile photo from CampusSync?"); if (!ok) return; setAvatarError(""); setAvatarSuccess(""); setAvatarRemoveBusy(true); try { const updated = await removeProfileAvatar(); persistCampusUser(updated); setAvatarSuccess("Profile photo removed."); } catch (err) { setAvatarError(err?.message || "Could not remove photo"); } finally { setAvatarRemoveBusy(false); } }} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #fecaca", background: "#ffffff", fontWeight: 800, fontSize: "13px", cursor: avatarBusy || avatarRemoveBusy ? "wait" : "pointer", color: "#b91c1c" }}>{avatarRemoveBusy ? "Removing…" : "Remove photo"}</button> : null}
                       </div>
-                      {avatarSuccess ? <p style={{ margin: "10px 0 0 0", fontSize: "13px", color: "#059669", fontWeight: 800 }}>{avatarSuccess}</p> : null}
-                      {avatarError ? <p style={{ margin: "10px 0 0 0", fontSize: "13px", color: "#b91c1c", fontWeight: 800 }}>{avatarError}</p> : null}
+                      {avatarSuccess ? <p style={{ margin: "8px 0 0 0", fontSize: "12px", color: "#059669", fontWeight: 800 }}>{avatarSuccess}</p> : null}
+                      {avatarError ? <p style={{ margin: "8px 0 0 0", fontSize: "12px", color: "#b91c1c", fontWeight: 800 }}>{avatarError}</p> : null}
                     </div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "14px" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "10px" }}>
                       <div>
                         <label style={labelStyle}>Email address</label>
-                        <input type="email" readOnly disabled value={adminUser.email || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }} />
+                        <input type="email" readOnly disabled value={adminUser.email || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151", padding: "10px 12px" }} />
                       </div>
                       <div>
                         <label style={labelStyle}>Phone number</label>
@@ -386,27 +392,27 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                             setProfileSaveState((s) => ({ ...s, message: "", error: "" }));
                           }}
                           placeholder="0771234567"
-                          style={inputStyle}
+                          style={{ ...inputStyle, padding: "10px 12px" }}
                         />
-                        <p style={{ margin: "6px 0 0 0", fontSize: "12px", color: "#9ca3af", fontWeight: 600 }}>
+                        <p style={{ margin: "4px 0 0 0", fontSize: "11px", color: "#9ca3af", fontWeight: 600 }}>
                           {PROFILE_PHONE_DIGITS} digits only (no letters).
                         </p>
                       </div>
                     </div>
-                    <div style={{ marginTop: "16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                    <div style={{ marginTop: "10px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                       <div>
                         <label style={labelStyle}>First name</label>
-                        <input type="text" readOnly disabled value={adminUser.firstName || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }} />
+                        <input type="text" readOnly disabled value={adminUser.firstName || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151", padding: "10px 12px" }} />
                       </div>
                       <div>
                         <label style={labelStyle}>Last name</label>
-                        <input type="text" readOnly disabled value={adminUser.lastName || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }} />
+                        <input type="text" readOnly disabled value={adminUser.lastName || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151", padding: "10px 12px" }} />
                       </div>
                     </div>
-                    <div style={{ marginTop: "18px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                      <button type="button" disabled={!canSavePhone || profileSaveState.busy} onClick={async () => { if (!canSavePhone || profileSaveState.busy) return; setProfileSaveState({ busy: true, message: "", error: "" }); try { const updated = await updateProfilePhone({ phoneNumber: profilePhoneDraft }); persistCampusUser(updated); setProfileSaveState({ busy: false, message: "Changes saved.", error: "" }); } catch (err) { setProfileSaveState({ busy: false, message: "", error: err?.message || "Save failed" }); } }} style={{ padding: "12px 16px", borderRadius: "10px", border: "none", backgroundColor: "#FA8112", color: "#fff", fontWeight: 800, fontSize: "14px", cursor: !canSavePhone || profileSaveState.busy ? "not-allowed" : "pointer", opacity: !canSavePhone || profileSaveState.busy ? 0.6 : 1 }}>{profileSaveState.busy ? "Saving..." : "Save changes"}</button>
-                      {profileSaveState.message ? <span style={{ color: "#15803d", fontWeight: 700, fontSize: "13px" }}>{profileSaveState.message}</span> : null}
-                      {profileSaveState.error ? <span style={{ color: "#b91c1c", fontWeight: 700, fontSize: "13px" }}>{profileSaveState.error}</span> : null}
+                    <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <button type="button" disabled={!canSavePhone || profileSaveState.busy} onClick={async () => { if (!canSavePhone || profileSaveState.busy) return; setProfileSaveState({ busy: true, message: "", error: "" }); try { const updated = await updateProfilePhone({ phoneNumber: profilePhoneDraft }); persistCampusUser(updated); setProfileSaveState({ busy: false, message: "Changes saved.", error: "" }); } catch (err) { setProfileSaveState({ busy: false, message: "", error: err?.message || "Save failed" }); } }} style={{ padding: "10px 14px", borderRadius: "10px", border: "none", backgroundColor: "#FA8112", color: "#fff", fontWeight: 800, fontSize: "14px", cursor: !canSavePhone || profileSaveState.busy ? "not-allowed" : "pointer", opacity: !canSavePhone || profileSaveState.busy ? 0.6 : 1 }}>{profileSaveState.busy ? "Saving..." : "Save changes"}</button>
+                      {profileSaveState.message ? <span style={{ color: "#15803d", fontWeight: 700, fontSize: "12px" }}>{profileSaveState.message}</span> : null}
+                      {profileSaveState.error ? <span style={{ color: "#b91c1c", fontWeight: 700, fontSize: "12px" }}>{profileSaveState.error}</span> : null}
                     </div>
                   </div>
                 </div>
