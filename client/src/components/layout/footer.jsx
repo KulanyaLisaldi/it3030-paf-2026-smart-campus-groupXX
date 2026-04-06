@@ -37,6 +37,15 @@ const Footer = () => {
             <h3 className="text-lg font-semibold mb-4" style={{ color: '#FFFFFF' }}>About</h3>
             <h4 className="text-xl font-bold mb-2" style={{ color: '#FFFFFF' }}>CampusSync Operations Hub</h4>
             <p style={{ color: '#F5E7C6' }}>"Book labs/rooms and track maintenance tickets."</p>
+            <button
+              type="button"
+              onClick={() => navigate('/about')}
+              style={{ ...footerLinkStyle, background: 'none', border: 'none', padding: 0, marginTop: '12px', font: 'inherit', textAlign: 'left' }}
+              onMouseEnter={(e) => handleLinkHover(e, true)}
+              onMouseLeave={(e) => handleLinkHover(e, false)}
+            >
+              About CampusSync →
+            </button>
           </div>
 
           {/* Quick Links */}

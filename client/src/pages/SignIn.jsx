@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { signIn } from '../api/auth';
+import { completeForgotPassword, requestForgotPassword, signIn } from '../api/auth';
 import { getAuthToken, setAuthToken } from '../api/http';
 import { persistCampusUser, readCampusUser } from '../utils/campusUserStorage';
 import { navigateAfterAuth, navigateAfterLogin } from '../utils/authRedirect';
@@ -12,6 +12,8 @@ const CREAM = '#F5E7C6';
 const NAVY = '#14213D';
 const NAVY_DEEP = '#0b1220';
 
+const PASSWORD_POLICY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,128}$/;
+
 const SignIn = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -19,6 +21,15 @@ const SignIn = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  /** 'signin' | 'forgotRequest' | 'forgotReset' */
+  const [authView, setAuthView] = useState('signin');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [infoMessage, setInfoMessage] = useState('');
 
   useEffect(() => {
     if (!getAuthToken()) return;
@@ -203,6 +214,19 @@ const SignIn = () => {
     boxShadow: 'none',
   };
 
+  const secondaryBtnStyle = {
+    width: '100%',
+    padding: '14px 18px',
+    backgroundColor: 'transparent',
+    color: CREAM,
+    border: '2px solid rgba(245, 231, 198, 0.45)',
+    borderRadius: 999,
+    fontSize: 15,
+    fontWeight: 700,
+    cursor: 'pointer',
+    boxSizing: 'border-box',
+  };
+
   const orDividerStyle = {
     display: 'flex',
     alignItems: 'center',
@@ -286,6 +310,143 @@ const SignIn = () => {
     window.location.assign(`${apiOrigin.replace(/\/$/, '')}/oauth2/authorization/google`);
   };
 
+  const openForgotPassword = () => {
+    setError('');
+    setInfoMessage('');
+    setForgotEmail(email.trim());
+    setResetCode('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+    setAuthView('forgotRequest');
+  };
+
+  const backToSignIn = () => {
+    setAuthView('signin');
+    setError('');
+    setInfoMessage('');
+    setResetCode('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+  };
+
+  const handleSendForgotCode = async (e) => {
+    e.preventDefault();
+    const em = (forgotEmail || '').trim();
+    if (!em) {
+      setError('Enter your work email.');
+      return;
+    }
+    setError('');
+    setInfoMessage('');
+    setForgotLoading(true);
+    try {
+      const res = await requestForgotPassword({ email: em });
+      setInfoMessage(res?.message || 'Check your email for a code.');
+      setAuthView('forgotReset');
+    } catch (err) {
+      setError(err.message || 'Could not send reset email.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const resendForgotCode = async () => {
+    const em = (forgotEmail || '').trim();
+    if (!em) {
+      setError('Enter your email above.');
+      return;
+    }
+    setError('');
+    setForgotLoading(true);
+    try {
+      const res = await requestForgotPassword({ email: em });
+      setInfoMessage(res?.message || 'A new code was sent.');
+    } catch (err) {
+      setError(err.message || 'Could not resend code.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleCompleteForgot = async (e) => {
+    e.preventDefault();
+    const em = (forgotEmail || '').trim();
+    const code = (resetCode || '').trim();
+    const np = newPassword;
+    const cp = confirmNewPassword;
+    if (!/^\d{6}$/.test(code)) {
+      setError('Enter the 6-digit code from your email.');
+      return;
+    }
+    if (!PASSWORD_POLICY_REGEX.test(np)) {
+      setError('Password must be at least 8 characters and include uppercase, lowercase, number, and symbol.');
+      return;
+    }
+    if (np !== cp) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setError('');
+    setForgotLoading(true);
+    try {
+      const res = await completeForgotPassword({ email: em, code, newPassword: np });
+      setInfoMessage(res?.message || 'Password updated. You can sign in now.');
+      setAuthView('signin');
+      setPassword('');
+      setResetCode('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err) {
+      setError(err.message || 'Could not reset password.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const forgotLinkStyle = {
+    display: 'block',
+    width: 'fit-content',
+    background: 'none',
+    border: 'none',
+    color: 'rgba(245, 231, 198, 0.92)',
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 600,
+    textDecoration: 'underline',
+    padding: 0,
+    margin: 0,
+    textAlign: 'right',
+  };
+
+  const forgotLinkSignInRowStyle = {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    width: '100%',
+    marginTop: 8,
+    boxSizing: 'border-box',
+  };
+
+  const mutedHintStyle = {
+    margin: '0 0 14px 0',
+    fontSize: 13,
+    lineHeight: 1.5,
+    color: 'rgba(245, 231, 198, 0.78)',
+    textAlign: 'left',
+  };
+
+  const infoBannerStyle = {
+    marginBottom: 14,
+    padding: '12px 14px',
+    borderRadius: 12,
+    background: 'rgba(34, 197, 94, 0.15)',
+    border: '1px solid rgba(34, 197, 94, 0.35)',
+    color: '#bbf7d0',
+    fontSize: 14,
+    fontWeight: 600,
+    textAlign: 'left',
+    lineHeight: 1.45,
+  };
+
   const googleIcon = (
     <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
       <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303C33.655 32.657 29.231 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.06 0 5.842 1.153 7.959 3.041l5.657-5.657C34.023 6.053 29.27 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
@@ -349,70 +510,218 @@ const SignIn = () => {
 
       <div style={rightPanelStyle}>
         <div style={glassCardStyle}>
-          <h2 style={cardTitleStyle}>Sign In</h2>
+          <h2 style={cardTitleStyle}>
+            {authView === 'signin' && 'Sign In'}
+            {authView === 'forgotRequest' && 'Reset password'}
+            {authView === 'forgotReset' && 'Set new password'}
+          </h2>
 
-          <form onSubmit={handleStaffSignIn}>
-            {error && <p style={errorTextStyle}>{error}</p>}
+          {authView === 'signin' && (
+            <>
+              {infoMessage ? <div style={infoBannerStyle}>{infoMessage}</div> : null}
+              <form onSubmit={handleStaffSignIn}>
+                {error && <p style={errorTextStyle}>{error}</p>}
 
-            <div style={inputContainerStyle}>
-              <label style={labelStyle} htmlFor="signin-email">
-                Email
-              </label>
-              <input
-                id="signin-email"
-                className="signin-field"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={inputStyle}
-                placeholder="Email"
-                autoComplete="username"
-                required
-              />
-            </div>
+                <div style={inputContainerStyle}>
+                  <label style={labelStyle} htmlFor="signin-email">
+                    Email
+                  </label>
+                  <input
+                    id="signin-email"
+                    className="signin-field"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={inputStyle}
+                    placeholder="Email"
+                    autoComplete="username"
+                    required
+                  />
+                </div>
 
-            <div style={inputContainerStyle}>
-              <label style={labelStyle} htmlFor="signin-password">
-                Password
-              </label>
-              <PasswordInput
-                id="signin-password"
-                className="signin-field"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={inputStyle}
-                placeholder="Password"
-                autoComplete="current-password"
-                required
-              />
-            </div>
+                <div style={inputContainerStyle}>
+                  <label style={labelStyle} htmlFor="signin-password">
+                    Password
+                  </label>
+                  <PasswordInput
+                    id="signin-password"
+                    className="signin-field"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={inputStyle}
+                    placeholder="Password"
+                    autoComplete="current-password"
+                    required
+                  />
+                  <div style={forgotLinkSignInRowStyle}>
+                    <button type="button" style={forgotLinkStyle} onClick={openForgotPassword}>
+                      Forgot password?
+                    </button>
+                  </div>
+                </div>
 
-            <button
-              type="submit"
-              style={{ ...buttonStyle, opacity: loading ? 0.85 : 1, cursor: loading ? 'wait' : 'pointer' }}
-              onMouseEnter={(e) => !loading && handleButtonHover(e, true)}
-              onMouseLeave={(e) => !loading && handleButtonHover(e, false)}
-              disabled={loading}
-            >
-              {loading ? 'Signing In…' : 'Sign in'}
-            </button>
-          </form>
+                <button
+                  type="submit"
+                  style={{ ...buttonStyle, opacity: loading ? 0.85 : 1, cursor: loading ? 'wait' : 'pointer' }}
+                  onMouseEnter={(e) => !loading && handleButtonHover(e, true)}
+                  onMouseLeave={(e) => !loading && handleButtonHover(e, false)}
+                  disabled={loading}
+                >
+                  {loading ? 'Signing In…' : 'Sign in'}
+                </button>
+              </form>
 
-          <div style={orDividerStyle}>
-            <div style={dividerLineStyle} />
-            <span style={orTextStyle}>OR</span>
-            <div style={dividerLineStyle} />
-          </div>
+              <div style={orDividerStyle}>
+                <div style={dividerLineStyle} />
+                <span style={orTextStyle}>OR</span>
+                <div style={dividerLineStyle} />
+              </div>
 
-          <button
-            type="button"
-            className="signin-google-btn"
-            style={googleButtonStyle}
-            onClick={handleGoogleSignIn}
-          >
-            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{googleIcon}</span>
-            Sign in with Google
-          </button>
+              <button
+                type="button"
+                className="signin-google-btn"
+                style={googleButtonStyle}
+                onClick={handleGoogleSignIn}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{googleIcon}</span>
+                Sign in with Google
+              </button>
+            </>
+          )}
+
+          {authView === 'forgotRequest' && (
+            <form onSubmit={handleSendForgotCode}>
+              {error && <p style={errorTextStyle}>{error}</p>}
+              <p style={mutedHintStyle}>
+                For <strong style={{ color: '#fff' }}>admin</strong> and <strong style={{ color: '#fff' }}>technician</strong>{' '}
+                accounts that use email and password. If you use Google sign-in, use the button on the sign-in screen
+                instead.
+              </p>
+              <div style={inputContainerStyle}>
+                <label style={labelStyle} htmlFor="forgot-email">
+                  Work email
+                </label>
+                <input
+                  id="forgot-email"
+                  className="signin-field"
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  style={inputStyle}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                style={{ ...buttonStyle, opacity: forgotLoading ? 0.85 : 1, cursor: forgotLoading ? 'wait' : 'pointer' }}
+                onMouseEnter={(e) => !forgotLoading && handleButtonHover(e, true)}
+                onMouseLeave={(e) => !forgotLoading && handleButtonHover(e, false)}
+                disabled={forgotLoading}
+              >
+                {forgotLoading ? 'Sending…' : 'Send verification code'}
+              </button>
+              <button
+                type="button"
+                style={{ ...secondaryBtnStyle, marginTop: 12 }}
+                onClick={backToSignIn}
+              >
+                Back to sign in
+              </button>
+            </form>
+          )}
+
+          {authView === 'forgotReset' && (
+            <form onSubmit={handleCompleteForgot}>
+              {error && <p style={errorTextStyle}>{error}</p>}
+              {infoMessage ? <div style={infoBannerStyle}>{infoMessage}</div> : null}
+              <p style={mutedHintStyle}>
+                Enter the 6-digit code from your email and choose a new password (8+ characters with uppercase, lowercase,
+                number, and symbol).
+              </p>
+              <div style={inputContainerStyle}>
+                <label style={labelStyle} htmlFor="reset-email">
+                  Email
+                </label>
+                <input
+                  id="reset-email"
+                  className="signin-field"
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  style={inputStyle}
+                  autoComplete="email"
+                  required
+                />
+              </div>
+              <div style={inputContainerStyle}>
+                <label style={labelStyle} htmlFor="reset-code">
+                  Verification code
+                </label>
+                <input
+                  id="reset-code"
+                  className="signin-field"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={resetCode}
+                  onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  style={inputStyle}
+                  placeholder="000000"
+                  autoComplete="one-time-code"
+                  required
+                />
+              </div>
+              <div style={inputContainerStyle}>
+                <label style={labelStyle} htmlFor="reset-new-pass">
+                  New password
+                </label>
+                <PasswordInput
+                  id="reset-new-pass"
+                  className="signin-field"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={inputStyle}
+                  placeholder="New password"
+                  autoComplete="new-password"
+                  required
+                />
+              </div>
+              <div style={inputContainerStyle}>
+                <label style={labelStyle} htmlFor="reset-confirm-pass">
+                  Confirm new password
+                </label>
+                <PasswordInput
+                  id="reset-confirm-pass"
+                  className="signin-field"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  style={inputStyle}
+                  placeholder="Confirm password"
+                  autoComplete="new-password"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                style={{ ...buttonStyle, opacity: forgotLoading ? 0.85 : 1, cursor: forgotLoading ? 'wait' : 'pointer' }}
+                onMouseEnter={(e) => !forgotLoading && handleButtonHover(e, true)}
+                onMouseLeave={(e) => !forgotLoading && handleButtonHover(e, false)}
+                disabled={forgotLoading}
+              >
+                {forgotLoading ? 'Updating…' : 'Update password'}
+              </button>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12, justifyContent: 'center' }}>
+                <button type="button" style={forgotLinkStyle} onClick={resendForgotCode}>
+                  Resend code
+                </button>
+                <button type="button" style={{ ...forgotLinkStyle, marginTop: 0 }} onClick={backToSignIn}>
+                  Back to sign in
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>

@@ -49,6 +49,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/api/auth/signin").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password", "/api/auth/forgot-password/complete").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/admin/technicians").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/admin/technicians").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PATCH, "/api/adminticket/tickets/*/accept").hasRole("ADMIN")

@@ -1629,89 +1629,86 @@ function TechnicianWorkspace() {
         <div
           role="dialog"
           aria-modal="true"
+          aria-labelledby="technician-dash-profile-drawer-title"
           style={{
             position: "fixed",
             inset: 0,
             zIndex: 1000,
-            backgroundColor: "rgba(15, 23, 42, 0.55)",
+            backgroundColor: "rgba(15, 23, 42, 0.32)",
             display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 18,
+            justifyContent: "flex-end",
+            alignItems: "flex-start",
+            padding: "12px 12px 12px 0",
+            boxSizing: "border-box",
           }}
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setProfileModalOpen(false);
           }}
         >
+          <style>{`
+            @keyframes technicianDashProfileDrawerIn {
+              from { transform: translateX(100%); }
+              to { transform: translateX(0); }
+            }
+          `}</style>
           <div
             style={{
-              width: "100%",
-              maxWidth: 760,
-              backgroundColor: "#fff",
-              borderRadius: 16,
+              width: "min(380px, calc(100vw - 16px))",
+              maxWidth: "100%",
+              maxHeight: "calc(100vh - 24px)",
+              overflowY: "auto",
+              WebkitOverflowScrolling: "touch",
+              background: "#ffffff",
               border: "1px solid #e5e7eb",
-              boxShadow: "0 24px 90px rgba(0,0,0,0.25)",
-              overflow: "hidden",
+              borderRadius: "14px",
+              boxShadow: "-8px 12px 32px rgba(15, 23, 42, 0.12)",
+              animation: "technicianDashProfileDrawerIn 0.22s ease-out",
+              alignSelf: "flex-start",
             }}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             <div
               style={{
-                padding: "16px 22px",
+                position: "sticky",
+                top: 0,
+                zIndex: 1,
+                padding: "12px 14px",
                 borderBottom: "1px solid #e5e7eb",
                 display: "flex",
                 justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
+                alignItems: "flex-start",
+                gap: "10px",
+                background: "#fff",
               }}
             >
               <div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: "#111827" }}>My profile</div>
-                <div style={{ fontSize: 13, color: "#6b7280", fontWeight: 700, marginTop: 2 }}>Personal info</div>
+                <div id="technician-dash-profile-drawer-title" style={{ fontSize: "17px", fontWeight: 900, color: "#111827", lineHeight: 1.2 }}>
+                  My profile
+                </div>
+                <div style={{ fontSize: "12px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Personal info</div>
               </div>
               <button
                 type="button"
+                aria-label="Close profile"
                 onClick={() => setProfileModalOpen(false)}
                 style={{
+                  padding: "6px 10px",
+                  borderRadius: "8px",
                   border: "1px solid #e5e7eb",
-                  background: "#ffffff",
-                  borderRadius: 10,
-                  padding: "8px 12px",
-                  fontWeight: 900,
+                  background: "#fff",
+                  fontWeight: 800,
+                  fontSize: "13px",
                   cursor: "pointer",
-                  color: "#111827",
+                  color: "#0f172a",
+                  flexShrink: 0,
                 }}
               >
                 Close
               </button>
             </div>
-
-            <div style={{ padding: 22 }}>
-              <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "flex-start" }}>
-                <div
-                  style={{
-                    width: 110,
-                    height: 110,
-                    borderRadius: "50%",
-                    backgroundColor: "#f3f4f6",
-                    border: "1px solid #e5e7eb",
-                    overflow: "hidden",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {techUser?.profileImageUrl ? (
-                    <img
-                      src={techUser.profileImageUrl}
-                      alt=""
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  ) : (
-                    <span style={{ fontSize: 42, fontWeight: 900, color: "#6b7280" }}>{userDisplayInitial(techUser)}</span>
-                  )}
-                </div>
-
-                <div style={{ flex: 1, minWidth: 280 }}>
+            <div style={{ padding: "12px 14px 14px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div style={{ width: "100%" }}>
                   <input
                     ref={avatarFileRef}
                     type="file"
@@ -1737,160 +1734,171 @@ function TechnicianWorkspace() {
                       }
                     }}
                   />
-
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-                    <button
-                      type="button"
-                      disabled={avatarBusy || avatarRemoveBusy}
-                      onClick={() => avatarFileRef.current?.click()}
+                  <div style={{ border: "1px solid #e5e7eb", borderRadius: "10px", padding: "10px", textAlign: "center" }}>
+                    <div
                       style={{
-                        padding: "10px 16px",
-                        borderRadius: 10,
-                        border: "1px solid #d1d5db",
-                        background: "#ffffff",
-                        fontWeight: 900,
-                        fontSize: 14,
-                        cursor: avatarBusy || avatarRemoveBusy ? "wait" : "pointer",
-                        color: "#111827",
+                        width: "88px",
+                        height: "88px",
+                        borderRadius: "999px",
+                        margin: "0 auto",
+                        backgroundColor: "#f8fafc",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
+                        color: "#334155",
+                        fontSize: "28px",
+                        fontWeight: 800,
                       }}
                     >
-                      {avatarBusy ? "Saving…" : techUser?.profileImageUrl ? "Change photo" : "Upload photo"}
-                    </button>
-
-                    {techUser?.profileImageUrl && (
+                      {techUser?.profileImageUrl ? (
+                        <img src={techUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        userDisplayInitial(techUser)
+                      )}
+                    </div>
+                    <div style={{ marginTop: "8px", display: "flex", gap: "6px", justifyContent: "center", flexWrap: "wrap" }}>
                       <button
                         type="button"
                         disabled={avatarBusy || avatarRemoveBusy}
-                        onClick={async () => {
-                          const ok = window.confirm("Remove your profile photo from CampusSync?");
-                          if (!ok) return;
-                          setAvatarError("");
-                          setAvatarSuccess("");
-                          setAvatarRemoveBusy(true);
-                          try {
-                            const updated = await removeProfileAvatar();
-                            persistCampusUser(updated);
-                            setAvatarSuccess("Profile photo removed.");
-                          } catch (err) {
-                            setAvatarError(err?.message || "Could not remove photo");
-                          } finally {
-                            setAvatarRemoveBusy(false);
-                          }
-                        }}
+                        onClick={() => avatarFileRef.current?.click()}
                         style={{
-                          padding: "10px 14px",
-                          borderRadius: 10,
-                          border: "1px solid #fecaca",
+                          padding: "8px 12px",
+                          borderRadius: "8px",
+                          border: "1px solid #e5e7eb",
                           background: "#ffffff",
-                          fontWeight: 900,
-                          fontSize: 14,
+                          fontWeight: 800,
+                          fontSize: "13px",
                           cursor: avatarBusy || avatarRemoveBusy ? "wait" : "pointer",
-                          color: "#b91c1c",
+                          color: "#111827",
                         }}
                       >
-                        {avatarRemoveBusy ? "Removing…" : "Remove photo"}
+                        {avatarBusy ? "Saving…" : techUser?.profileImageUrl ? "Change photo" : "Upload photo"}
                       </button>
-                    )}
-                  </div>
-
-                  {avatarSuccess && <div style={{ marginTop: 10, color: "#059669", fontWeight: 800 }}>{avatarSuccess}</div>}
-                  {avatarError && <div style={{ marginTop: 10, color: "#b91c1c", fontWeight: 800 }}>{avatarError}</div>}
-                </div>
-              </div>
-
-              <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "#374151", marginBottom: 6 }}>
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={techUser?.email || ""}
-                    readOnly
-                    disabled
-                    style={{ ...selectStyle, backgroundColor: "#f3f4f6", color: "#374151" }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "#374151", marginBottom: 6 }}>
-                    Phone number
-                  </label>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength={PROFILE_PHONE_DIGITS}
-                    value={phoneDraft}
-                    onChange={(e) => {
-                      setPhoneDraft(sanitizeProfilePhoneInput(e.target.value));
-                      setSaveState((s) => ({ ...s, message: "", error: "" }));
-                    }}
-                    style={selectStyle}
-                    placeholder="0771234567"
-                    autoComplete="tel"
-                  />
-                  <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 6, fontWeight: 700 }}>
-                    {PROFILE_PHONE_DIGITS} digits only (no letters).
+                      {techUser?.profileImageUrl && (
+                        <button
+                          type="button"
+                          disabled={avatarBusy || avatarRemoveBusy}
+                          onClick={async () => {
+                            const ok = window.confirm("Remove your profile photo from CampusSync?");
+                            if (!ok) return;
+                            setAvatarError("");
+                            setAvatarSuccess("");
+                            setAvatarRemoveBusy(true);
+                            try {
+                              const updated = await removeProfileAvatar();
+                              persistCampusUser(updated);
+                              setAvatarSuccess("Profile photo removed.");
+                            } catch (err) {
+                              setAvatarError(err?.message || "Could not remove photo");
+                            } finally {
+                              setAvatarRemoveBusy(false);
+                            }
+                          }}
+                          style={{
+                            padding: "8px 12px",
+                            borderRadius: "8px",
+                            border: "1px solid #fecaca",
+                            background: "#ffffff",
+                            fontWeight: 800,
+                            fontSize: "13px",
+                            cursor: avatarBusy || avatarRemoveBusy ? "wait" : "pointer",
+                            color: "#b91c1c",
+                          }}
+                        >
+                          {avatarRemoveBusy ? "Removing…" : "Remove photo"}
+                        </button>
+                      )}
+                    </div>
+                    {avatarSuccess ? <p style={{ margin: "8px 0 0 0", fontSize: "12px", color: "#059669", fontWeight: 800 }}>{avatarSuccess}</p> : null}
+                    {avatarError ? <p style={{ margin: "8px 0 0 0", fontSize: "12px", color: "#b91c1c", fontWeight: 800 }}>{avatarError}</p> : null}
                   </div>
                 </div>
-              </div>
-
-              <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "#374151", marginBottom: 6 }}>
-                    First name
-                  </label>
-                  <input
-                    type="text"
-                    value={techUser?.firstName || ""}
-                    readOnly
-                    disabled
-                    style={{ ...selectStyle, backgroundColor: "#f3f4f6", color: "#374151" }}
-                  />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "10px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#374151", marginBottom: "6px" }}>Email</label>
+                      <input
+                        type="email"
+                        value={techUser?.email || ""}
+                        readOnly
+                        disabled
+                        style={{ ...selectStyle, backgroundColor: "#f3f4f6", color: "#374151", padding: "10px 12px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#374151", marginBottom: "6px" }}>Phone number</label>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={PROFILE_PHONE_DIGITS}
+                        value={phoneDraft}
+                        onChange={(e) => {
+                          setPhoneDraft(sanitizeProfilePhoneInput(e.target.value));
+                          setSaveState((s) => ({ ...s, message: "", error: "" }));
+                        }}
+                        style={{ ...selectStyle, padding: "10px 12px" }}
+                        placeholder="0771234567"
+                        autoComplete="tel"
+                      />
+                      <p style={{ margin: "4px 0 0 0", fontSize: "11px", color: "#9ca3af", fontWeight: 600 }}>{PROFILE_PHONE_DIGITS} digits only (no letters).</p>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: "10px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#374151", marginBottom: "6px" }}>First name</label>
+                      <input
+                        type="text"
+                        value={techUser?.firstName || ""}
+                        readOnly
+                        disabled
+                        style={{ ...selectStyle, backgroundColor: "#f3f4f6", color: "#374151", padding: "10px 12px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#374151", marginBottom: "6px" }}>Last name</label>
+                      <input
+                        type="text"
+                        value={techUser?.lastName || ""}
+                        readOnly
+                        disabled
+                        style={{ ...selectStyle, backgroundColor: "#f3f4f6", color: "#374151", padding: "10px 12px" }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      disabled={!canSavePhone || saveState.busy}
+                      onClick={async () => {
+                        if (!canSavePhone) return;
+                        setSaveState({ busy: true, message: "", error: "" });
+                        try {
+                          const updated = await updateProfilePhone({ phoneNumber: phoneDraft });
+                          persistCampusUser(updated);
+                          setSaveState({ busy: false, message: "Changes saved.", error: "" });
+                        } catch (err) {
+                          setSaveState({ busy: false, message: "", error: err?.message || "Save failed" });
+                        }
+                      }}
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: "10px",
+                        border: "none",
+                        backgroundColor: "#FA8112",
+                        color: "#fff",
+                        fontWeight: 800,
+                        fontSize: "14px",
+                        cursor: !canSavePhone || saveState.busy ? "not-allowed" : "pointer",
+                        opacity: !canSavePhone || saveState.busy ? 0.6 : 1,
+                      }}
+                    >
+                      {saveState.busy ? "Saving…" : "Save changes"}
+                    </button>
+                    {saveState.message ? <span style={{ color: "#15803d", fontWeight: 700, fontSize: "12px" }}>{saveState.message}</span> : null}
+                    {saveState.error ? <span style={{ color: "#b91c1c", fontWeight: 700, fontSize: "12px" }}>{saveState.error}</span> : null}
+                  </div>
                 </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "#374151", marginBottom: 6 }}>
-                    Last name
-                  </label>
-                  <input
-                    type="text"
-                    value={techUser?.lastName || ""}
-                    readOnly
-                    disabled
-                    style={{ ...selectStyle, backgroundColor: "#f3f4f6", color: "#374151" }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginTop: 18, display: "flex", justifyContent: "flex-end", gap: 14, alignItems: "center" }}>
-                {saveState.message && <span style={{ color: "#059669", fontWeight: 900 }}>{saveState.message}</span>}
-                {saveState.error && <span style={{ color: "#b91c1c", fontWeight: 900 }}>{saveState.error}</span>}
-
-                <button
-                  type="button"
-                  disabled={!canSavePhone || saveState.busy}
-                  onClick={async () => {
-                    if (!canSavePhone) return;
-                    setSaveState({ busy: true, message: "", error: "" });
-                    try {
-                      const updated = await updateProfilePhone({ phoneNumber: phoneDraft });
-                      persistCampusUser(updated);
-                      setSaveState({ busy: false, message: "Changes saved.", error: "" });
-                    } catch (err) {
-                      setSaveState({ busy: false, message: "", error: err?.message || "Save failed" });
-                    }
-                  }}
-                  style={{
-                    padding: "12px 20px",
-                    borderRadius: 10,
-                    border: "none",
-                    backgroundColor: canSavePhone && !saveState.busy ? "#FA8112" : "#d1d5db",
-                    color: "#ffffff",
-                    fontWeight: 900,
-                    cursor: canSavePhone && !saveState.busy ? "pointer" : "not-allowed",
-                  }}
-                >
-                  {saveState.busy ? "Saving…" : "Save changes"}
-                </button>
               </div>
             </div>
           </div>
