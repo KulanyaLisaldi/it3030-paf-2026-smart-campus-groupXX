@@ -78,6 +78,14 @@ const iconBtnStyle = (variant = "neutral") => ({
   justifyContent: "center",
 });
 
+const summaryCardStyle = {
+  border: "1px solid #F5E7C6",
+  borderRadius: "12px",
+  padding: "12px",
+  backgroundColor: "#FFFFFF",
+  boxShadow: "0 6px 14px rgba(20, 33, 61, 0.05)",
+};
+
 function EyeIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -417,6 +425,17 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, safePage]);
 
+  const summary = useMemo(() => {
+    const rows = Array.isArray(users) ? users : [];
+    const totalUsers = rows.length;
+    const admins = rows.filter((u) => String(u.role || "").toUpperCase() === "ADMIN").length;
+    const technicians = rows.filter((u) => String(u.role || "").toUpperCase() === "TECHNICIAN").length;
+    const activeUsers = rows.filter((u) => String(u.accountStatus || "").toUpperCase() !== "DISABLED").length;
+    const suspendedUsers = rows.filter((u) => String(u.accountStatus || "").toUpperCase() === "DISABLED").length;
+    const googleUsers = rows.filter((u) => String(u.provider || "") === "Google OAuth").length;
+    return { totalUsers, admins, technicians, activeUsers, suspendedUsers, googleUsers };
+  }, [users]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [search, roleFilter, providerFilter, statusFilter, refreshKey]);
@@ -429,6 +448,42 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
 
   return (
     <div style={pageCardStyle}>
+      {!loading && !error && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(6, minmax(120px, 1fr))",
+            gap: 10,
+            marginBottom: 14,
+          }}
+        >
+          <div style={summaryCardStyle}>
+            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 800 }}>Total Users</div>
+            <div style={{ marginTop: 4, fontSize: 22, color: "#0f172a", fontWeight: 900 }}>{summary.totalUsers}</div>
+          </div>
+          <div style={summaryCardStyle}>
+            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 800 }}>Admins</div>
+            <div style={{ marginTop: 4, fontSize: 22, color: "#0f172a", fontWeight: 900 }}>{summary.admins}</div>
+          </div>
+          <div style={summaryCardStyle}>
+            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 800 }}>Technicians</div>
+            <div style={{ marginTop: 4, fontSize: 22, color: "#0f172a", fontWeight: 900 }}>{summary.technicians}</div>
+          </div>
+          <div style={summaryCardStyle}>
+            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 800 }}>Active Users</div>
+            <div style={{ marginTop: 4, fontSize: 22, color: "#0f172a", fontWeight: 900 }}>{summary.activeUsers}</div>
+          </div>
+          <div style={summaryCardStyle}>
+            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 800 }}>Suspended Users</div>
+            <div style={{ marginTop: 4, fontSize: 22, color: "#0f172a", fontWeight: 900 }}>{summary.suspendedUsers}</div>
+          </div>
+          <div style={summaryCardStyle}>
+            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 800 }}>Google Users</div>
+            <div style={{ marginTop: 4, fontSize: 22, color: "#0f172a", fontWeight: 900 }}>{summary.googleUsers}</div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 900, color: "#14213D", marginBottom: 4 }}>All Users</div>
