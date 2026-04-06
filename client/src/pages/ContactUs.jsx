@@ -269,7 +269,7 @@ export default function ContactUs() {
               <div style={{ marginTop: "14px", display: "grid", gap: "12px" }}>
                 <div>
                   <p style={infoLabelStyle}>Email</p>
-                  <p style={infoValueStyle}>supportdesk@campus.edu</p>
+                  <p style={infoValueStyle}>campussync@gmail.com</p>
                 </div>
                 <div>
                   <p style={infoLabelStyle}>Phone</p>
@@ -281,7 +281,7 @@ export default function ContactUs() {
                 </div>
                 <div>
                   <p style={infoLabelStyle}>Support Office</p>
-                  <p style={infoValueStyle}>IT Services Center, Building A</p>
+                  <p style={infoValueStyle}>Support Service Center, Building A</p>
                 </div>
               </div>
             </div>
