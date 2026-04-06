@@ -346,8 +346,15 @@ const Navbar = () => {
         >
           Resources
         </a>
-        <a href="#about" style={centerLinkStyle}>
-          About
+        <a
+          href="/about"
+          style={centerLinkStyle}
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/about");
+          }}
+        >
+          About Us
         </a>
         <a
           href="/contact"

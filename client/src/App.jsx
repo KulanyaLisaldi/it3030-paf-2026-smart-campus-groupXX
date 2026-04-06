@@ -21,6 +21,7 @@ import AdminNotificationsPage from "./pages/AdminNotificationsPage.jsx";
 import AdminAnalyticsPage from "./pages/AdminAnalyticsPage.jsx";
 import AdminContactMessagesPage from "./pages/AdminContactMessagesPage.jsx";
 import ContactUs from "./pages/ContactUs.jsx";
+import AboutUs from "./pages/AboutUs.jsx";
 import ManageAccount from "./pages/ManageAccount.jsx";
 
 function AppContent() {
@@ -41,6 +42,7 @@ function AppContent() {
         <Route path="/resources" element={<ResourcesPage />} />
         <Route path="/resources/:id" element={<ResourceDetailsPage />} />
         <Route path="/contact" element={<ContactUs />} />
+        <Route path="/about" element={<AboutUs />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/technician" element={<TechnicianDashboard />} />
