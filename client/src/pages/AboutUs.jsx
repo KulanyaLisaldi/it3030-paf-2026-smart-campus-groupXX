@@ -2,37 +2,55 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { appFontFamily } from "../utils/appFont";
 
+/** Public asset: `client/public/about us.jpg` */
+const ABOUT_HERO_IMAGE = "/about%20us.jpg";
+
 const pageStyle = {
+  width: "100%",
   minHeight: "100vh",
+  margin: 0,
+  padding: 0,
   backgroundColor: "#f8fafc",
   fontFamily: appFontFamily,
-  padding: "32px 16px",
   boxSizing: "border-box",
+  overflowX: "hidden",
 };
 
-const containerStyle = {
+const heroWrapStyle = {
+  position: "relative",
   width: "100%",
-  maxWidth: "900px",
-  margin: "0 auto",
-  border: "1px solid #E8E4DC",
-  borderRadius: "16px",
-  overflow: "hidden",
-  boxShadow: "0 12px 28px rgba(20, 33, 61, 0.08)",
-  backgroundColor: "#FFFFFF",
+  minHeight: "min(52vh, 560px)",
+  maxHeight: "70vh",
 };
 
-const heroStyle = {
-  background: "linear-gradient(135deg, #14213D 0%, #1e3a5f 100%)",
-  color: "#FFFFFF",
-  padding: "36px 28px",
+const heroImgStyle = {
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  objectPosition: "center",
+  display: "block",
+};
+
+const heroOverlayStyle = {
+  position: "absolute",
+  inset: 0,
+  background: "linear-gradient(to top, rgba(15, 23, 42, 0.75) 0%, rgba(15, 23, 42, 0.35) 45%, rgba(15, 23, 42, 0.2) 100%)",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "flex-end",
+  padding: "clamp(20px, 4vw, 48px)",
+  boxSizing: "border-box",
 };
 
 const heroTitleStyle = {
   margin: 0,
-  fontSize: "clamp(26px, 3.8vw, 34px)",
+  fontSize: "clamp(28px, 5vw, 42px)",
   fontWeight: 800,
   lineHeight: 1.15,
   color: "#FFFFFF",
+  textShadow: "0 2px 24px rgba(0,0,0,0.35)",
 };
 
 const heroAccentStyle = {
@@ -40,15 +58,24 @@ const heroAccentStyle = {
 };
 
 const heroDescStyle = {
-  margin: "14px 0 0 0",
-  maxWidth: "640px",
-  color: "rgba(255,255,255,0.88)",
-  fontSize: "16px",
+  margin: "12px 0 0 0",
+  maxWidth: "720px",
+  color: "rgba(255,255,255,0.95)",
+  fontSize: "clamp(14px, 2vw, 17px)",
   lineHeight: 1.65,
+  textShadow: "0 1px 12px rgba(0,0,0,0.4)",
 };
 
-const bodyStyle = {
-  padding: "28px 24px 32px",
+const contentShellStyle = {
+  width: "100%",
+  padding: "clamp(24px, 4vw, 40px) clamp(16px, 5vw, 48px) 48px",
+  boxSizing: "border-box",
+};
+
+const innerMaxStyle = {
+  width: "100%",
+  maxWidth: "1100px",
+  margin: "0 auto",
 };
 
 const sectionTitleStyle = {
@@ -75,7 +102,7 @@ const listStyle = {
 
 const cardGridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
   gap: "14px",
   marginTop: "8px",
 };
@@ -138,8 +165,9 @@ export default function AboutUs() {
 
   return (
     <main style={pageStyle}>
-      <div style={containerStyle}>
-        <header style={heroStyle}>
+      <section style={heroWrapStyle} aria-label="About CampusSync">
+        <img src={ABOUT_HERO_IMAGE} alt="CampusSync — campus and community" style={heroImgStyle} />
+        <div style={heroOverlayStyle}>
           <h1 style={heroTitleStyle}>
             About <span style={heroAccentStyle}>CampusSync</span>
           </h1>
@@ -147,9 +175,11 @@ export default function AboutUs() {
             CampusSync is your campus operations hub—bringing resources, bookings, and support tickets together in one
             place so students and staff can get things done without juggling disconnected tools.
           </p>
-        </header>
+        </div>
+      </section>
 
-        <div style={bodyStyle}>
+      <div style={contentShellStyle}>
+        <div style={innerMaxStyle}>
           <h2 style={sectionTitleStyle}>Our mission</h2>
           <p style={paragraphStyle}>
             We help universities run day-to-day campus services more smoothly. Whether you need a lab or meeting room,
