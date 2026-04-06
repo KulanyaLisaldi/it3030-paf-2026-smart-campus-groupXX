@@ -451,7 +451,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
         <div>
           <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#475569", marginBottom: 6 }}>Add User</label>
           <button type="button" onClick={onAddTechnician} style={{ ...smallBtnStyle("primary"), width: "100%", padding: "10px 12px" }}>
-            Add technician
+            Add User
           </button>
         </div>
       </div>

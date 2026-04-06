@@ -4,14 +4,17 @@ import com.example.server.dto.admin.AdminEditUserProfileRequest;
 import com.example.server.dto.admin.AdminRoleChangeRequest;
 import com.example.server.dto.admin.AdminSetUserStatusRequest;
 import com.example.server.dto.admin.AdminUserRowResponse;
+import com.example.server.dto.admin.CreateStaffUserRequest;
 import com.example.server.model.User;
 import com.example.server.model.UserRole;
 import com.example.server.repository.UserRepo;
+import com.example.server.service.AuthService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,9 +33,11 @@ import java.util.List;
 public class AdminUsersController {
 
     private final UserRepo userRepo;
+    private final AuthService authService;
 
-    public AdminUsersController(UserRepo userRepo) {
+    public AdminUsersController(UserRepo userRepo, AuthService authService) {
         this.userRepo = userRepo;
+        this.authService = authService;
     }
 
     @GetMapping
@@ -48,6 +53,22 @@ public class AdminUsersController {
 
         List<AdminUserRowResponse> rows = users.stream().map(this::toRow).toList();
         return ResponseEntity.ok(rows);
+    }
+
+    @PostMapping
+    public ResponseEntity<?> createStaffUser(
+        Authentication authentication,
+        @Valid @RequestBody CreateStaffUserRequest request
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(java.util.Map.of("message", "Unauthorized"));
+        }
+        try {
+            authService.createStaffUser(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(java.util.Map.of("message", "User created"));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(java.util.Map.of("message", ex.getMessage()));
+        }
     }
 
     private AdminUserRowResponse toRow(User u) {

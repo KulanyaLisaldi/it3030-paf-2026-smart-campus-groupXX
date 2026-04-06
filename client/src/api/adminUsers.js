@@ -1,4 +1,4 @@
-import { apiGet, apiPatch } from "./http";
+import { apiGet, apiPatch, apiPost } from "./http";
 
 export function getAdminUsers() {
   return apiGet("/api/admin/users");
@@ -14,5 +14,9 @@ export function adminChangeUserRole(userId, payload) {
 
 export function adminSetUserStatus(userId, payload) {
   return apiPatch(`/api/admin/users/${encodeURIComponent(userId)}/status`, payload);
+}
+
+export function adminCreateUser(payload) {
+  return apiPost("/api/admin/users", payload);
 }
 
