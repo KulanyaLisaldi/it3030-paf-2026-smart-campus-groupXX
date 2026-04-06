@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import jakarta.validation.Valid;
 
@@ -171,9 +172,37 @@ public class AdminUsersController {
         }
 
         User user = maybe.get();
+        if (disabling && user.getEffectiveRole() == UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(java.util.Map.of("message", "Admin accounts cannot be disabled."));
+        }
         user.setDisabled(Boolean.TRUE.equals(request.getDisabled()));
         userRepo.save(user);
         return ResponseEntity.ok(toRow(user));
+    }
+
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<?> deleteUser(
+        Authentication authentication,
+        @PathVariable String userId
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(java.util.Map.of("message", "Unauthorized"));
+        }
+
+        Optional<User> maybe = userRepo.findById(userId);
+        if (maybe.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(java.util.Map.of("message", "User not found"));
+        }
+
+        User user = maybe.get();
+        if (user.getEffectiveRole() == UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(java.util.Map.of("message", "Admin accounts cannot be deleted."));
+        }
+
+        userRepo.deleteById(userId);
+        return ResponseEntity.ok(java.util.Map.of("message", "User deleted"));
     }
 }
 

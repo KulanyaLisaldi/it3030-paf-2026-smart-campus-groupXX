@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  adminDeleteUser,
   adminSetUserStatus,
   adminUpdateUserProfile,
   getAdminUsers,
@@ -102,6 +103,25 @@ function EnableIcon() {
   );
 }
 
+function DeleteIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M4 7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M9 7V5h6v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7 7l1 12h8l1-12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 11v5M14 11v5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function formatDate(value) {
   if (!value) return "";
   try {
@@ -190,15 +210,6 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     color: "#0f172a",
   };
 
-  const modalSelectStyle = { ...modalInputStyle, cursor: "pointer", minHeight: "46px" };
-
-  const closeModals = () => {
-    setEditPanelOpen(false);
-    setSelectedUser(null);
-    setActionBusy(false);
-    setActionError("");
-  };
-
   useEffect(() => {
     if (!editPanelOpen || !selectedUser) return;
     setEditFirstName(selectedUser.firstName || "");
@@ -240,6 +251,10 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
 
   const handleToggleDisabled = async (u) => {
     if (!u) return;
+    if ((u.role || "").toUpperCase() === "ADMIN") {
+      setActionError("Admin accounts cannot be deactivated.");
+      return;
+    }
     if (currentUserId && u.userId === currentUserId) {
       setActionError("You cannot disable your own account.");
       return;
@@ -256,10 +271,36 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     setActionBusy(true);
     setActionError("");
     try {
-      await adminSetUserStatus(u.userId, { disabled: nextDisabled });
+      const updated = await adminSetUserStatus(u.userId, { disabled: nextDisabled });
+      setUsers((prev) => prev.map((row) => (row.userId === updated.userId ? updated : row)));
+      setDetailsUser((prev) => (prev && prev.userId === updated.userId ? updated : prev));
+      setSelectedUser((prev) => (prev && prev.userId === updated.userId ? updated : prev));
       refresh();
     } catch (e) {
       setActionError(e.message || "Failed to update account status.");
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleDeleteUser = async (u) => {
+    if (!u) return;
+    if ((u.role || "").toUpperCase() === "ADMIN") {
+      setActionError("Admin accounts cannot be deleted.");
+      return;
+    }
+    const ok = window.confirm(`Delete ${u.name || u.email || "this user"} permanently?`);
+    if (!ok) return;
+    setActionBusy(true);
+    setActionError("");
+    try {
+      await adminDeleteUser(u.userId);
+      setDetailsUser((prev) => (prev && prev.userId === u.userId ? null : prev));
+      setEditPanelOpen(false);
+      setSelectedUser((prev) => (prev && prev.userId === u.userId ? null : prev));
+      refresh();
+    } catch (e) {
+      setActionError(e.message || "Failed to delete user.");
     } finally {
       setActionBusy(false);
     }
@@ -542,11 +583,15 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                         <button
                           type="button"
                           style={((u.accountStatus || "") === "Disabled") ? iconBtnStyle("primary") : iconBtnStyle("danger")}
-                          disabled={actionBusy || (currentUserId && u.userId === currentUserId)}
-                          title={(currentUserId && u.userId === currentUserId)
+                          disabled={actionBusy || (u.role || "").toUpperCase() === "ADMIN" || (currentUserId && u.userId === currentUserId)}
+                          title={((u.role || "").toUpperCase() === "ADMIN")
+                            ? "Admin account cannot be deactivated"
+                            : (currentUserId && u.userId === currentUserId)
                             ? "You cannot disable your own account"
                             : ((u.accountStatus || "") === "Disabled" ? "Enable account" : "Disable account")}
-                          aria-label={(currentUserId && u.userId === currentUserId)
+                          aria-label={((u.role || "").toUpperCase() === "ADMIN")
+                            ? "Admin deactivate not allowed"
+                            : (currentUserId && u.userId === currentUserId)
                             ? "Self disable not allowed"
                             : ((u.accountStatus || "") === "Disabled" ? "Enable account" : "Disable account")}
                           onClick={() => handleToggleDisabled(u)}
@@ -621,23 +666,30 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
             position: "fixed",
             inset: 0,
             zIndex: 1001,
-            backgroundColor: "rgba(15, 23, 42, 0.38)",
+            backgroundColor: "rgba(15, 23, 42, 0.30)",
             display: "flex",
             justifyContent: "flex-end",
+            alignItems: "flex-start",
+            paddingTop: "34px",
+            paddingBottom: "34px",
+            paddingRight: "20px",
+            boxSizing: "border-box",
           }}
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setDetailsUser(null);
           }}
         >
-          <div style={{ display: "flex", height: "100%", justifyContent: "flex-end" }}>
+          <div style={{ display: "flex", maxHeight: "calc(100vh - 68px)", justifyContent: "flex-end", gap: 12, alignItems: "flex-start" }}>
             {editPanelOpen && selectedUser && (
               <div
                 style={{
-                  width: "min(460px, 100vw)",
-                  height: "100%",
-                  background: "#fff",
+                  width: "min(420px, calc(100vw - 40px))",
+                  maxHeight: "calc(100vh - 68px)",
+                  background: "rgba(255, 255, 255, 0.90)",
+                  backdropFilter: "blur(8px)",
                   borderLeft: "1px solid #e5e7eb",
-                  boxShadow: "-10px 0 35px rgba(15, 23, 42, 0.14)",
+                  borderRadius: "18px",
+                  boxShadow: "-8px 12px 34px rgba(15, 23, 42, 0.16)",
                   padding: "20px 18px 18px",
                   boxSizing: "border-box",
                   overflowY: "auto",
@@ -648,10 +700,11 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                   <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>Edit User</div>
                   <button
                     type="button"
-                    onClick={() => closeModals()}
-                    style={{ ...smallBtnStyle("neutral"), padding: "8px 12px" }}
+                    onClick={() => setEditPanelOpen(false)}
+                    style={{ ...iconBtnStyle("neutral"), width: 30, height: 30 }}
+                    aria-label="Close edit panel"
                   >
-                    Close
+                    <CloseIcon />
                   </button>
                 </div>
 
@@ -710,11 +763,13 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
             )}
             <div
               style={{
-                width: "min(460px, 100vw)",
-                height: "100%",
-                background: "#fff",
+                width: "min(420px, calc(100vw - 40px))",
+                maxHeight: "calc(100vh - 68px)",
+                background: "rgba(255, 255, 255, 0.90)",
+                backdropFilter: "blur(8px)",
                 borderLeft: "1px solid #e5e7eb",
-                boxShadow: "-10px 0 35px rgba(15, 23, 42, 0.18)",
+                borderRadius: "18px",
+                boxShadow: "-8px 12px 34px rgba(15, 23, 42, 0.18)",
                 padding: "20px 18px 18px",
                 boxSizing: "border-box",
                 overflowY: "auto",
@@ -722,18 +777,21 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               }}
             >
             <style>{`@keyframes adminUserDetailsSlideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }`}</style>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-              <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>User Details</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>User Details</div>
+              </div>
               <button
                 type="button"
                 onClick={() => setDetailsUser(null)}
-                style={{ ...smallBtnStyle("neutral"), padding: "8px 12px" }}
+                style={{ ...iconBtnStyle("neutral"), width: 30, height: 30 }}
+                aria-label="Close details panel"
               >
-                Close
+                <CloseIcon />
               </button>
             </div>
 
-            <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12 }}>
               <div
                 style={{
                   width: 56,
@@ -752,23 +810,35 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               </div>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{detailsUser.name || "—"}</div>
-                <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>{detailsUser.userId}</div>
+                <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                  <Badge text={detailsUser.role || "USER"} style={roleBadgeStyle(detailsUser.role)} />
+                  <Badge
+                    text={(detailsUser.accountStatus || "").toUpperCase() === "DISABLED" ? "Suspended" : "Active"}
+                    style={statusBadgeStyle(detailsUser.accountStatus)}
+                  />
+                </div>
               </div>
             </div>
 
-            <div style={{ marginTop: 18, display: "grid", gap: 10 }}>
+            <div
+              style={{
+                marginTop: 16,
+                display: "grid",
+                gap: 10,
+                background: "rgba(255,255,255,0.75)",
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+                padding: 12,
+              }}
+            >
               <div><strong style={{ color: "#0f172a" }}>Email:</strong> {detailsUser.email || "—"}</div>
-              <div><strong style={{ color: "#0f172a" }}>Role:</strong> {detailsUser.role || "—"}</div>
               <div><strong style={{ color: "#0f172a" }}>Provider:</strong> {detailsUser.provider || "—"}</div>
-              <div><strong style={{ color: "#0f172a" }}>Account status:</strong> {(detailsUser.accountStatus || "").toUpperCase() === "DISABLED" ? "Suspended" : "Active"}</div>
               <div><strong style={{ color: "#0f172a" }}>Created date:</strong> {formatDate(detailsUser.createdDate) || "—"}</div>
               <div><strong style={{ color: "#0f172a" }}>Last login:</strong> {formatDate(detailsUser.lastLogin) || "—"}</div>
-              {(detailsUser.phoneNumber || "").trim() ? (
-                <div><strong style={{ color: "#0f172a" }}>Phone number:</strong> {detailsUser.phoneNumber}</div>
-              ) : null}
+              <div><strong style={{ color: "#0f172a" }}>User ID:</strong> {detailsUser.userId || "—"}</div>
             </div>
 
-            <div style={{ marginTop: 18, display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 6, flexWrap: "wrap" }}>
               <button
                 type="button"
                 style={smallBtnStyle("primary")}
@@ -779,7 +849,30 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               >
                 Edit User
               </button>
+              <button
+                type="button"
+                style={smallBtnStyle((detailsUser.accountStatus || "") === "Disabled" ? "primary" : "danger")}
+                disabled={actionBusy || (detailsUser.role || "").toUpperCase() === "ADMIN" || (currentUserId && detailsUser.userId === currentUserId)}
+                title={(detailsUser.role || "").toUpperCase() === "ADMIN" ? "Admin account cannot be deactivated" : "Toggle account status"}
+                onClick={() => handleToggleDisabled(detailsUser)}
+              >
+                {(detailsUser.accountStatus || "") === "Disabled" ? "Activate" : "Deactivate"}
+              </button>
+              {(detailsUser.role || "").toUpperCase() !== "ADMIN" ? (
+                <button
+                  type="button"
+                  style={smallBtnStyle("danger")}
+                  disabled={actionBusy}
+                  onClick={() => handleDeleteUser(detailsUser)}
+                >
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <DeleteIcon />
+                    Delete
+                  </span>
+                </button>
+              ) : null}
             </div>
+            {actionError && <p style={{ marginTop: 10, marginBottom: 0, color: "#b91c1c", fontSize: 13, fontWeight: 800 }}>{actionError}</p>}
           </div>
           </div>
         </div>

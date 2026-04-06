@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost } from "./http";
+import { apiDelete, apiGet, apiPatch, apiPost } from "./http";
 
 export function getAdminUsers() {
   return apiGet("/api/admin/users");
@@ -18,5 +18,9 @@ export function adminSetUserStatus(userId, payload) {
 
 export function adminCreateUser(payload) {
   return apiPost("/api/admin/users", payload);
+}
+
+export function adminDeleteUser(userId) {
+  return apiDelete(`/api/admin/users/${encodeURIComponent(userId)}`);
 }
 
