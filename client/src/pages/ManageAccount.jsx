@@ -11,6 +11,18 @@ import { getAuthToken } from "../api/http";
 import { ACCOUNT_PATH, rememberPostLoginPath } from "../utils/authRedirect";
 import { persistCampusUser } from "../utils/campusUserStorage";
 import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../utils/profilePhone";
+import {
+  ERR_LONG_TEXT_CHARS,
+  ERR_NAME_CHARS,
+  ERR_PHONE_CHARS,
+  ERR_SAME_CHAR_RUN,
+  ERR_SUBJECT_CHARS,
+  hasExcessiveConsecutiveSameChar,
+  longTextCharsValid,
+  nameCharsValid,
+  phoneCharsValid,
+  subjectCharsValid,
+} from "../utils/contactMessageValidation";
 
 /** Same localStorage key as ContactUs.jsx uses when saving submissions. */
 const CONTACT_MESSAGES_STORAGE_KEY = "smartCampusContactMessages";
@@ -42,6 +54,51 @@ function formatContactSubmittedAt(iso) {
   } catch {
     return "—";
   }
+}
+
+const EDIT_CONTACT_MAX_NAME = 80;
+const EDIT_CONTACT_MIN_SUBJECT = 3;
+const EDIT_CONTACT_MAX_SUBJECT = 200;
+const EDIT_CONTACT_MIN_MESSAGE = 10;
+const EDIT_CONTACT_MAX_MESSAGE = 4000;
+
+function isValidOptionalContactPhoneEdit(phoneTrimmed) {
+  if (!phoneTrimmed) return true;
+  const digits = phoneTrimmed.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15 && phoneTrimmed.length <= 24;
+}
+
+function validateContactMessageEditDraft(draft) {
+  if (!draft) return "Nothing to save.";
+  const firstName = (draft.firstName || "").trim();
+  const lastName = (draft.lastName || "").trim();
+  const phone = (draft.phone || "").trim();
+  const subject = (draft.subject || "").trim();
+  const message = (draft.message || "").trim();
+  if (!firstName) return "First name is required.";
+  if (!nameCharsValid(firstName)) return ERR_NAME_CHARS;
+  if (hasExcessiveConsecutiveSameChar(firstName)) return ERR_SAME_CHAR_RUN;
+  if (firstName.length > EDIT_CONTACT_MAX_NAME) return `First name must be at most ${EDIT_CONTACT_MAX_NAME} characters.`;
+  if (!nameCharsValid(lastName)) return ERR_NAME_CHARS;
+  if (lastName && hasExcessiveConsecutiveSameChar(lastName)) return ERR_SAME_CHAR_RUN;
+  if (lastName.length > EDIT_CONTACT_MAX_NAME) return `Last name must be at most ${EDIT_CONTACT_MAX_NAME} characters.`;
+  if (!phoneCharsValid(phone)) return ERR_PHONE_CHARS;
+  if (!isValidOptionalContactPhoneEdit(phone)) return "Enter a valid phone number, or leave phone blank.";
+  if (!subject) return "Subject is required.";
+  if (!subjectCharsValid(subject)) return ERR_SUBJECT_CHARS;
+  if (hasExcessiveConsecutiveSameChar(subject)) return ERR_SAME_CHAR_RUN;
+  if (subject.length < EDIT_CONTACT_MIN_SUBJECT)
+    return `Subject must be at least ${EDIT_CONTACT_MIN_SUBJECT} characters.`;
+  if (subject.length > EDIT_CONTACT_MAX_SUBJECT)
+    return `Subject must be at most ${EDIT_CONTACT_MAX_SUBJECT} characters.`;
+  if (!message) return "Message is required.";
+  if (!longTextCharsValid(message)) return ERR_LONG_TEXT_CHARS;
+  if (hasExcessiveConsecutiveSameChar(message)) return ERR_SAME_CHAR_RUN;
+  if (message.length < EDIT_CONTACT_MIN_MESSAGE)
+    return `Message must be at least ${EDIT_CONTACT_MIN_MESSAGE} characters.`;
+  if (message.length > EDIT_CONTACT_MAX_MESSAGE)
+    return `Message must be at most ${EDIT_CONTACT_MAX_MESSAGE} characters.`;
+  return "";
 }
 
 const pageWrap = {
@@ -239,12 +296,13 @@ export default function ManageAccount() {
 
   const saveEditContact = (msgId) => {
     if (!editContactDraft || !msgId) return;
-    const subject = editContactDraft.subject.trim();
-    const message = editContactDraft.message.trim();
-    if (!subject || !message) {
-      setEditContactError("Subject and message are required.");
+    const validationMsg = validateContactMessageEditDraft(editContactDraft);
+    if (validationMsg) {
+      setEditContactError(validationMsg);
       return;
     }
+    const subject = editContactDraft.subject.trim();
+    const message = editContactDraft.message.trim();
     const myEmail = (profile?.email || "").trim().toLowerCase();
     if (!myEmail) return;
     const all = readStoredContactMessages();
@@ -976,9 +1034,11 @@ export default function ManageAccount() {
                               <input
                                 type="text"
                                 value={editContactDraft.firstName}
-                                onChange={(e) =>
-                                  setEditContactDraft((d) => (d ? { ...d, firstName: e.target.value } : d))
-                                }
+                                maxLength={EDIT_CONTACT_MAX_NAME}
+                                onChange={(e) => {
+                                  setEditContactError("");
+                                  setEditContactDraft((d) => (d ? { ...d, firstName: e.target.value } : d));
+                                }}
                                 style={contactEditInputStyle}
                               />
                             </div>
@@ -989,9 +1049,11 @@ export default function ManageAccount() {
                               <input
                                 type="text"
                                 value={editContactDraft.lastName}
-                                onChange={(e) =>
-                                  setEditContactDraft((d) => (d ? { ...d, lastName: e.target.value } : d))
-                                }
+                                maxLength={EDIT_CONTACT_MAX_NAME}
+                                onChange={(e) => {
+                                  setEditContactError("");
+                                  setEditContactDraft((d) => (d ? { ...d, lastName: e.target.value } : d));
+                                }}
                                 style={contactEditInputStyle}
                               />
                             </div>
@@ -1009,9 +1071,10 @@ export default function ManageAccount() {
                             <input
                               type="tel"
                               value={editContactDraft.phone}
-                              onChange={(e) =>
-                                setEditContactDraft((d) => (d ? { ...d, phone: e.target.value } : d))
-                              }
+                              onChange={(e) => {
+                                setEditContactError("");
+                                setEditContactDraft((d) => (d ? { ...d, phone: e.target.value } : d));
+                              }}
                               style={contactEditInputStyle}
                             />
                           </div>
@@ -1022,9 +1085,11 @@ export default function ManageAccount() {
                             <input
                               type="text"
                               value={editContactDraft.subject}
-                              onChange={(e) =>
-                                setEditContactDraft((d) => (d ? { ...d, subject: e.target.value } : d))
-                              }
+                              maxLength={EDIT_CONTACT_MAX_SUBJECT}
+                              onChange={(e) => {
+                                setEditContactError("");
+                                setEditContactDraft((d) => (d ? { ...d, subject: e.target.value } : d));
+                              }}
                               style={contactEditInputStyle}
                             />
                           </div>
@@ -1034,9 +1099,11 @@ export default function ManageAccount() {
                             </div>
                             <textarea
                               value={editContactDraft.message}
-                              onChange={(e) =>
-                                setEditContactDraft((d) => (d ? { ...d, message: e.target.value } : d))
-                              }
+                              maxLength={EDIT_CONTACT_MAX_MESSAGE}
+                              onChange={(e) => {
+                                setEditContactError("");
+                                setEditContactDraft((d) => (d ? { ...d, message: e.target.value } : d));
+                              }}
                               rows={6}
                               style={{ ...contactEditInputStyle, resize: "vertical", minHeight: "120px" }}
                             />

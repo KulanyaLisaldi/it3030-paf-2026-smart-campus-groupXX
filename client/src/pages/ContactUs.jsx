@@ -1,6 +1,18 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { appFontFamily } from "../utils/appFont";
+import {
+  ERR_LONG_TEXT_CHARS,
+  ERR_NAME_CHARS,
+  ERR_PHONE_CHARS,
+  ERR_SAME_CHAR_RUN,
+  ERR_SUBJECT_CHARS,
+  hasExcessiveConsecutiveSameChar,
+  longTextCharsValid,
+  nameCharsValid,
+  phoneCharsValid,
+  subjectCharsValid,
+} from "../utils/contactMessageValidation";
 
 const pageStyle = {
   minHeight: "100vh",
@@ -137,6 +149,45 @@ const footerNoteStyle = {
 
 const CONTACT_MESSAGES_STORAGE_KEY = "smartCampusContactMessages";
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_FIRST_NAME_LEN = 80;
+const MAX_LAST_NAME_LEN = 80;
+const MIN_SUBJECT_LEN = 3;
+const MAX_SUBJECT_LEN = 200;
+const MIN_MESSAGE_LEN = 10;
+const MAX_MESSAGE_LEN = 4000;
+
+function isValidOptionalPhone(phoneTrimmed) {
+  if (!phoneTrimmed) return true;
+  const digits = phoneTrimmed.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15 && phoneTrimmed.length <= 24;
+}
+
+function validateContactPayload(p) {
+  if (!p.firstName) return "First name is required.";
+  if (!nameCharsValid(p.firstName)) return ERR_NAME_CHARS;
+  if (hasExcessiveConsecutiveSameChar(p.firstName)) return ERR_SAME_CHAR_RUN;
+  if (p.firstName.length > MAX_FIRST_NAME_LEN) return `First name must be at most ${MAX_FIRST_NAME_LEN} characters.`;
+  if (!nameCharsValid(p.lastName)) return ERR_NAME_CHARS;
+  if (p.lastName && hasExcessiveConsecutiveSameChar(p.lastName)) return ERR_SAME_CHAR_RUN;
+  if (p.lastName.length > MAX_LAST_NAME_LEN) return `Last name must be at most ${MAX_LAST_NAME_LEN} characters.`;
+  if (!p.email) return "Email is required.";
+  if (!EMAIL_PATTERN.test(p.email)) return "Enter a valid email address.";
+  if (!phoneCharsValid(p.phone)) return ERR_PHONE_CHARS;
+  if (!isValidOptionalPhone(p.phone)) return "Enter a valid phone number (7–15 digits), or leave phone blank.";
+  if (!p.subject) return "Subject is required.";
+  if (!subjectCharsValid(p.subject)) return ERR_SUBJECT_CHARS;
+  if (hasExcessiveConsecutiveSameChar(p.subject)) return ERR_SAME_CHAR_RUN;
+  if (p.subject.length < MIN_SUBJECT_LEN) return `Subject must be at least ${MIN_SUBJECT_LEN} characters.`;
+  if (p.subject.length > MAX_SUBJECT_LEN) return `Subject must be at most ${MAX_SUBJECT_LEN} characters.`;
+  if (!p.message) return "Message is required.";
+  if (!longTextCharsValid(p.message)) return ERR_LONG_TEXT_CHARS;
+  if (hasExcessiveConsecutiveSameChar(p.message)) return ERR_SAME_CHAR_RUN;
+  if (p.message.length < MIN_MESSAGE_LEN) return `Message must be at least ${MIN_MESSAGE_LEN} characters.`;
+  if (p.message.length > MAX_MESSAGE_LEN) return `Message must be at most ${MAX_MESSAGE_LEN} characters.`;
+  return "";
+}
+
 const submitFeedbackStyle = {
   marginTop: "10px",
   padding: "10px 12px",
@@ -161,6 +212,7 @@ export default function ContactUs() {
   const [submitError, setSubmitError] = useState("");
 
   const handleChange = (key, value) => {
+    setSubmitError("");
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -174,8 +226,9 @@ export default function ContactUs() {
       subject: form.subject.trim(),
       message: form.message.trim(),
     };
-    if (!payload.firstName || !payload.email || !payload.subject || !payload.message) {
-      setSubmitError("Please fill first name, email, subject, and message.");
+    const validationError = validateContactPayload(payload);
+    if (validationError) {
+      setSubmitError(validationError);
       return;
     }
 
@@ -260,6 +313,7 @@ export default function ContactUs() {
                     type="text"
                     style={inputStyle}
                     placeholder="Enter first name"
+                    maxLength={MAX_FIRST_NAME_LEN}
                     value={form.firstName}
                     onChange={(e) => handleChange("firstName", e.target.value)}
                   />
@@ -274,6 +328,7 @@ export default function ContactUs() {
                     type="text"
                     style={inputStyle}
                     placeholder="Enter last name"
+                    maxLength={MAX_LAST_NAME_LEN}
                     value={form.lastName}
                     onChange={(e) => handleChange("lastName", e.target.value)}
                   />
@@ -318,6 +373,7 @@ export default function ContactUs() {
                   type="text"
                   style={inputStyle}
                   placeholder="Brief summary of your request"
+                  maxLength={MAX_SUBJECT_LEN}
                   value={form.subject}
                   onChange={(e) => handleChange("subject", e.target.value)}
                 />
@@ -333,6 +389,7 @@ export default function ContactUs() {
                   rows={7}
                   style={{ ...inputStyle, resize: "vertical", minHeight: "130px" }}
                   placeholder="Describe your issue or request in detail..."
+                  maxLength={MAX_MESSAGE_LEN}
                   value={form.message}
                   onChange={(e) => handleChange("message", e.target.value)}
                 />

@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import AdminLayout from "../components/admin/AdminLayout.jsx";
 import { appFontFamily } from "../utils/appFont";
+import {
+  ERR_LONG_TEXT_CHARS,
+  ERR_SAME_CHAR_RUN,
+  hasExcessiveConsecutiveSameChar,
+  longTextCharsValid,
+} from "../utils/contactMessageValidation";
 
 /** Same key as ContactUs / ManageAccount local submissions. */
 const CONTACT_MESSAGES_STORAGE_KEY = "smartCampusContactMessages";
@@ -92,6 +98,9 @@ function displayName(m) {
 function hasSavedAdminReply(m) {
   return typeof m?.adminReply === "string" && m.adminReply.trim().length > 0;
 }
+
+const MIN_ADMIN_REPLY_LEN = 10;
+const MAX_ADMIN_REPLY_LEN = 4000;
 
 /** Status shown and used for filtering: storage field or implied Replied when a reply exists. */
 function effectiveContactStatus(m) {
@@ -313,6 +322,17 @@ const replyModalSecondaryBtnStyle = {
   cursor: "pointer",
 };
 
+const replyModalErrorStyle = {
+  padding: "10px 12px",
+  borderRadius: "8px",
+  backgroundColor: "#fef2f2",
+  border: "1px solid #fecaca",
+  color: "#b91c1c",
+  fontWeight: 600,
+  fontSize: "13px",
+  lineHeight: 1.4,
+};
+
 const filterToolbarStyle = {
   display: "flex",
   flexWrap: "wrap",
@@ -411,6 +431,7 @@ export default function AdminContactMessagesPage() {
   const [detailMessage, setDetailMessage] = useState(null);
   const [replyTarget, setReplyTarget] = useState(null);
   const [replyDraft, setReplyDraft] = useState("");
+  const [replyError, setReplyError] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
@@ -475,6 +496,7 @@ export default function AdminContactMessagesPage() {
   };
 
   const openReplyComposer = (m) => {
+    setReplyError("");
     setReplyTarget(m);
     setReplyDraft(typeof m?.adminReply === "string" ? m.adminReply : "");
   };
@@ -482,10 +504,49 @@ export default function AdminContactMessagesPage() {
   const closeReplyComposer = () => {
     setReplyTarget(null);
     setReplyDraft("");
+    setReplyError("");
   };
 
   const submitAdminReply = () => {
     if (!replyTarget) return;
+    const trimmed = replyDraft.trim();
+    if (!trimmed) {
+      if (hasSavedAdminReply(replyTarget)) {
+        const ok = window.confirm(
+          "Remove this support reply? The message status will return to Submitted until you add a new reply."
+        );
+        if (!ok) return;
+        setReplyError("");
+        const updated = saveAdminReplyForMessage(replyTarget, "");
+        if (!updated) {
+          window.alert("Could not update message; it was not found in storage.");
+          return;
+        }
+        setDetailMessage((cur) => (cur && messagesMatch(cur, replyTarget) ? updated : cur));
+        closeReplyComposer();
+        setInboxRev((n) => n + 1);
+        return;
+      }
+      setReplyError("Please enter a reply message.");
+      return;
+    }
+    if (trimmed.length < MIN_ADMIN_REPLY_LEN) {
+      setReplyError(`Reply must be at least ${MIN_ADMIN_REPLY_LEN} characters.`);
+      return;
+    }
+    if (trimmed.length > MAX_ADMIN_REPLY_LEN) {
+      setReplyError(`Reply must be at most ${MAX_ADMIN_REPLY_LEN} characters.`);
+      return;
+    }
+    if (!longTextCharsValid(trimmed)) {
+      setReplyError(ERR_LONG_TEXT_CHARS);
+      return;
+    }
+    if (hasExcessiveConsecutiveSameChar(trimmed)) {
+      setReplyError(ERR_SAME_CHAR_RUN);
+      return;
+    }
+    setReplyError("");
     const updated = saveAdminReplyForMessage(replyTarget, replyDraft);
     if (!updated) {
       window.alert("Could not save reply; message was not found in storage.");
@@ -810,8 +871,12 @@ export default function AdminContactMessagesPage() {
                 </span>
                 <textarea
                   value={replyDraft}
-                  onChange={(e) => setReplyDraft(e.target.value)}
+                  onChange={(e) => {
+                    setReplyError("");
+                    setReplyDraft(e.target.value);
+                  }}
                   rows={8}
+                  maxLength={MAX_ADMIN_REPLY_LEN}
                   style={{
                     width: "100%",
                     boxSizing: "border-box",
@@ -828,6 +893,7 @@ export default function AdminContactMessagesPage() {
                   placeholder="Type your reply to the user…"
                 />
               </label>
+              {replyError ? <div role="alert" style={replyModalErrorStyle}>{replyError}</div> : null}
               <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", justifyContent: "flex-end" }}>
                 <button type="button" style={replyModalSecondaryBtnStyle} onClick={closeReplyComposer}>
                   Cancel
