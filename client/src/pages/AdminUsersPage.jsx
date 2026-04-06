@@ -91,7 +91,7 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <AdminLayout activeSection="users" pageTitle="User Management" description="Manage all staff accounts, including technicians.">
+    <AdminLayout activeSection="users" pageTitle="User Management">
       <AdminUsersTable refreshKey={usersTableRev} onAddTechnician={() => setAddTechnicianModalOpen(true)} onRequestRefresh={() => setUsersTableRev((n) => n + 1)} />
 
       {addTechnicianModalOpen && (

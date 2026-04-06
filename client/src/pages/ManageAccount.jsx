@@ -186,7 +186,7 @@ export default function ManageAccount() {
       const updated = await uploadProfileAvatar(fd);
       setProfile(updated);
       persistCampusUser(updated);
-      setAvatarSuccess("Profile photo saved. Your header avatar updates automatically.");
+      setAvatarSuccess("Profile photo saved.");
     } catch (err) {
       setAvatarError(err.message || "Upload failed");
     } finally {
@@ -416,7 +416,7 @@ export default function ManageAccount() {
             <h1 style={sectionHeading}>Personal info</h1>
             <p style={subtleNote}>
               Update your campus profile. Your email and name come from your account provider and cannot be changed
-              here. Profile photo is stored only on CampusSync.
+              here.
             </p>
 
             {loadError && (
@@ -431,9 +431,7 @@ export default function ManageAccount() {
                   <h2 style={{ margin: "0 0 6px 0", fontSize: "16px", fontWeight: 700, color: "#111827" }}>
                     Profile photo
                   </h2>
-                  <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 18px 0", lineHeight: 1.5 }}>
-                    Shown in the top bar on CampusSync only. Choose a new image anytime or remove it.
-                  </p>
+                 
                   <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
                     <div
                       style={{

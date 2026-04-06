@@ -287,7 +287,6 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 900, color: "#14213D", marginBottom: 4 }}>All Users</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b" }}>Search, filter, and manage staff accounts.</div>
         </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
