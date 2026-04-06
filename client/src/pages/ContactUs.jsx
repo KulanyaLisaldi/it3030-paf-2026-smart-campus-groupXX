@@ -11,7 +11,7 @@ const pageStyle = {
 
 const containerStyle = {
   width: "100%",
-  maxWidth: "1120px",
+  maxWidth: "1320px",
   margin: "0 auto",
   border: "1px solid #E8E4DC",
   borderRadius: "16px",
@@ -21,8 +21,8 @@ const containerStyle = {
 };
 
 const heroStyle = {
-  background: "linear-gradient(135deg, #14213D 0%, #1f3358 100%)",
-  color: "#FFFFFF",
+  backgroundColor: "#FFFFFF",
+  color: "#14213D",
   padding: "30px 28px",
 };
 
@@ -31,12 +31,13 @@ const heroTitleStyle = {
   fontSize: "clamp(26px, 3.8vw, 36px)",
   fontWeight: 800,
   lineHeight: 1.1,
+  color: "#FA8112",
 };
 
 const heroDescStyle = {
   margin: "10px 0 0 0",
   maxWidth: "760px",
-  color: "rgba(255,255,255,0.88)",
+  color: "#475569",
   fontSize: "15px",
   lineHeight: 1.6,
 };
