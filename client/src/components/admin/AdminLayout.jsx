@@ -65,6 +65,7 @@ const routesBySection = {
   bookings: "/adminbookings",
   tickets: "/adminticket",
   users: "/adminusers",
+  contactMessages: "/admincontactmessages",
   notifications: "/adminnotifications",
   analytics: "/adminanalytics",
 };
@@ -218,6 +219,13 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
               <button type="button" style={navRowStyle(activeSection === "bookings")} onClick={() => navigate(routesBySection.bookings)}>Booking Management</button>
               <button type="button" style={navRowStyle(activeSection === "tickets")} onClick={() => navigate(routesBySection.tickets)}>Ticket Management</button>
               <button type="button" style={navRowStyle(activeSection === "users")} onClick={() => navigate(routesBySection.users)}>User Management</button>
+              <button
+                type="button"
+                style={navRowStyle(activeSection === "contactMessages")}
+                onClick={() => navigate(routesBySection.contactMessages)}
+              >
+                Contact Messages Management
+              </button>
               <button type="button" style={navRowStyle(activeSection === "notifications")} onClick={() => navigate(routesBySection.notifications)}>Notification</button>
               <button type="button" style={navRowStyle(activeSection === "analytics")} onClick={() => navigate(routesBySection.analytics)}>Analytics & Report</button>
             </>

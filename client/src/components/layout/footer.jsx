@@ -1,6 +1,8 @@
 import React from 'react';
+import { useNavigate } from "react-router-dom";
 
 const Footer = () => {
+  const navigate = useNavigate();
   const footerStyle = {
     backgroundColor: '#222222',
     color: '#FFFFFF',
@@ -110,10 +112,14 @@ const Footer = () => {
               </li>
               <li>
                 <a 
-                  href="#" 
+                  href="/contact"
                   style={footerLinkStyle}
                   onMouseEnter={(e) => handleLinkHover(e, true)}
                   onMouseLeave={(e) => handleLinkHover(e, false)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate("/contact");
+                  }}
                 >
                   Contact Support
                 </a>
