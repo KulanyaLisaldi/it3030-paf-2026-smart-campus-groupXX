@@ -276,15 +276,87 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
           {children}
         </main>
         {profileModalOpen && (
-          <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 1000, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px" }} onMouseDown={(e) => { if (e.target === e.currentTarget) setProfileModalOpen(false); }}>
-            <div style={{ width: "100%", maxWidth: "760px", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden" }}>
-              <div style={{ padding: "16px 22px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
-                <div><div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>My profile</div><div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Personal info (admin)</div></div>
-                <button type="button" onClick={() => setProfileModalOpen(false)} style={{ padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, fontSize: "14px", cursor: "pointer", color: "#0f172a" }}>Close</button>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-profile-drawer-title"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1000,
+              backgroundColor: "rgba(15, 23, 42, 0.32)",
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "stretch",
+              boxSizing: "border-box",
+            }}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setProfileModalOpen(false);
+            }}
+          >
+            <style>{`
+              @keyframes adminProfileDrawerIn {
+                from { transform: translateX(100%); }
+                to { transform: translateX(0); }
+              }
+            `}</style>
+            <div
+              style={{
+                width: "min(440px, 100vw)",
+                maxWidth: "100%",
+                height: "100%",
+                minHeight: 0,
+                background: "rgba(255, 255, 255, 0.96)",
+                backdropFilter: "blur(8px)",
+                borderLeft: "1px solid #e5e7eb",
+                boxShadow: "-10px 0 40px rgba(15, 23, 42, 0.12)",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                animation: "adminProfileDrawerIn 0.22s ease-out",
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div
+                style={{
+                  flexShrink: 0,
+                  padding: "16px 18px",
+                  borderBottom: "1px solid #e5e7eb",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                  background: "#fff",
+                }}
+              >
+                <div>
+                  <div id="admin-profile-drawer-title" style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>
+                    My profile
+                  </div>
+                  <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Personal info (admin)</div>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close profile"
+                  onClick={() => setProfileModalOpen(false)}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "10px",
+                    border: "1px solid #e5e7eb",
+                    background: "#fff",
+                    fontWeight: 900,
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    color: "#0f172a",
+                    flexShrink: 0,
+                  }}
+                >
+                  Close
+                </button>
               </div>
-              <div style={{ padding: "18px 22px 22px" }}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "18px" }}>
-                  <div style={{ width: "220px", minWidth: "220px" }}>
+              <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "18px 18px 28px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+                  <div style={{ width: "100%", maxWidth: "280px", margin: "0 auto" }}>
                     <input ref={avatarFileRef} type="file" accept="image/*" onChange={async (e) => { const file = e.target.files?.[0]; e.target.value = ""; if (!file) return; setAvatarError(""); setAvatarSuccess(""); setAvatarBusy(true); try { const fd = new FormData(); fd.append("file", file); const updated = await uploadProfileAvatar(fd); persistCampusUser(updated); setAvatarSuccess("Profile photo updated."); } catch (err) { setAvatarError(err?.message || "Upload failed"); } finally { setAvatarBusy(false); } }} style={{ display: "none" }} />
                     <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", padding: "12px", textAlign: "center" }}>
                       <div style={{ width: "110px", height: "110px", borderRadius: "999px", margin: "0 auto", backgroundColor: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", color: "#334155", fontSize: "34px", fontWeight: 800 }}>{adminUser.profileImageUrl ? <img src={adminUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initial}</div>
@@ -296,9 +368,12 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                       {avatarError ? <p style={{ margin: "10px 0 0 0", fontSize: "13px", color: "#b91c1c", fontWeight: 800 }}>{avatarError}</p> : null}
                     </div>
                   </div>
-                  <div style={{ flex: 1, minWidth: "280px" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                      <div><label style={labelStyle}>Email address</label><input type="email" readOnly disabled value={adminUser.email || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }} /></div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "14px" }}>
+                      <div>
+                        <label style={labelStyle}>Email address</label>
+                        <input type="email" readOnly disabled value={adminUser.email || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }} />
+                      </div>
                       <div>
                         <label style={labelStyle}>Phone number</label>
                         <input
@@ -319,8 +394,14 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                       </div>
                     </div>
                     <div style={{ marginTop: "16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                      <div><label style={labelStyle}>First name</label><input type="text" readOnly disabled value={adminUser.firstName || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }} /></div>
-                      <div><label style={labelStyle}>Last name</label><input type="text" readOnly disabled value={adminUser.lastName || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }} /></div>
+                      <div>
+                        <label style={labelStyle}>First name</label>
+                        <input type="text" readOnly disabled value={adminUser.firstName || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Last name</label>
+                        <input type="text" readOnly disabled value={adminUser.lastName || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151" }} />
+                      </div>
                     </div>
                     <div style={{ marginTop: "18px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                       <button type="button" disabled={!canSavePhone || profileSaveState.busy} onClick={async () => { if (!canSavePhone || profileSaveState.busy) return; setProfileSaveState({ busy: true, message: "", error: "" }); try { const updated = await updateProfilePhone({ phoneNumber: profilePhoneDraft }); persistCampusUser(updated); setProfileSaveState({ busy: false, message: "Changes saved.", error: "" }); } catch (err) { setProfileSaveState({ busy: false, message: "", error: err?.message || "Save failed" }); } }} style={{ padding: "12px 16px", borderRadius: "10px", border: "none", backgroundColor: "#FA8112", color: "#fff", fontWeight: 800, fontSize: "14px", cursor: !canSavePhone || profileSaveState.busy ? "not-allowed" : "pointer", opacity: !canSavePhone || profileSaveState.busy ? 0.6 : 1 }}>{profileSaveState.busy ? "Saving..." : "Save changes"}</button>
