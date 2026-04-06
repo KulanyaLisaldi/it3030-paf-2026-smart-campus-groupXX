@@ -41,6 +41,11 @@ const tdStyle = {
   verticalAlign: "top",
 };
 
+const rowStyle = (isHovered) => ({
+  backgroundColor: isHovered ? "#f8fafc" : "#ffffff",
+  transition: "background-color 0.16s ease",
+});
+
 const smallBtnStyle = (variant = "neutral") => {
   const base = {
     padding: "8px 10px",
@@ -180,6 +185,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
   const [editPhoneNumber, setEditPhoneNumber] = useState("");
+  const [hoveredRowId, setHoveredRowId] = useState("");
 
   const [roleDraft, setRoleDraft] = useState("USER");
 
@@ -451,7 +457,12 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                   </tr>
                 )}
                 {filtered.map((u) => (
-                  <tr key={u.userId}>
+                  <tr
+                    key={u.userId}
+                    style={rowStyle(hoveredRowId === u.userId)}
+                    onMouseEnter={() => setHoveredRowId(u.userId)}
+                    onMouseLeave={() => setHoveredRowId("")}
+                  >
                     <td style={tdStyle}>{u.userId}</td>
                     <td style={tdStyle}>{u.name || "—"}</td>
                     <td style={tdStyle}>{u.email || "—"}</td>
