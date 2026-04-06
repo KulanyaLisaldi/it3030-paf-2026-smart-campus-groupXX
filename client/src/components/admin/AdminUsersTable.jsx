@@ -119,6 +119,44 @@ function formatDate(value) {
   }
 }
 
+function roleBadgeStyle(role) {
+  const r = String(role || "").toUpperCase();
+  if (r === "ADMIN") {
+    return { background: "#dbeafe", border: "1px solid #93c5fd", color: "#1d4ed8" };
+  }
+  if (r === "TECHNICIAN") {
+    return { background: "#dcfce7", border: "1px solid #86efac", color: "#166534" };
+  }
+  return { background: "#f3f4f6", border: "1px solid #d1d5db", color: "#374151" };
+}
+
+function statusBadgeStyle(status) {
+  const s = String(status || "").toUpperCase();
+  if (s === "DISABLED" || s === "SUSPENDED") {
+    return { background: "#fee2e2", border: "1px solid #fca5a5", color: "#b91c1c" };
+  }
+  return { background: "#dcfce7", border: "1px solid #86efac", color: "#166534" };
+}
+
+function Badge({ text, style }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        padding: "2px 10px",
+        borderRadius: "999px",
+        fontSize: "12px",
+        fontWeight: 800,
+        lineHeight: 1.6,
+        ...style,
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
 export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onRequestRefresh }) {
   const currentUserId = useMemo(() => {
     const me = readCampusUser();
@@ -417,8 +455,15 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                     <td style={tdStyle}>{u.userId}</td>
                     <td style={tdStyle}>{u.name || "—"}</td>
                     <td style={tdStyle}>{u.email || "—"}</td>
-                    <td style={tdStyle}>{u.role || "—"}</td>
-                    <td style={tdStyle}>{u.accountStatus || "Active"}</td>
+                    <td style={tdStyle}>
+                      <Badge text={u.role || "USER"} style={roleBadgeStyle(u.role)} />
+                    </td>
+                    <td style={tdStyle}>
+                      <Badge
+                        text={(u.accountStatus || "").toUpperCase() === "DISABLED" ? "Suspended" : "Active"}
+                        style={statusBadgeStyle(u.accountStatus)}
+                      />
+                    </td>
                     <td style={tdStyle}>{u.provider || "—"}</td>
                     <td style={tdStyle}>{formatDate(u.createdDate) || "—"}</td>
                     <td style={tdStyle}>{formatDate(u.lastLogin) || "—"}</td>
