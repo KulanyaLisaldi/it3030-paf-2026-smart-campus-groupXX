@@ -1,6 +1,7 @@
 package com.example.server.dto.admin;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 
 public class AdminEditUserProfileRequest {
@@ -10,6 +11,10 @@ public class AdminEditUserProfileRequest {
 
     @NotBlank(message = "Last name is required")
     private String lastName;
+
+    /** Optional in request payload; when provided, must be a valid email format. */
+    @Email(message = "Email format is invalid")
+    private String email;
 
     /**
      * Optional phone number (same format as user profile).
@@ -32,6 +37,14 @@ public class AdminEditUserProfileRequest {
 
     public void setLastName(String lastName) {
         this.lastName = lastName;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getPhoneNumber() {

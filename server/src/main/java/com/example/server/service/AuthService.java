@@ -424,6 +424,30 @@ public class AuthService {
         return true;
     }
 
+    public void resetTechnicianPasswordByAdmin(String targetUserId, String newPassword) {
+        Optional<User> maybe = userRepo.findById(targetUserId);
+        if (maybe.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+        User target = maybe.get();
+        if (target.getEffectiveRole() != UserRole.TECHNICIAN) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password reset is allowed for technicians only");
+        }
+        if (target.getGoogleSubject() != null && !target.getGoogleSubject().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Google accounts cannot be reset with a local password");
+        }
+        String next = newPassword == null ? "" : newPassword.trim();
+        if (!next.matches(PASSWORD_COMPLEXITY_REGEX)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Password must include uppercase, lowercase, number, and symbol"
+            );
+        }
+        target.setPasswordHash(passwordEncoder.encode(next));
+        clearPendingPasswordChange(target);
+        userRepo.save(target);
+    }
+
     private void validatePasswordChangeRequest(User user, ChangePasswordRequest request) {
         UserRole role = user.getEffectiveRole();
         if (role != UserRole.ADMIN && role != UserRole.TECHNICIAN) {

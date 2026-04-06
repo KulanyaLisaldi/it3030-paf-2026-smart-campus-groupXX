@@ -24,3 +24,7 @@ export function adminDeleteUser(userId) {
   return apiDelete(`/api/admin/users/${encodeURIComponent(userId)}`);
 }
 
+export function adminResetTechnicianPassword(userId, payload) {
+  return apiPost(`/api/admin/users/${encodeURIComponent(userId)}/reset-password`, payload);
+}
+

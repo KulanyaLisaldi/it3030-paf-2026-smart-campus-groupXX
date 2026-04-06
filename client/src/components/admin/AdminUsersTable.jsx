@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  adminChangeUserRole,
   adminDeleteUser,
+  adminResetTechnicianPassword,
   adminSetUserStatus,
   adminUpdateUserProfile,
   getAdminUsers,
@@ -193,7 +195,13 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
 
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [editPhoneNumber, setEditPhoneNumber] = useState("");
+  const [editRole, setEditRole] = useState("USER");
+  const [editAccountStatus, setEditAccountStatus] = useState("Active");
+  const [resetPasswordDraft, setResetPasswordDraft] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
   const [hoveredRowId, setHoveredRowId] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [addUserMenuOpen, setAddUserMenuOpen] = useState(false);
@@ -214,7 +222,12 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     if (!editPanelOpen || !selectedUser) return;
     setEditFirstName(selectedUser.firstName || "");
     setEditLastName(selectedUser.lastName || "");
+    setEditEmail(selectedUser.email || "");
     setEditPhoneNumber(phoneFromServer(selectedUser.phoneNumber));
+    setEditRole(String(selectedUser.role || "USER").toUpperCase());
+    setEditAccountStatus((selectedUser.accountStatus || "") === "Disabled" ? "Disabled" : "Active");
+    setResetPasswordDraft("");
+    setResetMessage("");
     setActionError("");
   }, [editPanelOpen, selectedUser]);
 
@@ -224,7 +237,23 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
 
   const handleEditSave = async () => {
     if (!selectedUser) return;
+    const selectedRoleUpper = String(selectedUser.role || "").toUpperCase();
+    const selectedProvider = String(selectedUser.provider || "");
     const phoneDigits = editPhoneNumber || "";
+    const emailDraft = String(editEmail || "").trim();
+    if (!emailDraft) {
+      setActionError("Email is required.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailDraft)) {
+      setActionError("Enter a valid email address.");
+      return;
+    }
+    if (selectedProvider === "Google OAuth" && emailDraft.toLowerCase() !== String(selectedUser.email || "").toLowerCase()) {
+      setActionError("Google OAuth account email cannot be changed.");
+      return;
+    }
     if (phoneDigits && !isValidProfilePhone(phoneDigits)) {
       setActionError("Phone number must be exactly 10 digits or left empty.");
       return;
@@ -232,11 +261,26 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     setActionBusy(true);
     setActionError("");
     try {
-      const updated = await adminUpdateUserProfile(selectedUser.userId, {
+      let updated = await adminUpdateUserProfile(selectedUser.userId, {
         firstName: editFirstName.trim(),
         lastName: editLastName.trim(),
+        email: emailDraft,
         phoneNumber: phoneDigits ? phoneDigits : null,
       });
+      if (String(updated.role || "").toUpperCase() !== String(editRole || "").toUpperCase()) {
+        updated = await adminChangeUserRole(selectedUser.userId, { role: editRole });
+      }
+      const targetDisabled = editAccountStatus === "Disabled";
+      const currentDisabled = String(updated.accountStatus || "").toUpperCase() === "DISABLED";
+      if (targetDisabled !== currentDisabled) {
+        if (selectedRoleUpper === "ADMIN") {
+          throw new Error("Admin accounts cannot be deactivated.");
+        }
+        if (currentUserId && selectedUser.userId === currentUserId && targetDisabled) {
+          throw new Error("You cannot disable your own account.");
+        }
+        updated = await adminSetUserStatus(selectedUser.userId, { disabled: targetDisabled });
+      }
       setUsers((prev) => prev.map((u) => (u.userId === updated.userId ? updated : u)));
       setDetailsUser((prev) => (prev && prev.userId === updated.userId ? updated : prev));
       setSelectedUser(updated);
@@ -246,6 +290,35 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
       setActionError(e.message || "Failed to update user.");
     } finally {
       setActionBusy(false);
+    }
+  };
+
+  const handleAdminPasswordReset = async () => {
+    if (!selectedUser) return;
+    const selectedRoleUpper = String(selectedUser.role || "").toUpperCase();
+    const provider = String(selectedUser.provider || "");
+    if (selectedRoleUpper !== "TECHNICIAN") {
+      setResetMessage("Password reset is allowed for technicians only.");
+      return;
+    }
+    if (provider === "Google OAuth") {
+      setResetMessage("Google sign-in users do not support local password reset.");
+      return;
+    }
+    if (!resetPasswordDraft.trim()) {
+      setResetMessage("Enter a new temporary password.");
+      return;
+    }
+    setResetBusy(true);
+    setResetMessage("");
+    try {
+      await adminResetTechnicianPassword(selectedUser.userId, { newPassword: resetPasswordDraft.trim() });
+      setResetPasswordDraft("");
+      setResetMessage("Technician password reset successfully.");
+    } catch (e) {
+      setResetMessage(e.message || "Failed to reset password.");
+    } finally {
+      setResetBusy(false);
     }
   };
 
@@ -683,7 +756,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
             {editPanelOpen && selectedUser && (
               <div
                 style={{
-                  width: "min(420px, calc(100vw - 40px))",
+                  width: "min(500px, calc(100vw - 40px))",
                   maxHeight: "calc(100vh - 68px)",
                   background: "rgba(255, 255, 255, 0.90)",
                   backdropFilter: "blur(8px)",
@@ -732,6 +805,63 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
 
                   <div>
                     <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                      Email {String(selectedUser.provider || "") === "Google OAuth" ? <span style={{ fontWeight: 500, color: "#9ca3af" }}>(read-only for Google OAuth)</span> : null}
+                    </label>
+                    <input
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      readOnly={String(selectedUser.provider || "") === "Google OAuth"}
+                      style={{
+                        ...modalInputStyle,
+                        backgroundColor: String(selectedUser.provider || "") === "Google OAuth" ? "#f8fafc" : "#fff",
+                        color: String(selectedUser.provider || "") === "Google OAuth" ? "#475569" : "#0f172a",
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                        Role
+                      </label>
+                      <select
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value)}
+                        disabled={String(selectedUser.role || "").toUpperCase() === "ADMIN"}
+                        style={{ ...modalInputStyle, cursor: "pointer", backgroundColor: String(selectedUser.role || "").toUpperCase() === "ADMIN" ? "#f8fafc" : "#fff" }}
+                      >
+                        <option value="USER">USER</option>
+                        <option value="TECHNICIAN">TECHNICIAN</option>
+                        <option value="ADMIN">ADMIN</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                        Account status
+                      </label>
+                      <select
+                        value={editAccountStatus}
+                        onChange={(e) => setEditAccountStatus(e.target.value)}
+                        disabled={String(selectedUser.role || "").toUpperCase() === "ADMIN" || (currentUserId && selectedUser.userId === currentUserId)}
+                        style={{ ...modalInputStyle, cursor: "pointer", backgroundColor: (String(selectedUser.role || "").toUpperCase() === "ADMIN" || (currentUserId && selectedUser.userId === currentUserId)) ? "#f8fafc" : "#fff" }}
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Disabled">Disabled</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                        Provider <span style={{ fontWeight: 500, color: "#9ca3af" }}>(read-only)</span>
+                      </label>
+                      <input value={selectedUser.provider || ""} readOnly style={{ ...modalInputStyle, backgroundColor: "#f8fafc", color: "#475569" }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
                       Phone number <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
                     </label>
                     <input
@@ -747,6 +877,60 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                       Optional. {PROFILE_PHONE_DIGITS} digits only.
                     </p>
                   </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                        User ID <span style={{ fontWeight: 500, color: "#9ca3af" }}>(read-only)</span>
+                      </label>
+                      <input value={selectedUser.userId || ""} readOnly style={{ ...modalInputStyle, backgroundColor: "#f8fafc", color: "#475569" }} />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                        Created date <span style={{ fontWeight: 500, color: "#9ca3af" }}>(read-only)</span>
+                      </label>
+                      <input value={formatDate(selectedUser.createdDate) || "—"} readOnly style={{ ...modalInputStyle, backgroundColor: "#f8fafc", color: "#475569" }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                      Last login <span style={{ fontWeight: 500, color: "#9ca3af" }}>(read-only)</span>
+                    </label>
+                    <input value={formatDate(selectedUser.lastLogin) || "—"} readOnly style={{ ...modalInputStyle, backgroundColor: "#f8fafc", color: "#475569" }} />
+                  </div>
+
+                  {(selectedUser.provider || "") !== "Google OAuth" ? (
+                    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 10, background: "#fff" }}>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: "#0f172a", marginBottom: 8 }}>Password reset</div>
+                      <input
+                        type="password"
+                        value={resetPasswordDraft}
+                        onChange={(e) => setResetPasswordDraft(e.target.value)}
+                        style={modalInputStyle}
+                        placeholder="Set temporary password"
+                        disabled={String(selectedUser.role || "").toUpperCase() !== "TECHNICIAN"}
+                      />
+                      <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                        <p style={{ margin: 0, fontSize: 11, color: "#64748b", fontWeight: 600 }}>
+                          Only Email-provider technicians can be reset by admin.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleAdminPasswordReset}
+                          disabled={resetBusy || String(selectedUser.role || "").toUpperCase() !== "TECHNICIAN"}
+                          style={{ ...smallBtnStyle("danger"), opacity: resetBusy ? 0.8 : 1 }}
+                        >
+                          {resetBusy ? "Resetting..." : "Reset Password"}
+                        </button>
+                      </div>
+                      {resetMessage ? (
+                        <p style={{ margin: "8px 0 0 0", fontSize: 12, fontWeight: 700, color: resetMessage.toLowerCase().includes("success") ? "#166534" : "#b91c1c" }}>
+                          {resetMessage}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   {actionError && (
                     <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 900 }}>{actionError}</p>

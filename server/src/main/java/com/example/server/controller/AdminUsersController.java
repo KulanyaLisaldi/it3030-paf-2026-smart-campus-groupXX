@@ -5,6 +5,7 @@ import com.example.server.dto.admin.AdminRoleChangeRequest;
 import com.example.server.dto.admin.AdminSetUserStatusRequest;
 import com.example.server.dto.admin.AdminUserRowResponse;
 import com.example.server.dto.admin.CreateStaffUserRequest;
+import com.example.server.dto.admin.AdminResetTechnicianPasswordRequest;
 import com.example.server.model.User;
 import com.example.server.model.UserRole;
 import com.example.server.repository.UserRepo;
@@ -27,6 +28,7 @@ import jakarta.validation.Valid;
 import java.util.Optional;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/admin/users")
@@ -114,6 +116,22 @@ public class AdminUsersController {
         User user = maybe.get();
         user.setFirstName(request.getFirstName().trim());
         user.setLastName(request.getLastName().trim());
+
+        if (request.getEmail() != null) {
+            String nextEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
+            if (nextEmail.isBlank()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of("message", "Email cannot be empty"));
+            }
+            boolean isGoogleUser = user.getGoogleSubject() != null && !user.getGoogleSubject().isBlank();
+            if (isGoogleUser && !nextEmail.equalsIgnoreCase(user.getEmail())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of("message", "Google OAuth account email cannot be changed"));
+            }
+            Optional<User> existing = userRepo.findByEmail(nextEmail);
+            if (existing.isPresent() && !existing.get().getId().equals(userId)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(java.util.Map.of("message", "Email is already registered"));
+            }
+            user.setEmail(nextEmail);
+        }
 
         if (request.getPhoneNumber() != null) {
             String phone = request.getPhoneNumber().trim();
@@ -203,6 +221,19 @@ public class AdminUsersController {
 
         userRepo.deleteById(userId);
         return ResponseEntity.ok(java.util.Map.of("message", "User deleted"));
+    }
+
+    @PostMapping("/{userId}/reset-password")
+    public ResponseEntity<?> resetTechnicianPassword(
+        Authentication authentication,
+        @PathVariable String userId,
+        @Valid @RequestBody AdminResetTechnicianPasswordRequest request
+    ) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(java.util.Map.of("message", "Unauthorized"));
+        }
+        authService.resetTechnicianPasswordByAdmin(userId, request.getNewPassword());
+        return ResponseEntity.ok(java.util.Map.of("message", "Technician password reset successfully"));
     }
 }
 
