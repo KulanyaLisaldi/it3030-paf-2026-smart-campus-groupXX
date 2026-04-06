@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { acceptAdminTicket, getAdminTicketList } from "../api/adminticket";
+import { acceptAdminTicket, getAdminTicketList, rejectAdminTicket } from "../api/adminticket";
 import { apiDelete } from "../api/http";
 import { listTechnicians } from "../api/adminTechnicians";
 import { technicianCategoryLabel } from "../constants/technicianCategories";
@@ -428,6 +428,7 @@ export default function AdminTicketDashboard() {
   const [acceptSelectedTechnicianKey, setAcceptSelectedTechnicianKey] = useState("");
   const [acceptConfirming, setAcceptConfirming] = useState(false);
   const [resolvedCloseBusyId, setResolvedCloseBusyId] = useState(null);
+  const [rejectSubmitting, setRejectSubmitting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -556,6 +557,7 @@ export default function AdminTicketDashboard() {
     setRejectModalTicket(null);
     setRejectionReason("");
     setRejectionError("");
+    setRejectSubmitting(false);
   };
 
   const openRejectionForm = (ticket) => {
@@ -659,7 +661,7 @@ export default function AdminTicketDashboard() {
     }
   };
 
-  const submitRejection = () => {
+  const submitRejection = async () => {
     if (!rejectModalTicket?.id) return;
     const ticketId = rejectModalTicket.id;
     const reason = rejectionReason.trim();
@@ -676,8 +678,42 @@ export default function AdminTicketDashboard() {
       return;
     }
 
-    handleTicketDecision(ticketId, "REJECTED", reason);
-    closeRejectModal();
+    setRejectSubmitting(true);
+    setRejectionError("");
+    try {
+      const wrap = await rejectAdminTicket(ticketId, { reason });
+      const serverTicket = wrap?.ticket;
+      const serverComments = wrap?.comments;
+      setTickets((prev) =>
+        (Array.isArray(prev) ? prev : []).map((item) => {
+          if (item?.ticket?.id !== ticketId) return item;
+          const nextTicket = serverTicket
+            ? { ...item.ticket, ...serverTicket }
+            : { ...item.ticket, status: "REJECTED", rejectionReason: reason };
+          return {
+            ...item,
+            ticket: nextTicket,
+            comments: Array.isArray(serverComments) ? serverComments : item.comments,
+          };
+        })
+      );
+      storeDecision(ticketId, "REJECTED", reason, "");
+      pushUserNotification(
+        serverTicket || {
+          id: ticketId,
+          issueTitle: rejectModalTicket.issueTitle,
+          status: "REJECTED",
+          rejectionReason: reason,
+        },
+        "REJECTED",
+        reason
+      );
+      closeRejectModal();
+    } catch (err) {
+      setRejectionError(err?.message || "Could not save rejection. Check admin login and server.");
+    } finally {
+      setRejectSubmitting(false);
+    }
   };
 
   const filteredAndSortedTickets = useMemo(() => {
@@ -1872,15 +1908,27 @@ export default function AdminTicketDashboard() {
                 backgroundColor: "#fff",
               }}
             >
-              <button type="button" style={{ ...buttonStyle, backgroundColor: "#6b7280", padding: "10px 14px" }} onClick={closeRejectModal}>
+              <button
+                type="button"
+                style={{ ...buttonStyle, backgroundColor: "#6b7280", padding: "10px 14px" }}
+                disabled={rejectSubmitting}
+                onClick={closeRejectModal}
+              >
                 Cancel
               </button>
               <button
                 type="button"
-                style={{ ...buttonStyle, backgroundColor: "#d32f2f", padding: "10px 14px" }}
+                style={{
+                  ...buttonStyle,
+                  backgroundColor: "#d32f2f",
+                  padding: "10px 14px",
+                  opacity: rejectSubmitting ? 0.75 : 1,
+                  cursor: rejectSubmitting ? "wait" : "pointer",
+                }}
+                disabled={rejectSubmitting}
                 onClick={submitRejection}
               >
-                Confirm rejection
+                {rejectSubmitting ? "Saving…" : "Confirm rejection"}
               </button>
             </div>
           </div>

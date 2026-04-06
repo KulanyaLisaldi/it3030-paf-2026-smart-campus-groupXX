@@ -21,10 +21,16 @@ public class TechnicianTicketService {
 
     private final TicketRepo ticketRepo;
     private final UserRepo userRepo;
+    private final TicketNotificationEmailService ticketNotificationEmailService;
 
-    public TechnicianTicketService(TicketRepo ticketRepo, UserRepo userRepo) {
+    public TechnicianTicketService(
+        TicketRepo ticketRepo,
+        UserRepo userRepo,
+        TicketNotificationEmailService ticketNotificationEmailService
+    ) {
         this.ticketRepo = ticketRepo;
         this.userRepo = userRepo;
+        this.ticketNotificationEmailService = ticketNotificationEmailService;
     }
 
     public List<Ticket> listAssigned(String technicianUserId) {
@@ -78,7 +84,11 @@ public class TechnicianTicketService {
             }
         }
         ticket.setStatus(next);
-        return ticketRepo.save(ticket);
+        Ticket saved = ticketRepo.save(ticket);
+        if ("RESOLVED".equals(next)) {
+            ticketNotificationEmailService.notifyTicketResolved(saved);
+        }
+        return saved;
     }
 
     private boolean isAssignedToTechnician(Ticket ticket, String userId) {

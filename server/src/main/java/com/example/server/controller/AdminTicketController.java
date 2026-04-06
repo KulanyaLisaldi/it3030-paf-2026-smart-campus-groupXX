@@ -2,6 +2,7 @@ package com.example.server.controller;
 
 import com.example.server.dto.ticket.AcceptTicketRequest;
 import com.example.server.dto.ticket.AdminTicketWithComments;
+import com.example.server.dto.ticket.RejectTicketRequest;
 import com.example.server.service.AdminTicketService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -43,6 +44,21 @@ public class AdminTicketController {
     ) {
         return adminTicketService
             .acceptTicket(id, body.getTechnicianId(), body.getTechnicianName())
+            .<ResponseEntity<?>>map(ResponseEntity::ok)
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Ticket not found")));
+    }
+
+    @RequestMapping(
+        value = {"/api/adminticket/tickets/{id}/reject", "/api/admin/tickets/{id}/reject"},
+        method = {RequestMethod.PATCH, RequestMethod.POST}
+    )
+    public ResponseEntity<?> rejectTicket(
+        @PathVariable("id") String id,
+        @Valid @RequestBody RejectTicketRequest body
+    ) {
+        String reason = body.getReason() == null ? "" : body.getReason().trim();
+        return adminTicketService
+            .rejectTicket(id, reason)
             .<ResponseEntity<?>>map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Ticket not found")));
     }

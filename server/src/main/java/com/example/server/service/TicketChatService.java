@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -27,17 +28,20 @@ public class TicketChatService {
     private final TicketChatRepo chatRepo;
     private final UserRepo userRepo;
     private final TicketMetricsService ticketMetricsService;
+    private final TicketNotificationEmailService ticketNotificationEmailService;
 
     public TicketChatService(
         TicketRepo ticketRepo,
         TicketChatRepo chatRepo,
         UserRepo userRepo,
-        TicketMetricsService ticketMetricsService
+        TicketMetricsService ticketMetricsService,
+        TicketNotificationEmailService ticketNotificationEmailService
     ) {
         this.ticketRepo = ticketRepo;
         this.chatRepo = chatRepo;
         this.userRepo = userRepo;
         this.ticketMetricsService = ticketMetricsService;
+        this.ticketNotificationEmailService = ticketNotificationEmailService;
     }
 
     public List<TicketChatMessage> listMessages(String ticketId, Authentication authentication) {
@@ -70,7 +74,36 @@ public class TicketChatService {
         msg.setCreatedAt(Instant.now());
         TicketChatMessage saved = chatRepo.save(msg);
         ticketMetricsService.recordFirstResponseIfBlank(ticketId);
+        if (SENDER_TECHNICIAN.equals(role)) {
+            ticketNotificationEmailService.notifyNewChatFromTechnician(
+                ticket,
+                saved.getSenderDisplayName(),
+                saved.getBody()
+            );
+        } else {
+            findAssigneeUser(ticket).ifPresent(technician ->
+                ticketNotificationEmailService.notifyNewChatFromUser(
+                    ticket,
+                    technician,
+                    saved.getSenderDisplayName(),
+                    saved.getBody()
+                )
+            );
+        }
         return saved;
+    }
+
+    private Optional<User> findAssigneeUser(Ticket ticket) {
+        String raw = ticket.getAssignedTechnicianId();
+        if (raw == null || raw.isBlank()) {
+            return Optional.empty();
+        }
+        final String ref = raw.trim();
+        Optional<User> byId = userRepo.findById(ref);
+        if (byId.isPresent()) {
+            return byId;
+        }
+        return userRepo.findByEmail(ref.toLowerCase(Locale.ROOT));
     }
 
     private void assertTicketHasAssignment(Ticket ticket) {

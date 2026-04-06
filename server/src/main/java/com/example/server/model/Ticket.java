@@ -38,6 +38,8 @@ public class Ticket {
     private Instant resolvedAt;
     /** Set when an administrator assigns a technician (accept flow). */
     private Instant technicianAssignedAt;
+    /** Set when an administrator rejects an open ticket. */
+    private String rejectionReason;
 
     public Ticket() {
     }
@@ -188,6 +190,14 @@ public class Ticket {
 
     public void setTechnicianAssignedAt(Instant technicianAssignedAt) {
         this.technicianAssignedAt = technicianAssignedAt;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
     }
 
     /** Duration from ticket creation to first response (TFR). Null if no first response yet. */
