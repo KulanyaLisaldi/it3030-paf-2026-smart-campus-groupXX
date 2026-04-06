@@ -1,6 +1,7 @@
 package com.example.server.service;
 
 import com.example.server.dto.admin.CreateTechnicianRequest;
+import com.example.server.dto.admin.CreateStaffUserRequest;
 import com.example.server.dto.auth.AuthResponse;
 import com.example.server.dto.auth.AuthUserResponse;
 import com.example.server.dto.auth.ChangePasswordRequest;
@@ -136,13 +137,57 @@ public class AuthService {
         return toUserResponse(saved);
     }
 
-    private List<com.example.server.model.TechnicianCategory> normalizedTechnicianCategories(CreateTechnicianRequest request) {
-        LinkedHashSet<com.example.server.model.TechnicianCategory> out = new LinkedHashSet<>();
-        if (request.getCategories() != null) {
-            out.addAll(request.getCategories().stream().filter(Objects::nonNull).toList());
+    public AuthUserResponse createStaffUser(CreateStaffUserRequest request) {
+        String email = normalizeEmail(request.getEmail());
+        if (userRepo.existsByEmail(email)) {
+            throw new IllegalArgumentException("Email is already registered");
         }
-        if (request.getCategory() != null) {
-            out.add(request.getCategory());
+        UserRole targetRole = request.getRole();
+        if (targetRole != UserRole.ADMIN && targetRole != UserRole.TECHNICIAN) {
+            throw new IllegalArgumentException("Role must be ADMIN or TECHNICIAN");
+        }
+
+        String phone = request.getPhoneNumber() == null ? "" : request.getPhoneNumber().trim();
+        User user = new User(
+            request.getFirstName().trim(),
+            request.getLastName().trim(),
+            email,
+            phone,
+            passwordEncoder.encode(request.getPassword()),
+            Instant.now()
+        );
+        user.setRole(targetRole);
+        if (targetRole == UserRole.TECHNICIAN) {
+            List<com.example.server.model.TechnicianCategory> specialties =
+                normalizedTechnicianCategories(request.getCategories(), request.getCategory());
+            if (specialties.isEmpty()) {
+                throw new IllegalArgumentException("Select at least one technician category.");
+            }
+            user.setTechnicianCategory(specialties.get(0));
+            user.setTechnicianCategories(specialties);
+        } else {
+            user.setTechnicianCategory(null);
+            user.setTechnicianCategories(null);
+            user.setTechnicianAvailable(null);
+        }
+        User saved = userRepo.save(user);
+        return toUserResponse(saved);
+    }
+
+    private List<com.example.server.model.TechnicianCategory> normalizedTechnicianCategories(CreateTechnicianRequest request) {
+        return normalizedTechnicianCategories(request.getCategories(), request.getCategory());
+    }
+
+    private List<com.example.server.model.TechnicianCategory> normalizedTechnicianCategories(
+        List<com.example.server.model.TechnicianCategory> categories,
+        com.example.server.model.TechnicianCategory category
+    ) {
+        LinkedHashSet<com.example.server.model.TechnicianCategory> out = new LinkedHashSet<>();
+        if (categories != null) {
+            out.addAll(categories.stream().filter(Objects::nonNull).toList());
+        }
+        if (category != null) {
+            out.add(category);
         }
         return new ArrayList<>(out);
     }
@@ -377,6 +422,30 @@ public class AuthService {
         clearPendingPasswordChange(user);
         userRepo.save(user);
         return true;
+    }
+
+    public void resetTechnicianPasswordByAdmin(String targetUserId, String newPassword) {
+        Optional<User> maybe = userRepo.findById(targetUserId);
+        if (maybe.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+        User target = maybe.get();
+        if (target.getEffectiveRole() != UserRole.TECHNICIAN) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password reset is allowed for technicians only");
+        }
+        if (target.getGoogleSubject() != null && !target.getGoogleSubject().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Google accounts cannot be reset with a local password");
+        }
+        String next = newPassword == null ? "" : newPassword.trim();
+        if (!next.matches(PASSWORD_COMPLEXITY_REGEX)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Password must include uppercase, lowercase, number, and symbol"
+            );
+        }
+        target.setPasswordHash(passwordEncoder.encode(next));
+        clearPendingPasswordChange(target);
+        userRepo.save(target);
     }
 
     private void validatePasswordChangeRequest(User user, ChangePasswordRequest request) {

@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   adminChangeUserRole,
+  adminDeleteUser,
+  adminResetTechnicianPassword,
   adminSetUserStatus,
   adminUpdateUserProfile,
   getAdminUsers,
@@ -41,6 +43,12 @@ const tdStyle = {
   verticalAlign: "top",
 };
 
+const rowStyle = (isHovered) => ({
+  backgroundColor: isHovered ? "#f8fafc" : "#ffffff",
+  transition: "background-color 0.16s ease",
+});
+const PAGE_SIZE = 10;
+
 const smallBtnStyle = (variant = "neutral") => {
   const base = {
     padding: "8px 10px",
@@ -70,22 +78,11 @@ const iconBtnStyle = (variant = "neutral") => ({
   justifyContent: "center",
 });
 
-function EditIcon() {
+function EyeIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M4 20h4l10-10-4-4L4 16v4z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M13 7l4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function RoleIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M8 7h10M8 12h6M8 17h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="5" cy="7" r="1" fill="currentColor" />
-      <circle cx="5" cy="12" r="1" fill="currentColor" />
-      <circle cx="5" cy="17" r="1" fill="currentColor" />
+      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
     </svg>
   );
 }
@@ -108,6 +105,25 @@ function EnableIcon() {
   );
 }
 
+function DeleteIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M4 7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M9 7V5h6v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7 7l1 12h8l1-12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 11v5M14 11v5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function formatDate(value) {
   if (!value) return "";
   try {
@@ -117,6 +133,44 @@ function formatDate(value) {
   } catch {
     return "";
   }
+}
+
+function roleBadgeStyle(role) {
+  const r = String(role || "").toUpperCase();
+  if (r === "ADMIN") {
+    return { background: "#dbeafe", border: "1px solid #93c5fd", color: "#1d4ed8" };
+  }
+  if (r === "TECHNICIAN") {
+    return { background: "#dcfce7", border: "1px solid #86efac", color: "#166534" };
+  }
+  return { background: "#f3f4f6", border: "1px solid #d1d5db", color: "#374151" };
+}
+
+function statusBadgeStyle(status) {
+  const s = String(status || "").toUpperCase();
+  if (s === "DISABLED" || s === "SUSPENDED") {
+    return { background: "#fee2e2", border: "1px solid #fca5a5", color: "#b91c1c" };
+  }
+  return { background: "#dcfce7", border: "1px solid #86efac", color: "#166534" };
+}
+
+function Badge({ text, style }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        padding: "2px 10px",
+        borderRadius: "999px",
+        fontSize: "12px",
+        fontWeight: 800,
+        lineHeight: 1.6,
+        ...style,
+      }}
+    >
+      {text}
+    </span>
+  );
 }
 
 export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onRequestRefresh }) {
@@ -133,17 +187,24 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
   const [providerFilter, setProviderFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [editPanelOpen, setEditPanelOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [detailsUser, setDetailsUser] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
 
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [editPhoneNumber, setEditPhoneNumber] = useState("");
-
-  const [roleDraft, setRoleDraft] = useState("USER");
+  const [editRole, setEditRole] = useState("USER");
+  const [editAccountStatus, setEditAccountStatus] = useState("Active");
+  const [resetPasswordDraft, setResetPasswordDraft] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+  const [hoveredRowId, setHoveredRowId] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [addUserMenuOpen, setAddUserMenuOpen] = useState(false);
 
   const modalInputStyle = {
     width: "100%",
@@ -157,29 +218,18 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     color: "#0f172a",
   };
 
-  const modalSelectStyle = { ...modalInputStyle, cursor: "pointer", minHeight: "46px" };
-
-  const closeModals = () => {
-    setEditModalOpen(false);
-    setRoleModalOpen(false);
-    setSelectedUser(null);
-    setActionBusy(false);
-    setActionError("");
-  };
-
   useEffect(() => {
-    if (!editModalOpen || !selectedUser) return;
+    if (!editPanelOpen || !selectedUser) return;
     setEditFirstName(selectedUser.firstName || "");
     setEditLastName(selectedUser.lastName || "");
+    setEditEmail(selectedUser.email || "");
     setEditPhoneNumber(phoneFromServer(selectedUser.phoneNumber));
+    setEditRole(String(selectedUser.role || "USER").toUpperCase());
+    setEditAccountStatus((selectedUser.accountStatus || "") === "Disabled" ? "Disabled" : "Active");
+    setResetPasswordDraft("");
+    setResetMessage("");
     setActionError("");
-  }, [editModalOpen, selectedUser]);
-
-  useEffect(() => {
-    if (!roleModalOpen || !selectedUser) return;
-    setRoleDraft(selectedUser.role || "USER");
-    setActionError("");
-  }, [roleModalOpen, selectedUser]);
+  }, [editPanelOpen, selectedUser]);
 
   const refresh = () => {
     if (typeof onRequestRefresh === "function") onRequestRefresh();
@@ -187,7 +237,23 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
 
   const handleEditSave = async () => {
     if (!selectedUser) return;
+    const selectedRoleUpper = String(selectedUser.role || "").toUpperCase();
+    const selectedProvider = String(selectedUser.provider || "");
     const phoneDigits = editPhoneNumber || "";
+    const emailDraft = String(editEmail || "").trim();
+    if (!emailDraft) {
+      setActionError("Email is required.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailDraft)) {
+      setActionError("Enter a valid email address.");
+      return;
+    }
+    if (selectedProvider === "Google OAuth" && emailDraft.toLowerCase() !== String(selectedUser.email || "").toLowerCase()) {
+      setActionError("Google OAuth account email cannot be changed.");
+      return;
+    }
     if (phoneDigits && !isValidProfilePhone(phoneDigits)) {
       setActionError("Phone number must be exactly 10 digits or left empty.");
       return;
@@ -195,12 +261,30 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     setActionBusy(true);
     setActionError("");
     try {
-      await adminUpdateUserProfile(selectedUser.userId, {
+      let updated = await adminUpdateUserProfile(selectedUser.userId, {
         firstName: editFirstName.trim(),
         lastName: editLastName.trim(),
+        email: emailDraft,
         phoneNumber: phoneDigits ? phoneDigits : null,
       });
-      closeModals();
+      if (String(updated.role || "").toUpperCase() !== String(editRole || "").toUpperCase()) {
+        updated = await adminChangeUserRole(selectedUser.userId, { role: editRole });
+      }
+      const targetDisabled = editAccountStatus === "Disabled";
+      const currentDisabled = String(updated.accountStatus || "").toUpperCase() === "DISABLED";
+      if (targetDisabled !== currentDisabled) {
+        if (selectedRoleUpper === "ADMIN") {
+          throw new Error("Admin accounts cannot be deactivated.");
+        }
+        if (currentUserId && selectedUser.userId === currentUserId && targetDisabled) {
+          throw new Error("You cannot disable your own account.");
+        }
+        updated = await adminSetUserStatus(selectedUser.userId, { disabled: targetDisabled });
+      }
+      setUsers((prev) => prev.map((u) => (u.userId === updated.userId ? updated : u)));
+      setDetailsUser((prev) => (prev && prev.userId === updated.userId ? updated : prev));
+      setSelectedUser(updated);
+      setEditPanelOpen(false);
       refresh();
     } catch (e) {
       setActionError(e.message || "Failed to update user.");
@@ -209,23 +293,41 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     }
   };
 
-  const handleRoleSave = async () => {
+  const handleAdminPasswordReset = async () => {
     if (!selectedUser) return;
-    setActionBusy(true);
-    setActionError("");
+    const selectedRoleUpper = String(selectedUser.role || "").toUpperCase();
+    const provider = String(selectedUser.provider || "");
+    if (selectedRoleUpper !== "TECHNICIAN") {
+      setResetMessage("Password reset is allowed for technicians only.");
+      return;
+    }
+    if (provider === "Google OAuth") {
+      setResetMessage("Google sign-in users do not support local password reset.");
+      return;
+    }
+    if (!resetPasswordDraft.trim()) {
+      setResetMessage("Enter a new temporary password.");
+      return;
+    }
+    setResetBusy(true);
+    setResetMessage("");
     try {
-      await adminChangeUserRole(selectedUser.userId, { role: roleDraft });
-      closeModals();
-      refresh();
+      await adminResetTechnicianPassword(selectedUser.userId, { newPassword: resetPasswordDraft.trim() });
+      setResetPasswordDraft("");
+      setResetMessage("Technician password reset successfully.");
     } catch (e) {
-      setActionError(e.message || "Failed to change role.");
+      setResetMessage(e.message || "Failed to reset password.");
     } finally {
-      setActionBusy(false);
+      setResetBusy(false);
     }
   };
 
   const handleToggleDisabled = async (u) => {
     if (!u) return;
+    if ((u.role || "").toUpperCase() === "ADMIN") {
+      setActionError("Admin accounts cannot be deactivated.");
+      return;
+    }
     if (currentUserId && u.userId === currentUserId) {
       setActionError("You cannot disable your own account.");
       return;
@@ -242,10 +344,36 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     setActionBusy(true);
     setActionError("");
     try {
-      await adminSetUserStatus(u.userId, { disabled: nextDisabled });
+      const updated = await adminSetUserStatus(u.userId, { disabled: nextDisabled });
+      setUsers((prev) => prev.map((row) => (row.userId === updated.userId ? updated : row)));
+      setDetailsUser((prev) => (prev && prev.userId === updated.userId ? updated : prev));
+      setSelectedUser((prev) => (prev && prev.userId === updated.userId ? updated : prev));
       refresh();
     } catch (e) {
       setActionError(e.message || "Failed to update account status.");
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleDeleteUser = async (u) => {
+    if (!u) return;
+    if ((u.role || "").toUpperCase() === "ADMIN") {
+      setActionError("Admin accounts cannot be deleted.");
+      return;
+    }
+    const ok = window.confirm(`Delete ${u.name || u.email || "this user"} permanently?`);
+    if (!ok) return;
+    setActionBusy(true);
+    setActionError("");
+    try {
+      await adminDeleteUser(u.userId);
+      setDetailsUser((prev) => (prev && prev.userId === u.userId ? null : prev));
+      setEditPanelOpen(false);
+      setSelectedUser((prev) => (prev && prev.userId === u.userId ? null : prev));
+      refresh();
+    } catch (e) {
+      setActionError(e.message || "Failed to delete user.");
     } finally {
       setActionBusy(false);
     }
@@ -282,22 +410,40 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     });
   }, [users, search, roleFilter, providerFilter, statusFilter]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedRows = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, safePage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, roleFilter, providerFilter, statusFilter, refreshKey]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   return (
     <div style={pageCardStyle}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 900, color: "#14213D", marginBottom: 4 }}>All Users</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b" }}>Search, filter, and manage staff accounts.</div>
-        </div>
-
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <button type="button" onClick={onAddTechnician} style={smallBtnStyle("primary")}>
-            Add technician
-          </button>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 180px 180px 180px", gap: 12, alignItems: "end", marginBottom: 14 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(240px, 1fr) 170px 170px 170px 150px",
+          gap: 12,
+          alignItems: "end",
+          marginBottom: 10,
+        }}
+      >
         <div>
           <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#475569", marginBottom: 6 }}>Search</label>
           <input
@@ -383,7 +529,65 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
             <option value="Disabled">Disabled</option>
           </select>
         </div>
+
+        <div>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#475569", marginBottom: 6 }}>Add User</label>
+          <div style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={() => setAddUserMenuOpen((v) => !v)}
+              style={{ ...smallBtnStyle("neutral"), width: "100%", padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              aria-haspopup="menu"
+              aria-expanded={addUserMenuOpen}
+            >
+              <span>Add User</span>
+              <span style={{ fontSize: 10, color: "#64748b" }}>{addUserMenuOpen ? "▲" : "▼"}</span>
+            </button>
+            {addUserMenuOpen && (
+              <div
+                role="menu"
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  left: 0,
+                  right: 0,
+                  zIndex: 30,
+                  background: "#fff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 10,
+                  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.12)",
+                  overflow: "hidden",
+                }}
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAddUserMenuOpen(false);
+                    onAddTechnician?.("ADMIN");
+                  }}
+                  style={{ width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "1px solid #f1f5f9", background: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", color: "#0f172a" }}
+                >
+                  ADMIN
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAddUserMenuOpen(false);
+                    onAddTechnician?.("TECHNICIAN");
+                  }}
+                  style={{ width: "100%", textAlign: "left", padding: "10px 12px", border: "none", background: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", color: "#0f172a" }}
+                >
+                  TECHNICIAN
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      <div style={{ marginBottom: 14 }} />
 
       {loading && <p style={{ margin: 0, color: "#64748b", fontWeight: 800 }}>Loading users…</p>}
       {error && <p style={{ margin: 0, color: "#b91c1c", fontWeight: 900 }}>{error}</p>}
@@ -413,13 +617,25 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                     </td>
                   </tr>
                 )}
-                {filtered.map((u) => (
-                  <tr key={u.userId}>
+                {pagedRows.map((u) => (
+                  <tr
+                    key={u.userId}
+                    style={rowStyle(hoveredRowId === u.userId)}
+                    onMouseEnter={() => setHoveredRowId(u.userId)}
+                    onMouseLeave={() => setHoveredRowId("")}
+                  >
                     <td style={tdStyle}>{u.userId}</td>
                     <td style={tdStyle}>{u.name || "—"}</td>
                     <td style={tdStyle}>{u.email || "—"}</td>
-                    <td style={tdStyle}>{u.role || "—"}</td>
-                    <td style={tdStyle}>{u.accountStatus || "Active"}</td>
+                    <td style={tdStyle}>
+                      <Badge text={u.role || "USER"} style={roleBadgeStyle(u.role)} />
+                    </td>
+                    <td style={tdStyle}>
+                      <Badge
+                        text={(u.accountStatus || "").toUpperCase() === "DISABLED" ? "Suspended" : "Active"}
+                        style={statusBadgeStyle(u.accountStatus)}
+                      />
+                    </td>
                     <td style={tdStyle}>{u.provider || "—"}</td>
                     <td style={tdStyle}>{formatDate(u.createdDate) || "—"}</td>
                     <td style={tdStyle}>{formatDate(u.lastLogin) || "—"}</td>
@@ -429,36 +645,26 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                           type="button"
                           style={iconBtnStyle("neutral")}
                           disabled={actionBusy}
-                          title="Edit profile"
-                          aria-label="Edit profile"
+                          title="View details"
+                          aria-label="View details"
                           onClick={() => {
-                            setSelectedUser(u);
-                            setEditModalOpen(true);
+                            setDetailsUser(u);
                           }}
                         >
-                          <EditIcon />
-                        </button>
-                        <button
-                          type="button"
-                          style={iconBtnStyle("neutral")}
-                          disabled={actionBusy}
-                          title="Role change"
-                          aria-label="Role change"
-                          onClick={() => {
-                            setSelectedUser(u);
-                            setRoleModalOpen(true);
-                          }}
-                        >
-                          <RoleIcon />
+                          <EyeIcon />
                         </button>
                         <button
                           type="button"
                           style={((u.accountStatus || "") === "Disabled") ? iconBtnStyle("primary") : iconBtnStyle("danger")}
-                          disabled={actionBusy || (currentUserId && u.userId === currentUserId)}
-                          title={(currentUserId && u.userId === currentUserId)
+                          disabled={actionBusy || (u.role || "").toUpperCase() === "ADMIN" || (currentUserId && u.userId === currentUserId)}
+                          title={((u.role || "").toUpperCase() === "ADMIN")
+                            ? "Admin account cannot be deactivated"
+                            : (currentUserId && u.userId === currentUserId)
                             ? "You cannot disable your own account"
                             : ((u.accountStatus || "") === "Disabled" ? "Enable account" : "Disable account")}
-                          aria-label={(currentUserId && u.userId === currentUserId)
+                          aria-label={((u.role || "").toUpperCase() === "ADMIN")
+                            ? "Admin deactivate not allowed"
+                            : (currentUserId && u.userId === currentUserId)
                             ? "Self disable not allowed"
                             : ((u.accountStatus || "") === "Disabled" ? "Enable account" : "Disable account")}
                           onClick={() => handleToggleDisabled(u)}
@@ -472,223 +678,386 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               </tbody>
             </table>
           </div>
+          {filtered.length > 0 && (
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>
+                Showing {(safePage - 1) * PAGE_SIZE + 1}-
+                {Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length} users • {PAGE_SIZE} per page
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  style={{ ...smallBtnStyle("neutral"), opacity: safePage <= 1 ? 0.5 : 1 }}
+                >
+                  Prev
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    aria-current={safePage === page ? "page" : undefined}
+                    style={{
+                      ...smallBtnStyle(safePage === page ? "primary" : "neutral"),
+                      minWidth: 34,
+                      fontWeight: 900,
+                    }}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  style={{ ...smallBtnStyle("neutral"), opacity: safePage >= totalPages ? 0.5 : 1 }}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
-      {editModalOpen && selectedUser && (
+      {detailsUser && (
         <div
           role="dialog"
           aria-modal="true"
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 1002,
-            backgroundColor: "rgba(15, 23, 42, 0.55)",
+            zIndex: 1001,
+            backgroundColor: "rgba(15, 23, 42, 0.30)",
             display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "18px",
+            justifyContent: "flex-end",
+            alignItems: "flex-start",
+            paddingTop: "34px",
+            paddingBottom: "34px",
+            paddingRight: "20px",
+            boxSizing: "border-box",
           }}
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) closeModals();
+            if (e.target === e.currentTarget) setDetailsUser(null);
           }}
         >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "760px",
-              backgroundColor: "#ffffff",
-              borderRadius: "16px",
-              border: "1px solid #e5e7eb",
-              boxShadow: "0 24px 90px rgba(0,0,0,0.25)",
-              overflow: "hidden",
-            }}
-          >
+          <div style={{ display: "flex", maxHeight: "calc(100vh - 68px)", justifyContent: "flex-end", gap: 12, alignItems: "flex-start" }}>
+            {editPanelOpen && selectedUser && (
+              <div
+                style={{
+                  width: "min(500px, calc(100vw - 40px))",
+                  maxHeight: "calc(100vh - 68px)",
+                  background: "rgba(255, 255, 255, 0.90)",
+                  backdropFilter: "blur(8px)",
+                  borderLeft: "1px solid #e5e7eb",
+                  borderRadius: "18px",
+                  boxShadow: "-8px 12px 34px rgba(15, 23, 42, 0.16)",
+                  padding: "20px 18px 18px",
+                  boxSizing: "border-box",
+                  overflowY: "auto",
+                  animation: "adminUserDetailsSlideIn 0.2s ease-out",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>Edit User</div>
+                  <button
+                    type="button"
+                    onClick={() => setEditPanelOpen(false)}
+                    style={{ ...iconBtnStyle("neutral"), width: 30, height: 30 }}
+                    aria-label="Close edit panel"
+                  >
+                    <CloseIcon />
+                  </button>
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleEditSave();
+                  }}
+                  style={{ marginTop: 14, display: "grid", gap: 14 }}
+                >
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                        First name
+                      </label>
+                      <input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} style={modalInputStyle} placeholder="First name" />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                        Last name
+                      </label>
+                      <input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} style={modalInputStyle} placeholder="Last name" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                      Email {String(selectedUser.provider || "") === "Google OAuth" ? <span style={{ fontWeight: 500, color: "#9ca3af" }}>(read-only for Google OAuth)</span> : null}
+                    </label>
+                    <input
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      readOnly={String(selectedUser.provider || "") === "Google OAuth"}
+                      style={{
+                        ...modalInputStyle,
+                        backgroundColor: String(selectedUser.provider || "") === "Google OAuth" ? "#f8fafc" : "#fff",
+                        color: String(selectedUser.provider || "") === "Google OAuth" ? "#475569" : "#0f172a",
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                        Role
+                      </label>
+                      <select
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value)}
+                        disabled={String(selectedUser.role || "").toUpperCase() === "ADMIN"}
+                        style={{ ...modalInputStyle, cursor: "pointer", backgroundColor: String(selectedUser.role || "").toUpperCase() === "ADMIN" ? "#f8fafc" : "#fff" }}
+                      >
+                        <option value="USER">USER</option>
+                        <option value="TECHNICIAN">TECHNICIAN</option>
+                        <option value="ADMIN">ADMIN</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                        Account status
+                      </label>
+                      <select
+                        value={editAccountStatus}
+                        onChange={(e) => setEditAccountStatus(e.target.value)}
+                        disabled={String(selectedUser.role || "").toUpperCase() === "ADMIN" || (currentUserId && selectedUser.userId === currentUserId)}
+                        style={{ ...modalInputStyle, cursor: "pointer", backgroundColor: (String(selectedUser.role || "").toUpperCase() === "ADMIN" || (currentUserId && selectedUser.userId === currentUserId)) ? "#f8fafc" : "#fff" }}
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Disabled">Disabled</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                        Provider <span style={{ fontWeight: 500, color: "#9ca3af" }}>(read-only)</span>
+                      </label>
+                      <input value={selectedUser.provider || ""} readOnly style={{ ...modalInputStyle, backgroundColor: "#f8fafc", color: "#475569" }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                      Phone number <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
+                    </label>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={PROFILE_PHONE_DIGITS}
+                      value={editPhoneNumber}
+                      onChange={(e) => setEditPhoneNumber(sanitizeProfilePhoneInput(e.target.value))}
+                      style={modalInputStyle}
+                      placeholder="0771234567"
+                    />
+                    <p style={{ margin: "6px 0 0 0", fontSize: "11px", color: "#64748b", fontWeight: 600 }}>
+                      Optional. {PROFILE_PHONE_DIGITS} digits only.
+                    </p>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                        User ID <span style={{ fontWeight: 500, color: "#9ca3af" }}>(read-only)</span>
+                      </label>
+                      <input value={selectedUser.userId || ""} readOnly style={{ ...modalInputStyle, backgroundColor: "#f8fafc", color: "#475569" }} />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                        Created date <span style={{ fontWeight: 500, color: "#9ca3af" }}>(read-only)</span>
+                      </label>
+                      <input value={formatDate(selectedUser.createdDate) || "—"} readOnly style={{ ...modalInputStyle, backgroundColor: "#f8fafc", color: "#475569" }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
+                      Last login <span style={{ fontWeight: 500, color: "#9ca3af" }}>(read-only)</span>
+                    </label>
+                    <input value={formatDate(selectedUser.lastLogin) || "—"} readOnly style={{ ...modalInputStyle, backgroundColor: "#f8fafc", color: "#475569" }} />
+                  </div>
+
+                  {(selectedUser.provider || "") !== "Google OAuth" ? (
+                    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 10, background: "#fff" }}>
+                      <div style={{ fontSize: 12, fontWeight: 900, color: "#0f172a", marginBottom: 8 }}>Password reset</div>
+                      <input
+                        type="password"
+                        value={resetPasswordDraft}
+                        onChange={(e) => setResetPasswordDraft(e.target.value)}
+                        style={modalInputStyle}
+                        placeholder="Set temporary password"
+                        disabled={String(selectedUser.role || "").toUpperCase() !== "TECHNICIAN"}
+                      />
+                      <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                        <p style={{ margin: 0, fontSize: 11, color: "#64748b", fontWeight: 600 }}>
+                          Only Email-provider technicians can be reset by admin.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleAdminPasswordReset}
+                          disabled={resetBusy || String(selectedUser.role || "").toUpperCase() !== "TECHNICIAN"}
+                          style={{ ...smallBtnStyle("danger"), opacity: resetBusy ? 0.8 : 1 }}
+                        >
+                          {resetBusy ? "Resetting..." : "Reset Password"}
+                        </button>
+                      </div>
+                      {resetMessage ? (
+                        <p style={{ margin: "8px 0 0 0", fontSize: 12, fontWeight: 700, color: resetMessage.toLowerCase().includes("success") ? "#166534" : "#b91c1c" }}>
+                          {resetMessage}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {actionError && (
+                    <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 900 }}>{actionError}</p>
+                  )}
+
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                    <button type="button" onClick={() => setEditPanelOpen(false)} style={smallBtnStyle("neutral")}>Cancel</button>
+                    <button type="submit" disabled={actionBusy} style={{ ...smallBtnStyle("primary"), opacity: actionBusy ? 0.85 : 1 }}>
+                      {actionBusy ? "Saving..." : "Save changes"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
             <div
               style={{
-                padding: "16px 22px",
-                borderBottom: "1px solid #e5e7eb",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "12px",
+                width: "min(420px, calc(100vw - 40px))",
+                maxHeight: "calc(100vh - 68px)",
+                background: "rgba(255, 255, 255, 0.90)",
+                backdropFilter: "blur(8px)",
+                borderLeft: "1px solid #e5e7eb",
+                borderRadius: "18px",
+                boxShadow: "-8px 12px 34px rgba(15, 23, 42, 0.18)",
+                padding: "20px 18px 18px",
+                boxSizing: "border-box",
+                overflowY: "auto",
+                animation: "adminUserDetailsSlideIn 0.2s ease-out",
               }}
             >
-              <div>
-                <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Edit profile</div>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>
-                  {selectedUser.email || selectedUser.userId}
-                </div>
+            <style>{`@keyframes adminUserDetailsSlideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }`}</style>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>User Details</div>
               </div>
               <button
                 type="button"
-                onClick={closeModals}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: "10px",
-                  border: "1px solid #e5e7eb",
-                  background: "#fff",
-                  fontWeight: 900,
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  color: "#0f172a",
-                }}
+                onClick={() => setDetailsUser(null)}
+                style={{ ...iconBtnStyle("neutral"), width: 30, height: 30 }}
+                aria-label="Close details panel"
               >
-                Cancel
+                <CloseIcon />
               </button>
             </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleEditSave();
-              }}
-              style={{ padding: "18px 22px 22px", display: "grid", gap: "16px" }}
-            >
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
-                    First name
-                  </label>
-                  <input
-                    value={editFirstName}
-                    onChange={(e) => setEditFirstName(e.target.value)}
-                    style={modalInputStyle}
-                    placeholder="First name"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
-                    Last name
-                  </label>
-                  <input
-                    value={editLastName}
-                    onChange={(e) => setEditLastName(e.target.value)}
-                    style={modalInputStyle}
-                    placeholder="Last name"
-                  />
-                </div>
+            <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12 }}>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "#475569",
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 20,
+                  fontWeight: 800,
+                }}
+              >
+                {String(detailsUser.name || detailsUser.email || "U").trim().charAt(0).toUpperCase()}
               </div>
-
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
-                  Phone number <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
-                </label>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={PROFILE_PHONE_DIGITS}
-                  value={editPhoneNumber}
-                  onChange={(e) => setEditPhoneNumber(sanitizeProfilePhoneInput(e.target.value))}
-                  style={modalInputStyle}
-                  placeholder="0771234567"
-                />
-                <p style={{ margin: "6px 0 0 0", fontSize: "11px", color: "#64748b", fontWeight: 600 }}>
-                  Optional. {PROFILE_PHONE_DIGITS} digits only.
-                </p>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{detailsUser.name || "—"}</div>
+                <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                  <Badge text={detailsUser.role || "USER"} style={roleBadgeStyle(detailsUser.role)} />
+                  <Badge
+                    text={(detailsUser.accountStatus || "").toUpperCase() === "DISABLED" ? "Suspended" : "Active"}
+                    style={statusBadgeStyle(detailsUser.accountStatus)}
+                  />
+                </div>
               </div>
+            </div>
 
-              {actionError && (
-                <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 900 }}>{actionError}</p>
-              )}
+            <div
+              style={{
+                marginTop: 16,
+                display: "grid",
+                gap: 10,
+                background: "rgba(255,255,255,0.75)",
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+                padding: 12,
+              }}
+            >
+              <div><strong style={{ color: "#0f172a" }}>Email:</strong> {detailsUser.email || "—"}</div>
+              <div><strong style={{ color: "#0f172a" }}>Provider:</strong> {detailsUser.provider || "—"}</div>
+              <div><strong style={{ color: "#0f172a" }}>Created date:</strong> {formatDate(detailsUser.createdDate) || "—"}</div>
+              <div><strong style={{ color: "#0f172a" }}>Last login:</strong> {formatDate(detailsUser.lastLogin) || "—"}</div>
+              <div><strong style={{ color: "#0f172a" }}>User ID:</strong> {detailsUser.userId || "—"}</div>
+            </div>
 
-              <button type="submit" disabled={actionBusy} style={{ ...smallBtnStyle("primary"), opacity: actionBusy ? 0.85 : 1 }}>
-                {actionBusy ? "Saving..." : "Save changes"}
+            <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 6, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                style={smallBtnStyle("primary")}
+                onClick={() => {
+                  setSelectedUser(detailsUser);
+                  setEditPanelOpen(true);
+                }}
+              >
+                Edit User
               </button>
-            </form>
+              <button
+                type="button"
+                style={smallBtnStyle((detailsUser.accountStatus || "") === "Disabled" ? "primary" : "danger")}
+                disabled={actionBusy || (detailsUser.role || "").toUpperCase() === "ADMIN" || (currentUserId && detailsUser.userId === currentUserId)}
+                title={(detailsUser.role || "").toUpperCase() === "ADMIN" ? "Admin account cannot be deactivated" : "Toggle account status"}
+                onClick={() => handleToggleDisabled(detailsUser)}
+              >
+                {(detailsUser.accountStatus || "") === "Disabled" ? "Activate" : "Deactivate"}
+              </button>
+              {(detailsUser.role || "").toUpperCase() !== "ADMIN" ? (
+                <button
+                  type="button"
+                  style={smallBtnStyle("danger")}
+                  disabled={actionBusy}
+                  onClick={() => handleDeleteUser(detailsUser)}
+                >
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <DeleteIcon />
+                    Delete
+                  </span>
+                </button>
+              ) : null}
+            </div>
+            {actionError && <p style={{ marginTop: 10, marginBottom: 0, color: "#b91c1c", fontSize: 13, fontWeight: 800 }}>{actionError}</p>}
           </div>
-        </div>
-      )}
-
-      {roleModalOpen && selectedUser && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1002,
-            backgroundColor: "rgba(15, 23, 42, 0.55)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "18px",
-          }}
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) closeModals();
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "600px",
-              backgroundColor: "#ffffff",
-              borderRadius: "16px",
-              border: "1px solid #e5e7eb",
-              boxShadow: "0 24px 90px rgba(0,0,0,0.25)",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                padding: "16px 22px",
-                borderBottom: "1px solid #e5e7eb",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "12px",
-              }}
-            >
-              <div>
-                <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Role change</div>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>
-                  {selectedUser.email || selectedUser.userId}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={closeModals}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: "10px",
-                  border: "1px solid #e5e7eb",
-                  background: "#fff",
-                  fontWeight: 900,
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  color: "#0f172a",
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleRoleSave();
-              }}
-              style={{ padding: "18px 22px 22px", display: "grid", gap: "16px" }}
-            >
-              <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
-                  New role
-                </label>
-                <select value={roleDraft} onChange={(e) => setRoleDraft(e.target.value)} style={modalSelectStyle}>
-                  <option value="USER">USER</option>
-                  <option value="ADMIN">ADMIN</option>
-                  <option value="TECHNICIAN">TECHNICIAN</option>
-                </select>
-              </div>
-
-              {actionError && (
-                <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 900 }}>{actionError}</p>
-              )}
-
-              <button type="submit" disabled={actionBusy} style={{ ...smallBtnStyle("primary"), opacity: actionBusy ? 0.85 : 1 }}>
-                {actionBusy ? "Updating..." : "Update role"}
-              </button>
-            </form>
           </div>
         </div>
       )}

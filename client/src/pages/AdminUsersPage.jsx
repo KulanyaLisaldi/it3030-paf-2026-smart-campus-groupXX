@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import AdminLayout from "../components/admin/AdminLayout.jsx";
 import AdminUsersTable from "../components/admin/AdminUsersTable.jsx";
-import { createTechnician } from "../api/adminTechnicians";
+import { adminCreateUser } from "../api/adminUsers";
 import { DEFAULT_TECHNICIAN_CATEGORY, TECHNICIAN_CATEGORIES, toApiTechnicianCategory } from "../constants/technicianCategories";
 import PasswordInput from "../components/PasswordInput.jsx";
 import { isValidProfilePhone, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../utils/profilePhone";
@@ -32,8 +32,9 @@ function allCategoriesForApi(selectedValues) {
 }
 
 export default function AdminUsersPage() {
-  const [addTechnicianModalOpen, setAddTechnicianModalOpen] = useState(false);
+  const [addUserModalOpen, setAddUserModalOpen] = useState(false);
   const [usersTableRev, setUsersTableRev] = useState(0);
+  const [selectedRole, setSelectedRole] = useState("TECHNICIAN");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -45,7 +46,7 @@ export default function AdminUsersPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!addTechnicianModalOpen) return;
+    if (!addUserModalOpen) return;
     setFirstName("");
     setLastName("");
     setEmail("");
@@ -55,13 +56,13 @@ export default function AdminUsersPage() {
     setSubmitting(false);
     setMessage("");
     setError("");
-  }, [addTechnicianModalOpen]);
+  }, [addUserModalOpen]);
 
-  const handleSubmitTechnician = async (e) => {
+  const handleSubmitUser = async (e) => {
     e.preventDefault();
     setMessage("");
     setError("");
-    if (selectedCategories.length === 0) {
+    if (selectedRole === "TECHNICIAN" && selectedCategories.length === 0) {
       setError("Select at least one category.");
       return;
     }
@@ -71,50 +72,69 @@ export default function AdminUsersPage() {
     }
     setSubmitting(true);
     try {
-      await createTechnician({
+      await adminCreateUser({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
         phoneNumber: phoneNumber || "",
         password,
-        category: toApiTechnicianCategory(primaryCategoryForApi(selectedCategories)),
-        categories: allCategoriesForApi(selectedCategories),
+        role: selectedRole,
+        category: selectedRole === "TECHNICIAN" ? toApiTechnicianCategory(primaryCategoryForApi(selectedCategories)) : null,
+        categories: selectedRole === "TECHNICIAN" ? allCategoriesForApi(selectedCategories) : [],
       });
-      setMessage("Technician created. They can sign in with email and password on the main Sign In page.");
+      setMessage(`${selectedRole === "ADMIN" ? "Admin" : "Technician"} created.`);
       setUsersTableRev((n) => n + 1);
-      setAddTechnicianModalOpen(false);
+      setAddUserModalOpen(false);
     } catch (err) {
-      setError(err?.message || "Could not create technician.");
+      setError(err?.message || "Could not create user.");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <AdminLayout activeSection="users" pageTitle="User Management" description="Manage all staff accounts, including technicians.">
-      <AdminUsersTable refreshKey={usersTableRev} onAddTechnician={() => setAddTechnicianModalOpen(true)} onRequestRefresh={() => setUsersTableRev((n) => n + 1)} />
+    <AdminLayout activeSection="users" pageTitle="User Management">
+      <AdminUsersTable
+        refreshKey={usersTableRev}
+        onAddTechnician={(role) => {
+          setSelectedRole(role === "ADMIN" ? "ADMIN" : "TECHNICIAN");
+          setAddUserModalOpen(true);
+        }}
+        onRequestRefresh={() => setUsersTableRev((n) => n + 1)}
+      />
 
-      {addTechnicianModalOpen && (
-        <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 1001, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px" }} onMouseDown={(e) => { if (e.target === e.currentTarget) setAddTechnicianModalOpen(false); }}>
+      {addUserModalOpen && (
+        <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 1001, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px" }} onMouseDown={(e) => { if (e.target === e.currentTarget) setAddUserModalOpen(false); }}>
           <div style={{ width: "100%", maxWidth: "760px", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden" }}>
             <div style={{ padding: "16px 22px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
-              <div><div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Add technician</div><div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Create a technician account (email/password)</div></div>
-              <button type="button" onClick={() => setAddTechnicianModalOpen(false)} style={{ padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, fontSize: "14px", cursor: "pointer", color: "#0f172a" }}>Cancel</button>
+              <div>
+                <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>
+                  {selectedRole === "ADMIN" ? "Add Admin User" : "Add Technician User"}
+                </div>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>
+                  {selectedRole === "ADMIN"
+                    ? "Create an ADMIN account (email/password)"
+                    : "Create a TECHNICIAN account (email/password)"}
+                </div>
+              </div>
+              <button type="button" onClick={() => setAddUserModalOpen(false)} style={{ padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, fontSize: "14px", cursor: "pointer", color: "#0f172a" }}>Cancel</button>
             </div>
             <div style={{ padding: "18px 22px 22px" }}>
-              <form onSubmit={handleSubmitTechnician} style={{ display: "grid", gap: "16px" }}>
+              <form onSubmit={handleSubmitUser} style={{ display: "grid", gap: "16px" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                   <div><label style={labelStyle}>First name</label><input required value={firstName} onChange={(e) => setFirstName(e.target.value)} style={inputStyle} placeholder="First name" /></div>
                   <div><label style={labelStyle}>Last name</label><input required value={lastName} onChange={(e) => setLastName(e.target.value)} style={inputStyle} placeholder="Last name" /></div>
                 </div>
                 <div><label style={labelStyle}>Work email</label><input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} placeholder="example@gmail.com" /></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                  <div>
-                    <label style={labelStyle}>Categories</label>
-                    <select multiple value={selectedCategories} onChange={(e) => setSelectedCategories(Array.from(e.target.selectedOptions, (o) => o.value))} style={{ ...selectFieldStyle, minHeight: "120px" }} aria-label="Technician categories">
-                      {TECHNICIAN_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                    </select>
-                  </div>
+                  {selectedRole === "TECHNICIAN" ? (
+                    <div>
+                      <label style={labelStyle}>Categories</label>
+                      <select multiple value={selectedCategories} onChange={(e) => setSelectedCategories(Array.from(e.target.selectedOptions, (o) => o.value))} style={{ ...selectFieldStyle, minHeight: "120px" }} aria-label="Technician categories">
+                        {TECHNICIAN_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                      </select>
+                    </div>
+                  ) : <div />}
                   <div>
                     <label style={labelStyle}>
                       Phone <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
@@ -136,7 +156,7 @@ export default function AdminUsersPage() {
                 <div><label style={labelStyle}>Initial password</label><PasswordInput required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} placeholder="At least 6 characters" autoComplete="new-password" /></div>
                 {error ? <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 600 }} role="alert">{error}</p> : null}
                 {message ? <p style={{ margin: 0, color: "#15803d", fontSize: "14px", fontWeight: 600 }} role="status">{message}</p> : null}
-                <button type="submit" disabled={submitting} style={{ ...primaryBtn, opacity: submitting ? 0.85 : 1 }}>{submitting ? "Creating…" : "Create technician"}</button>
+                <button type="submit" disabled={submitting} style={{ ...primaryBtn, opacity: submitting ? 0.85 : 1 }}>{submitting ? "Creating…" : "Create user"}</button>
               </form>
             </div>
           </div>
