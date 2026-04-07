@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { createResource, deleteResource, getAdminResources, updateResource, updateResourceStatus } from "../../api/adminResources";
 
 const pageCardStyle = {
@@ -74,13 +73,14 @@ function normalizeResources(payload) {
 }
 
 export default function AdminResourcesTable() {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [resources, setResources] = useState([]);
   const [busyId, setBusyId] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [viewDrawerOpen, setViewDrawerOpen] = useState(false);
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [selectedResource, setSelectedResource] = useState(null);
   const [createBusy, setCreateBusy] = useState(false);
   const [editBusy, setEditBusy] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -94,8 +94,8 @@ export default function AdminResourcesTable() {
     description: "",
     availabilityWindows: "",
     status: "ACTIVE",
-    resourceImageFile: null,
-    resourceImagePreview: "",
+    resourceImageFiles: [],
+    resourceImagePreviews: [],
   });
   const [editResourceId, setEditResourceId] = useState("");
   const [editFormData, setEditFormData] = useState({
@@ -107,6 +107,9 @@ export default function AdminResourcesTable() {
     description: "",
     availabilityWindows: "",
     status: "ACTIVE",
+    imageUrls: [],
+    newImageFiles: [],
+    newImagePreviews: [],
   });
 
   const [search, setSearch] = useState("");
@@ -205,14 +208,21 @@ export default function AdminResourcesTable() {
       description: "",
       availabilityWindows: "",
       status: "ACTIVE",
-      resourceImageFile: null,
-      resourceImagePreview: "",
+      resourceImageFiles: [],
+      resourceImagePreviews: [],
     });
     setCreateError("");
     setAddModalOpen(true);
   };
 
-  const openEditModal = (resource) => {
+  const openViewDrawer = (resource) => {
+    setSelectedResource(resource);
+    setViewDrawerOpen(true);
+    setEditDrawerOpen(false);
+  };
+
+  const openEditDrawer = (resource) => {
+    setSelectedResource(resource);
     setEditResourceId(resource.id || "");
     setEditFormData({
       resourceCode: resource.code || resource.resourceCode || "",
@@ -223,9 +233,12 @@ export default function AdminResourcesTable() {
       description: resource.description || "",
       availabilityWindows: resource.availability || resource.availabilityText || "",
       status: resource.status || "ACTIVE",
+      imageUrls: (Array.isArray(resource.imageUrls) && resource.imageUrls.length > 0 ? resource.imageUrls : (resource.imageUrl ? [resource.imageUrl] : [])),
+      newImageFiles: [],
+      newImagePreviews: [],
     });
     setEditError("");
-    setEditModalOpen(true);
+    setEditDrawerOpen(true);
   };
 
   const updateEditForm = (key, value) => {
@@ -254,8 +267,8 @@ export default function AdminResourcesTable() {
     payload.append("description", formData.description.trim());
     payload.append("availability", formData.availabilityWindows.trim());
     payload.append("status", formData.status);
-    if (formData.resourceImageFile) {
-      payload.append("image", formData.resourceImageFile);
+    for (const imageFile of formData.resourceImageFiles) {
+      payload.append("images", imageFile);
     }
 
     setCreateBusy(true);
@@ -276,7 +289,8 @@ export default function AdminResourcesTable() {
         description: formData.description.trim(),
         availability: formData.availabilityWindows.trim(),
         status: formData.status,
-        imageUrl: formData.resourceImagePreview || "",
+        imageUrls: formData.resourceImagePreviews,
+        imageUrl: formData.resourceImagePreviews[0] || "",
       }, ...prev]);
       setAddModalOpen(false);
     } finally {
@@ -300,30 +314,49 @@ export default function AdminResourcesTable() {
       return;
     }
 
-    const payload = {
-      name: editFormData.resourceName.trim(),
-      type: editFormData.resourceType,
-      capacity: capacityNumber,
-      location: editFormData.location.trim(),
-      description: editFormData.description.trim(),
-      availability: editFormData.availabilityWindows.trim(),
-      status: editFormData.status,
-    };
+    const payload = new FormData();
+    payload.append("name", editFormData.resourceName.trim());
+    payload.append("type", editFormData.resourceType);
+    payload.append("capacity", String(capacityNumber));
+    payload.append("location", editFormData.location.trim());
+    payload.append("description", editFormData.description.trim());
+    payload.append("availability", editFormData.availabilityWindows.trim());
+    payload.append("status", editFormData.status);
+    for (const kept of editFormData.imageUrls) {
+      payload.append("keptImageUrls", kept);
+    }
+    for (const imageFile of editFormData.newImageFiles) {
+      payload.append("images", imageFile);
+    }
 
     setEditBusy(true);
     setEditError("");
     try {
-      await updateResource(editResourceId, payload);
-      setEditModalOpen(false);
+      const updated = await updateResource(editResourceId, payload);
+      if (updated?.resource) {
+        setSelectedResource(updated.resource);
+      }
+      setEditDrawerOpen(false);
       await load();
     } catch (err) {
       if (String(editResourceId).startsWith("tmp-")) {
         setResources((prev) => prev.map((r) => (
           r.id === editResourceId
-            ? { ...r, ...payload }
+            ? {
+                ...r,
+                name: editFormData.resourceName.trim(),
+                type: editFormData.resourceType,
+                capacity: capacityNumber,
+                location: editFormData.location.trim(),
+                description: editFormData.description.trim(),
+                availability: editFormData.availabilityWindows.trim(),
+                status: editFormData.status,
+                imageUrls: [...editFormData.imageUrls, ...editFormData.newImagePreviews],
+                imageUrl: [...editFormData.imageUrls, ...editFormData.newImagePreviews][0] || "",
+              }
             : r
         )));
-        setEditModalOpen(false);
+        setEditDrawerOpen(false);
       } else {
         setEditError(err?.message || "Could not update resource.");
       }
@@ -418,8 +451,7 @@ export default function AdminResourcesTable() {
                   <td style={tdStyle}>{r.availability || r.availabilityText || "—"}</td>
                   <td style={tdStyle}>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button type="button" style={smallBtnStyle()} onClick={() => navigate(`/adminresources/${encodeURIComponent(r.id || "")}`)} disabled={!r.id}>View</button>
-                      <button type="button" style={smallBtnStyle()} onClick={() => openEditModal(r)}>Edit</button>
+                      <button type="button" style={smallBtnStyle()} onClick={() => openViewDrawer(r)}>View</button>
                       <button type="button" style={smallBtnStyle("primary")} disabled={busyId === r.id} onClick={() => onToggleStatus(r)}>{(r.status || "OUT_OF_SERVICE") === "ACTIVE" ? "Change to Out of Service" : "Change to Active"}</button>
                       <button type="button" style={smallBtnStyle("danger")} disabled={busyId === r.id} onClick={() => onDelete(r)}>Delete</button>
                     </div>
@@ -444,7 +476,7 @@ export default function AdminResourcesTable() {
                 <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Add Resource</div>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Create a new facility or asset entry.</div>
               </div>
-              <button type="button" onClick={() => setAddModalOpen(false)} style={{ padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, fontSize: "14px", cursor: "pointer", color: "#0f172a" }}>Cancel</button>
+              <button type="button" onClick={() => setAddModalOpen(false)} aria-label="Close" style={{ width: 36, height: 36, borderRadius: "999px", border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, fontSize: "20px", lineHeight: 1, cursor: "pointer", color: "#0f172a" }}>×</button>
             </div>
 
             <form onSubmit={handleCreateResource} style={{ padding: "18px 22px 22px", display: "grid", gap: "16px", overflowY: "auto" }}>
@@ -490,29 +522,44 @@ export default function AdminResourcesTable() {
                 <input
                   type="file"
                   accept="image/*"
+                  multiple
                   style={{ ...inputStyle, height: "auto", padding: "10px" }}
                   onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    if (!file) {
-                      updateForm("resourceImageFile", null);
-                      updateForm("resourceImagePreview", "");
-                      return;
-                    }
-                    updateForm("resourceImageFile", file);
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      updateForm("resourceImagePreview", typeof reader.result === "string" ? reader.result : "");
-                    };
-                    reader.readAsDataURL(file);
+                    const files = Array.from(e.target.files || []);
+                    if (files.length === 0) return;
+                    const existingCount = formData.resourceImageFiles.length;
+                    const allowed = Math.max(0, 3 - existingCount);
+                    const selected = files.slice(0, allowed);
+                    if (selected.length === 0) return;
+                    updateForm("resourceImageFiles", [...formData.resourceImageFiles, ...selected]);
+                    Promise.all(selected.map((file) => new Promise((resolve) => {
+                      const reader = new FileReader();
+                      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+                      reader.readAsDataURL(file);
+                    }))).then((previews) => {
+                      updateForm("resourceImagePreviews", [...formData.resourceImagePreviews, ...previews.filter(Boolean)]);
+                    });
+                    e.target.value = "";
                   }}
                 />
-                {formData.resourceImagePreview ? (
-                  <div style={{ marginTop: 10 }}>
-                    <img
-                      src={formData.resourceImagePreview}
-                      alt="Resource preview"
-                      style={{ width: "100%", maxWidth: "260px", maxHeight: "160px", objectFit: "cover", borderRadius: "10px", border: "1px solid #e5e7eb" }}
-                    />
+                {formData.resourceImagePreviews.length > 0 ? (
+                  <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(120px, 1fr))", gap: 8 }}>
+                    {formData.resourceImagePreviews.map((src, idx) => (
+                      <div key={`${src}-${idx}`} style={{ position: "relative" }}>
+                        <img src={src} alt="Resource preview" style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 10, border: "1px solid #e5e7eb" }} />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateForm("resourceImageFiles", formData.resourceImageFiles.filter((_, i) => i !== idx));
+                            updateForm("resourceImagePreviews", formData.resourceImagePreviews.filter((_, i) => i !== idx));
+                          }}
+                          style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: "50%", border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
+                          aria-label="Remove image"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 ) : null}
               </div>
@@ -544,83 +591,168 @@ export default function AdminResourcesTable() {
         </div>
       )}
 
-      {editModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          style={{ position: "fixed", inset: 0, zIndex: 1002, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px", overflowY: "auto" }}
-          onMouseDown={(e) => { if (e.target === e.currentTarget) setEditModalOpen(false); }}
-        >
-          <div style={{ width: "100%", maxWidth: "860px", maxHeight: "calc(100vh - 36px)", margin: "auto 0", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexShrink: 0 }}>
-              <div>
-                <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Edit Resource</div>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Update existing resource details.</div>
-              </div>
-              <button type="button" onClick={() => setEditModalOpen(false)} style={{ padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, fontSize: "14px", cursor: "pointer", color: "#0f172a" }}>Cancel</button>
-            </div>
-
-            <form onSubmit={handleEditResource} style={{ padding: "18px 22px 22px", display: "grid", gap: "16px", overflowY: "auto" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                <div>
-                  <label style={labelStyle}>Resource Code</label>
-                  <input value={editFormData.resourceCode} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#6b7280" }} readOnly disabled />
+      {viewDrawerOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1003 }}>
+          <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(15,23,42,0.35)" }} onClick={() => { setViewDrawerOpen(false); setEditDrawerOpen(false); }} />
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, padding: "24px", pointerEvents: "none" }}>
+            {editDrawerOpen && (
+              <aside style={{ width: "min(520px, 65vw)", maxHeight: "calc(100vh - 48px)", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, boxShadow: "0 24px 80px rgba(0,0,0,0.2)", pointerEvents: "auto", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <div style={{ padding: "14px 16px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: "#111827" }}>Edit Resource</div>
+                  <button type="button" onClick={() => setEditDrawerOpen(false)} style={{ border: "1px solid #e5e7eb", background: "#fff", borderRadius: 999, width: 32, height: 32, fontSize: 20, cursor: "pointer" }}>×</button>
                 </div>
-                <div>
-                  <label style={labelStyle}>Resource Name</label>
-                  <input value={editFormData.resourceName} onChange={(e) => updateEditForm("resourceName", e.target.value)} style={inputStyle} required />
-                </div>
-              </div>
+                <form onSubmit={handleEditResource} style={{ padding: 16, overflowY: "auto", display: "grid", gap: 14 }}>
+                  <div>
+                    <label style={labelStyle}>Resource Code</label>
+                    <input value={editFormData.resourceCode} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#6b7280" }} readOnly disabled />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Resource Name</label>
+                    <input value={editFormData.resourceName} onChange={(e) => updateEditForm("resourceName", e.target.value)} style={inputStyle} required />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                      <label style={labelStyle}>Resource Type</label>
+                      <select value={editFormData.resourceType} onChange={(e) => updateEditForm("resourceType", e.target.value)} style={inputStyle}>
+                        <option value="LECTURE_HALL">Lecture Hall</option>
+                        <option value="LAB">Lab</option>
+                        <option value="MEETING_ROOM">Meeting Room</option>
+                        <option value="EQUIPMENT">Equipment</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Capacity</label>
+                      <input value={editFormData.capacity} onChange={(e) => updateEditForm("capacity", e.target.value.replace(/[^\d]/g, ""))} style={inputStyle} required />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Location</label>
+                    <input value={editFormData.location} onChange={(e) => updateEditForm("location", e.target.value)} style={inputStyle} required />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Description</label>
+                    <textarea value={editFormData.description} onChange={(e) => updateEditForm("description", e.target.value)} style={{ ...inputStyle, minHeight: 82, resize: "vertical" }} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Resource Image</label>
+                    {[...editFormData.imageUrls, ...editFormData.newImagePreviews].length > 0 ? (
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(110px, 1fr))", gap: 8, marginBottom: 8 }}>
+                        {editFormData.imageUrls.map((src, idx) => (
+                          <div key={`existing-${src}-${idx}`} style={{ position: "relative" }}>
+                            <img src={src} alt="Resource" style={{ width: "100%", height: 96, objectFit: "cover", borderRadius: 10, border: "1px solid #e5e7eb" }} />
+                            <button
+                              type="button"
+                              onClick={() => updateEditForm("imageUrls", editFormData.imageUrls.filter((_, i) => i !== idx))}
+                              style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, borderRadius: "50%", border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", fontSize: 14, lineHeight: 1 }}
+                              aria-label="Remove image"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                        {editFormData.newImagePreviews.map((src, idx) => (
+                          <div key={`new-${src}-${idx}`} style={{ position: "relative" }}>
+                            <img src={src} alt="Resource" style={{ width: "100%", height: 96, objectFit: "cover", borderRadius: 10, border: "1px solid #e5e7eb" }} />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                updateEditForm("newImageFiles", editFormData.newImageFiles.filter((_, i) => i !== idx));
+                                updateEditForm("newImagePreviews", editFormData.newImagePreviews.filter((_, i) => i !== idx));
+                              }}
+                              style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, borderRadius: "50%", border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", fontSize: 14, lineHeight: 1 }}
+                              aria-label="Remove image"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>No image available</div>}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      style={{ ...inputStyle, height: "auto", padding: 10 }}
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (files.length === 0) return;
+                        const totalExisting = editFormData.imageUrls.length + editFormData.newImageFiles.length;
+                        const allowed = Math.max(0, 3 - totalExisting);
+                        const selected = files.slice(0, allowed);
+                        if (selected.length === 0) return;
+                        updateEditForm("newImageFiles", [...editFormData.newImageFiles, ...selected]);
+                        Promise.all(selected.map((file) => new Promise((resolve) => {
+                          const reader = new FileReader();
+                          reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+                          reader.readAsDataURL(file);
+                        }))).then((previews) => {
+                          updateEditForm("newImagePreviews", [...editFormData.newImagePreviews, ...previews.filter(Boolean)]);
+                        });
+                        e.target.value = "";
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                      <label style={labelStyle}>Availability Windows</label>
+                      <textarea value={editFormData.availabilityWindows} onChange={(e) => updateEditForm("availabilityWindows", e.target.value)} style={{ ...inputStyle, minHeight: 82, resize: "vertical" }} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Status</label>
+                      <select value={editFormData.status} onChange={(e) => updateEditForm("status", e.target.value)} style={inputStyle}>
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
+                      </select>
+                    </div>
+                  </div>
+                  {editError ? <p style={{ margin: 0, color: "#b91c1c", fontSize: 14, fontWeight: 700 }}>{editError}</p> : null}
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                    <button type="button" onClick={() => setEditDrawerOpen(false)} style={smallBtnStyle()}>Cancel</button>
+                    <button type="submit" disabled={editBusy} style={{ ...smallBtnStyle("primary"), opacity: editBusy ? 0.7 : 1 }}>
+                      {editBusy ? "Saving..." : "Save Changes"}
+                    </button>
+                  </div>
+                </form>
+              </aside>
+            )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                <div>
-                  <label style={labelStyle}>Resource Type</label>
-                  <select value={editFormData.resourceType} onChange={(e) => updateEditForm("resourceType", e.target.value)} style={inputStyle}>
-                    <option value="LECTURE_HALL">Lecture Hall</option>
-                    <option value="LAB">Lab</option>
-                    <option value="MEETING_ROOM">Meeting Room</option>
-                    <option value="EQUIPMENT">Equipment</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={labelStyle}>Capacity</label>
-                  <input value={editFormData.capacity} onChange={(e) => updateEditForm("capacity", e.target.value.replace(/[^\d]/g, ""))} style={inputStyle} required />
-                </div>
+            <aside style={{ width: "min(360px, 40vw)", maxHeight: "calc(100vh - 48px)", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, boxShadow: "0 24px 80px rgba(0,0,0,0.2)", pointerEvents: "auto", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <div style={{ padding: "14px 16px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "#111827" }}>Resource Details</div>
+                <button type="button" onClick={() => { setViewDrawerOpen(false); setEditDrawerOpen(false); }} style={{ border: "1px solid #e5e7eb", background: "#fff", borderRadius: 999, width: 32, height: 32, fontSize: 20, cursor: "pointer" }}>×</button>
               </div>
-
-              <div>
-                <label style={labelStyle}>Location</label>
-                <input value={editFormData.location} onChange={(e) => updateEditForm("location", e.target.value)} style={inputStyle} required />
+              <div style={{ padding: 16, overflowY: "auto", flex: 1, display: "grid", gap: 12 }}>
+                {((Array.isArray(selectedResource?.imageUrls) && selectedResource.imageUrls.length > 0) || selectedResource?.imageUrl) ? (
+                  <div>
+                    <div style={labelStyle}>Image</div>
+                    <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "repeat(2, minmax(120px, 1fr))", gap: 8 }}>
+                      {(Array.isArray(selectedResource?.imageUrls) && selectedResource.imageUrls.length > 0
+                        ? selectedResource.imageUrls
+                        : [selectedResource?.imageUrl]
+                      ).filter(Boolean).slice(0, 3).map((src, idx) => (
+                        <img
+                          key={`${src}-${idx}`}
+                          src={src}
+                          alt={selectedResource?.name || "Resource"}
+                          style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10, border: "1px solid #e5e7eb" }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <div><div style={labelStyle}>Resource Code</div><div>{selectedResource?.code || "—"}</div></div>
+                <div><div style={labelStyle}>Name</div><div>{selectedResource?.name || "—"}</div></div>
+                <div><div style={labelStyle}>Type</div><div>{selectedResource?.type || "—"}</div></div>
+                <div><div style={labelStyle}>Capacity</div><div>{selectedResource?.capacity ?? "—"}</div></div>
+                <div><div style={labelStyle}>Location</div><div>{selectedResource?.location || "—"}</div></div>
+                <div><div style={labelStyle}>Description</div><div>{selectedResource?.description || "—"}</div></div>
+                <div><div style={labelStyle}>Availability Windows</div><div>{selectedResource?.availability || "—"}</div></div>
+                <div><div style={labelStyle}>Status</div><div>{selectedResource?.status || "—"}</div></div>
               </div>
-
-              <div>
-                <label style={labelStyle}>Description</label>
-                <textarea value={editFormData.description} onChange={(e) => updateEditForm("description", e.target.value)} style={{ ...inputStyle, minHeight: "88px", resize: "vertical" }} />
+              <div style={{ padding: 16, borderTop: "1px solid #e5e7eb" }}>
+                <button type="button" style={{ ...smallBtnStyle("primary"), width: "100%", padding: "10px 12px" }} onClick={() => openEditDrawer(selectedResource)}>Edit</button>
               </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                <div>
-                  <label style={labelStyle}>Availability Windows</label>
-                  <textarea value={editFormData.availabilityWindows} onChange={(e) => updateEditForm("availabilityWindows", e.target.value)} style={{ ...inputStyle, minHeight: "88px", resize: "vertical" }} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Status</label>
-                  <select value={editFormData.status} onChange={(e) => updateEditForm("status", e.target.value)} style={inputStyle}>
-                    <option value="ACTIVE">ACTIVE</option>
-                    <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
-                  </select>
-                </div>
-              </div>
-
-              {editError ? <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 700 }}>{editError}</p> : null}
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                <button type="button" onClick={() => setEditModalOpen(false)} style={smallBtnStyle()}>Cancel</button>
-                <button type="submit" disabled={editBusy} style={{ ...smallBtnStyle("primary"), opacity: editBusy ? 0.7 : 1 }}>
-                  {editBusy ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-            </form>
+            </aside>
           </div>
         </div>
       )}

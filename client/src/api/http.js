@@ -68,6 +68,12 @@ export async function apiPost(path, body) {
 }
 
 export async function apiPut(path, body) {
+  if (body instanceof FormData) {
+    return request(path, {
+      method: "PUT",
+      body,
+    });
+  }
   return request(path, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

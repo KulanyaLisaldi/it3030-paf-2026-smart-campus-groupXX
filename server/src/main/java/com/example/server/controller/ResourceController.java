@@ -56,10 +56,10 @@ public class ResourceController {
         @RequestParam(value = "description", required = false) String description,
         @RequestParam(value = "availability", required = false) String availability,
         @RequestParam("status") String status,
-        @RequestParam(value = "image", required = false) MultipartFile image
+        @RequestParam(value = "images", required = false) MultipartFile[] images
     ) throws IOException {
         Resource created = resourceService.createWithImage(
-            code, name, type, capacity, location, description, availability, status, image
+            code, name, type, capacity, location, description, availability, status, images
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(
             Map.of("message", "Resource created successfully", "resource", created)
@@ -92,6 +92,31 @@ public class ResourceController {
         @Valid @RequestBody UpdateResourceRequest request
     ) {
         return resourceService.update(id, request)
+            .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(
+                Map.of("message", "Resource updated successfully", "resource", updated)
+            ))
+            .orElseGet(() -> ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", "Resource not found"))
+            );
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateMultipart(
+        @PathVariable("id") String id,
+        @RequestParam("name") String name,
+        @RequestParam("type") String type,
+        @RequestParam("capacity") Integer capacity,
+        @RequestParam("location") String location,
+        @RequestParam(value = "description", required = false) String description,
+        @RequestParam(value = "availability", required = false) String availability,
+        @RequestParam("status") String status,
+        @RequestParam(value = "images", required = false) MultipartFile[] images,
+        @RequestParam(value = "keptImageUrls", required = false) List<String> keptImageUrls
+    ) throws IOException {
+        return resourceService.updateWithImage(
+                id, name, type, capacity, location, description, availability, status, images, keptImageUrls
+            )
             .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(
                 Map.of("message", "Resource updated successfully", "resource", updated)
             ))
