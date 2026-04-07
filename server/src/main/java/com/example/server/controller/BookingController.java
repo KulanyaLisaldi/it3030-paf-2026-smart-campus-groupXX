@@ -69,4 +69,19 @@ public class BookingController {
             )
         );
     }
+
+    @GetMapping("/slots")
+    public ResponseEntity<?> getBookedSlots(
+        @RequestParam("resourceId") String resourceId,
+        @RequestParam("bookingDate") String bookingDate
+    ) {
+        List<Booking> bookings = bookingService.getBookedSlots(resourceId, bookingDate);
+        List<Map<String, String>> bookedSlots = bookings.stream()
+            .map(b -> Map.of(
+                "startTime", b.getStartTime() == null ? "" : b.getStartTime(),
+                "endTime", b.getEndTime() == null ? "" : b.getEndTime()
+            ))
+            .toList();
+        return ResponseEntity.ok(Map.of("bookedSlots", bookedSlots));
+    }
 }

@@ -90,6 +90,24 @@ public class BookingService {
         return !hasConflict(rid, date, start, end);
     }
 
+    public List<Booking> getBookedSlots(String resourceId, String bookingDate) {
+        String rid = safeTrim(resourceId);
+        String date = safeTrim(bookingDate);
+        if (rid.isEmpty()) {
+            throw new IllegalArgumentException("Resource is required");
+        }
+        if (date.isEmpty()) {
+            throw new IllegalArgumentException("Booking date is required");
+        }
+        try {
+            LocalDate.parse(date);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("Booking date must be in YYYY-MM-DD format");
+        }
+        resourceRepo.findById(rid).orElseThrow(() -> new IllegalArgumentException("Selected resource does not exist"));
+        return bookingRepo.findByResourceIdAndBookingDateAndStatusIn(rid, date, CONFLICT_STATUSES);
+    }
+
     private boolean hasConflict(String resourceId, String bookingDate, String startTime, String endTime) {
         LocalTime requestedStart = LocalTime.parse(startTime);
         LocalTime requestedEnd = LocalTime.parse(endTime);

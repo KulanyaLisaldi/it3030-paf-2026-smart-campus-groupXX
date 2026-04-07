@@ -73,6 +73,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/bookings").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/bookings/my").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/bookings/availability").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/bookings/slots").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/tickets/technician/assigned").hasRole("TECHNICIAN")
                 .requestMatchers(HttpMethod.GET, "/api/tickets/*/chat").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/tickets/*/chat").authenticated()
