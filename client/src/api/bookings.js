@@ -14,11 +14,12 @@ export function createBooking(payload) {
   return apiPost("/api/bookings", payload);
 }
 
-export function getBookedSlots({ resourceId, bookingDate }) {
+export function getBookedSlots({ resourceId, bookingDate, excludeBookingId }) {
   const params = new URLSearchParams({
     resourceId: String(resourceId || ""),
     bookingDate: String(bookingDate || ""),
   });
+  if (excludeBookingId) params.set("excludeBookingId", String(excludeBookingId));
   return apiGet(`/api/bookings/slots?${params.toString()}`);
 }
 

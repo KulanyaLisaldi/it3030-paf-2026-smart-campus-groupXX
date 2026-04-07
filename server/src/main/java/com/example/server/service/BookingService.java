@@ -167,9 +167,10 @@ public class BookingService {
         return !hasConflict(rid, date, start, end);
     }
 
-    public List<Booking> getBookedSlots(String resourceId, String bookingDate) {
+    public List<Booking> getBookedSlots(String resourceId, String bookingDate, String excludeBookingId) {
         String rid = safeTrim(resourceId);
         String date = safeTrim(bookingDate);
+        String excludeId = safeTrim(excludeBookingId);
         if (rid.isEmpty()) {
             throw new IllegalArgumentException("Resource is required");
         }
@@ -182,7 +183,11 @@ public class BookingService {
             throw new IllegalArgumentException("Booking date must be in YYYY-MM-DD format");
         }
         resourceRepo.findById(rid).orElseThrow(() -> new IllegalArgumentException("Selected resource does not exist"));
-        return bookingRepo.findByResourceIdAndBookingDateAndStatusIn(rid, date, CONFLICT_STATUSES);
+        List<Booking> bookings = bookingRepo.findByResourceIdAndBookingDateAndStatusIn(rid, date, CONFLICT_STATUSES);
+        if (excludeId.isEmpty()) {
+            return bookings;
+        }
+        return bookings.stream().filter(b -> !excludeId.equals(safeTrim(b.getId()))).toList();
     }
 
     private boolean hasConflict(String resourceId, String bookingDate, String startTime, String endTime) {

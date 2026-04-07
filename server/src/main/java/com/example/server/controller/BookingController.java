@@ -99,9 +99,10 @@ public class BookingController {
     @GetMapping("/slots")
     public ResponseEntity<?> getBookedSlots(
         @RequestParam("resourceId") String resourceId,
-        @RequestParam("bookingDate") String bookingDate
+        @RequestParam("bookingDate") String bookingDate,
+        @RequestParam(value = "excludeBookingId", required = false) String excludeBookingId
     ) {
-        List<Booking> bookings = bookingService.getBookedSlots(resourceId, bookingDate);
+        List<Booking> bookings = bookingService.getBookedSlots(resourceId, bookingDate, excludeBookingId);
         List<Map<String, String>> bookedSlots = bookings.stream()
             .map(b -> Map.of(
                 "startTime", b.getStartTime() == null ? "" : b.getStartTime(),

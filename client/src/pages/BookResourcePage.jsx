@@ -208,10 +208,8 @@ export default function BookResourcePage() {
         expectedAttendees: attendeesApplicable && form.expectedAttendees !== "" ? Number(form.expectedAttendees) : null,
         additionalNotes: form.additionalNotes.trim(),
       });
-      setSubmitState({ busy: false, success: "Booking request submitted successfully. Current status: PENDING.", error: "" });
-      setForm((s) => ({ ...s, purpose: "", expectedAttendees: "", additionalNotes: "" }));
-      setSelectedSlotKeys([]);
-      setBookedRanges((prev) => [...prev, { startTime: selectedStartTime, endTime: selectedEndTime }]);
+      setSubmitState({ busy: false, success: "Booking request submitted successfully. Redirecting to resources...", error: "" });
+      navigate("/resources");
     } catch (e) {
       setSubmitState({ busy: false, success: "", error: e?.message || "Could not submit booking request." });
     }

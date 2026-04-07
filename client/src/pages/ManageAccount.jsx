@@ -23,7 +23,7 @@ import {
   phoneCharsValid,
   subjectCharsValid,
 } from "../utils/contactMessageValidation";
-import { cancelMyBooking, getMyBookings, updateMyBooking } from "../api/bookings";
+import { cancelMyBooking, getBookedSlots, getMyBookings, updateMyBooking } from "../api/bookings";
 
 /** Same localStorage key as ContactUs.jsx uses when saving submissions. */
 const CONTACT_MESSAGES_STORAGE_KEY = "smartCampusContactMessages";
@@ -205,6 +205,24 @@ const bookingChipStyle = {
   letterSpacing: "0.03em",
   textTransform: "uppercase",
 };
+const EDIT_SLOT_WINDOW_START = "08:00";
+const EDIT_SLOT_WINDOW_END = "18:00";
+
+function toMinutes(hhmm) {
+  const [h, m] = String(hhmm || "").split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  return h * 60 + m;
+}
+
+function toHHMM(totalMinutes) {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function prettySlot(start, end) {
+  return `${start} - ${end}`;
+}
 
 function bookingStatusChip(statusRaw) {
   const status = String(statusRaw || "PENDING").toUpperCase();
@@ -279,6 +297,9 @@ export default function ManageAccount() {
   const [editBookingDraft, setEditBookingDraft] = useState({ bookingDate: "", startTime: "", endTime: "", purpose: "", expectedAttendees: "", additionalNotes: "" });
   const [editBookingError, setEditBookingError] = useState("");
   const [editBusyId, setEditBusyId] = useState("");
+  const [editSlotsLoading, setEditSlotsLoading] = useState(false);
+  const [editBookedRanges, setEditBookedRanges] = useState([]);
+  const [editSelectedSlotKey, setEditSelectedSlotKey] = useState("");
 
   const loadProfile = useCallback(async () => {
     setLoadError("");
@@ -570,10 +591,68 @@ export default function ManageAccount() {
       additionalNotes: booking?.additionalNotes || "",
     });
     setEditBookingError("");
+    setEditSelectedSlotKey(`${booking?.startTime || ""}-${booking?.endTime || ""}`);
   };
+
+  useEffect(() => {
+    if (!editBookingTarget?.resourceId || !editBookingDraft.bookingDate) {
+      setEditBookedRanges([]);
+      return;
+    }
+    const load = async () => {
+      setEditSlotsLoading(true);
+      try {
+        const data = await getBookedSlots({
+          resourceId: editBookingTarget.resourceId,
+          bookingDate: editBookingDraft.bookingDate,
+          excludeBookingId: editBookingTarget.id,
+        });
+        setEditBookedRanges(Array.isArray(data?.bookedSlots) ? data.bookedSlots : []);
+      } catch {
+        setEditBookedRanges([]);
+      } finally {
+        setEditSlotsLoading(false);
+      }
+    };
+    void load();
+  }, [editBookingTarget?.id, editBookingTarget?.resourceId, editBookingDraft.bookingDate]);
+
+  const editSlots = useMemo(() => {
+    const startMin = toMinutes(EDIT_SLOT_WINDOW_START);
+    const endMin = toMinutes(EDIT_SLOT_WINDOW_END);
+    if (startMin == null || endMin == null || startMin >= endMin) return [];
+    const slots = [];
+    let cursor = startMin;
+    while (cursor + 120 <= endMin) {
+      const startTime = toHHMM(cursor);
+      const endTime = toHHMM(cursor + 120);
+      slots.push({ key: `${startTime}-${endTime}`, startTime, endTime });
+      cursor += 120;
+    }
+    return slots;
+  }, []);
+
+  const editSlotStateMap = useMemo(() => {
+    const map = {};
+    for (const slot of editSlots) {
+      const s = toMinutes(slot.startTime);
+      const e = toMinutes(slot.endTime);
+      map[slot.key] = editBookedRanges.some((r) => {
+        const rs = toMinutes(r.startTime);
+        const re = toMinutes(r.endTime);
+        if (s == null || e == null || rs == null || re == null) return false;
+        return s < re && e > rs;
+      });
+    }
+    return map;
+  }, [editSlots, editBookedRanges]);
 
   const handleUpdateBooking = async () => {
     if (!editBookingTarget?.id) return;
+    if (!editSelectedSlotKey) {
+      setEditBookingError("Please select an available time slot.");
+      return;
+    }
     if (!editBookingDraft.bookingDate || !editBookingDraft.startTime || !editBookingDraft.endTime || !editBookingDraft.purpose.trim()) {
       setEditBookingError("Please complete all required fields.");
       return;
@@ -1312,11 +1391,47 @@ export default function ManageAccount() {
                 <div />
                 <div>
                   <label style={labelStyle}>Start Time</label>
-                  <input type="time" value={editBookingDraft.startTime} onChange={(e) => setEditBookingDraft((d) => ({ ...d, startTime: e.target.value }))} style={inputEditable} />
+                  <input type="time" value={editBookingDraft.startTime} readOnly disabled style={inputDisabled} />
                 </div>
                 <div>
                   <label style={labelStyle}>End Time</label>
-                  <input type="time" value={editBookingDraft.endTime} onChange={(e) => setEditBookingDraft((d) => ({ ...d, endTime: e.target.value }))} style={inputEditable} />
+                  <input type="time" value={editBookingDraft.endTime} readOnly disabled style={inputDisabled} />
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label style={labelStyle}>Available Time Slots</label>
+                  {editSlotsLoading && <p style={{ margin: "0 0 8px 0", color: "#64748b", fontSize: "13px", fontWeight: 600 }}>Loading available slots...</p>}
+                  {!editSlotsLoading && (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 8 }}>
+                      {editSlots.map((slot) => {
+                        const booked = !!editSlotStateMap[slot.key];
+                        const selected = editSelectedSlotKey === slot.key;
+                        return (
+                          <button
+                            key={slot.key}
+                            type="button"
+                            disabled={booked}
+                            onClick={() => {
+                              setEditSelectedSlotKey(slot.key);
+                              setEditBookingDraft((d) => ({ ...d, startTime: slot.startTime, endTime: slot.endTime }));
+                              setEditBookingError("");
+                            }}
+                            style={{
+                              height: 38,
+                              borderRadius: 8,
+                              border: selected ? "2px solid #0369a1" : "1px solid #d1d5db",
+                              background: booked ? "#e5e7eb" : selected ? "#e0f2fe" : "#fff",
+                              color: booked ? "#6b7280" : selected ? "#0c4a6e" : "#111827",
+                              fontWeight: 700,
+                              fontSize: "12px",
+                              cursor: booked ? "not-allowed" : "pointer",
+                            }}
+                          >
+                            {prettySlot(slot.startTime, slot.endTime)} {booked ? "• Booked" : ""}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
                   <label style={labelStyle}>Purpose</label>
