@@ -4,6 +4,7 @@ import Footer from "./components/layout/footer.jsx";
 import Home from "./pages/Home.jsx";
 import ResourcesPage from "./pages/ResourcesPage.jsx";
 import ResourceDetailsPage from "./pages/ResourceDetailsPage.jsx";
+import BookResourcePage from "./pages/BookResourcePage.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import OAuthCallback from "./pages/OAuthCallback.jsx";
 import TechnicianDashboard from "./pages/TechnicianDashboard.jsx";
@@ -41,6 +42,7 @@ function AppContent() {
         <Route path="/" element={<Home />} />
         <Route path="/resources" element={<ResourcesPage />} />
         <Route path="/resources/:id" element={<ResourceDetailsPage />} />
+        <Route path="/book-resource" element={<BookResourcePage />} />
         <Route path="/contact" element={<ContactUs />} />
         <Route path="/about" element={<AboutUs />} />
         <Route path="/signin" element={<SignIn />} />

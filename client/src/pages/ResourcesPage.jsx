@@ -106,7 +106,7 @@ export default function ResourcesPage() {
       navigate("/signin");
       return;
     }
-    window.alert(`Booking flow for ${resource.name || resource.code || "resource"} will be connected next.`);
+    navigate(`/book-resource?resourceId=${encodeURIComponent(resource.id || "")}`);
   };
 
   return (
