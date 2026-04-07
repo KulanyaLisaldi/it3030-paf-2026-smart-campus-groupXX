@@ -22,11 +22,12 @@ function normalizeResources(payload) {
 export default function BookResourcePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const preselectedResourceId = (searchParams.get("resourceId") || "").trim();
   const [loadingResources, setLoadingResources] = useState(true);
   const [resources, setResources] = useState([]);
   const [loadError, setLoadError] = useState("");
   const [form, setForm] = useState({
-    resourceId: searchParams.get("resourceId") || "",
+    resourceId: preselectedResourceId,
     bookingDate: "",
     startTime: "",
     endTime: "",
@@ -64,6 +65,7 @@ export default function BookResourcePage() {
     () => resources.find((r) => String(r.id || "") === String(form.resourceId || "")) || null,
     [resources, form.resourceId]
   );
+  const isResourceLocked = !!preselectedResourceId && !!selectedResource && String(selectedResource.id || "") === preselectedResourceId;
   const resourceType = String(selectedResource?.type || "").toUpperCase();
   const attendeesApplicable = resourceType && resourceType !== "EQUIPMENT";
 
@@ -138,7 +140,7 @@ export default function BookResourcePage() {
 
   const handleReset = () => {
     setForm({
-      resourceId: "",
+      resourceId: isResourceLocked ? preselectedResourceId : "",
       bookingDate: "",
       startTime: "",
       endTime: "",
@@ -164,20 +166,31 @@ export default function BookResourcePage() {
 
           <div style={gridStyle}>
             <div style={{ gridColumn: "1 / -1" }}>
-              <label style={{ display: "block", marginBottom: 6, color: "#334155", fontWeight: 700 }}>Select Resource</label>
-              <select
-                style={inputStyle}
-                value={form.resourceId}
-                onChange={(e) => setForm((s) => ({ ...s, resourceId: e.target.value }))}
-                disabled={loadingResources}
-              >
-                <option value="">Select a resource</option>
-                {resources.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {`${r.name || r.code || "Resource"} (${r.type || "UNKNOWN"})`}
-                  </option>
-                ))}
-              </select>
+              <label style={{ display: "block", marginBottom: 6, color: "#334155", fontWeight: 700 }}>
+                {isResourceLocked ? "Selected Resource" : "Select Resource"}
+              </label>
+              {isResourceLocked ? (
+                <input
+                  style={{ ...inputStyle, background: "#f8fafc", color: "#475569" }}
+                  value={`${selectedResource.name || selectedResource.code || "Resource"} (${selectedResource.type || "UNKNOWN"})`}
+                  readOnly
+                  disabled
+                />
+              ) : (
+                <select
+                  style={inputStyle}
+                  value={form.resourceId}
+                  onChange={(e) => setForm((s) => ({ ...s, resourceId: e.target.value }))}
+                  disabled={loadingResources}
+                >
+                  <option value="">Select a resource</option>
+                  {resources.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {`${r.name || r.code || "Resource"} (${r.type || "UNKNOWN"})`}
+                    </option>
+                  ))}
+                </select>
+              )}
               <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b", fontWeight: 600 }}>
                 Available categories include Lecture hall, Lab, Meeting room, and Equipment.
               </p>
