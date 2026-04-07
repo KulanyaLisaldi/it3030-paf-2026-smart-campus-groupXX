@@ -7,6 +7,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -44,6 +46,16 @@ public class BookingController {
     @GetMapping("/my")
     public List<Booking> getMyBookings(Authentication authentication) {
         return bookingService.getMyBookings(authentication.getName());
+    }
+
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelMyBooking(
+        Authentication authentication,
+        @PathVariable("id") String id
+    ) {
+        return bookingService.cancelMyBooking(id, authentication.getName())
+            .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Booking cancelled successfully", "booking", updated)))
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found")));
     }
 
     @GetMapping("/availability")

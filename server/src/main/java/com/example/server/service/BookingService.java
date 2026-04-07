@@ -12,6 +12,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 
 @Service
 public class BookingService {
@@ -77,6 +79,24 @@ public class BookingService {
 
     public List<Booking> getMyBookings(String createdBy) {
         return bookingRepo.findByCreatedByOrderByCreatedAtDesc(createdBy);
+    }
+
+    public Optional<Booking> cancelMyBooking(String bookingId, String createdBy) {
+        Optional<Booking> maybe = bookingRepo.findById(bookingId);
+        if (maybe.isEmpty()) {
+            return Optional.empty();
+        }
+        Booking booking = maybe.get();
+        if (!safeTrim(booking.getCreatedBy()).equals(safeTrim(createdBy))) {
+            throw new IllegalArgumentException("You can cancel only your own bookings");
+        }
+        String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
+        if (!"PENDING".equals(status) && !"APPROVED".equals(status)) {
+            throw new IllegalArgumentException("Only pending or approved bookings can be cancelled");
+        }
+        booking.setStatus("CANCELLED");
+        booking.setUpdatedAt(Instant.now());
+        return Optional.of(bookingRepo.save(booking));
     }
 
     public boolean isAvailable(String resourceId, String bookingDate, String startTime, String endTime) {

@@ -23,6 +23,7 @@ import {
   phoneCharsValid,
   subjectCharsValid,
 } from "../utils/contactMessageValidation";
+import { cancelMyBooking, getMyBookings } from "../api/bookings";
 
 /** Same localStorage key as ContactUs.jsx uses when saving submissions. */
 const CONTACT_MESSAGES_STORAGE_KEY = "smartCampusContactMessages";
@@ -186,6 +187,61 @@ const subtleNote = {
   lineHeight: 1.5,
 };
 
+const bookingCardStyle = {
+  backgroundColor: "#ffffff",
+  borderRadius: "12px",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+  border: "1px solid #e5e7eb",
+  padding: "18px 20px",
+};
+
+const bookingChipStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "5px 10px",
+  borderRadius: "999px",
+  fontSize: "11px",
+  fontWeight: 800,
+  letterSpacing: "0.03em",
+  textTransform: "uppercase",
+};
+
+function bookingStatusChip(statusRaw) {
+  const status = String(statusRaw || "PENDING").toUpperCase();
+  if (status === "APPROVED") return { backgroundColor: "#dcfce7", color: "#166534" };
+  if (status === "REJECTED") return { backgroundColor: "#fee2e2", color: "#b91c1c" };
+  if (status === "CANCELLED") return { backgroundColor: "#e5e7eb", color: "#374151" };
+  return { backgroundColor: "#dbeafe", color: "#1d4ed8" };
+}
+
+function formatBookingDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString();
+}
+
+function formatBookingDateTime(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString();
+}
+
+function durationHours(start, end) {
+  const [sh, sm] = String(start || "").split(":").map(Number);
+  const [eh, em] = String(end || "").split(":").map(Number);
+  if (![sh, sm, eh, em].every(Number.isFinite)) return "—";
+  const minutes = eh * 60 + em - (sh * 60 + sm);
+  if (minutes <= 0) return "—";
+  return `${(minutes / 60).toFixed(minutes % 60 === 0 ? 0 : 1)} h`;
+}
+
+function canCancelBooking(statusRaw) {
+  const status = String(statusRaw || "").toUpperCase();
+  return status === "PENDING" || status === "APPROVED";
+}
+
 export default function ManageAccount() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -207,6 +263,11 @@ export default function ManageAccount() {
   const [editingContactId, setEditingContactId] = useState(null);
   const [editContactDraft, setEditContactDraft] = useState(null);
   const [editContactError, setEditContactError] = useState("");
+  const [bookings, setBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingsError, setBookingsError] = useState("");
+  const [expandedBookingId, setExpandedBookingId] = useState("");
+  const [cancelBusyId, setCancelBusyId] = useState("");
 
   const loadProfile = useCallback(async () => {
     setLoadError("");
@@ -235,6 +296,24 @@ export default function ManageAccount() {
       setEditContactDraft(null);
       setEditContactError("");
     }
+  }, [view]);
+
+  useEffect(() => {
+    if (view !== "bookings") return;
+    const loadBookings = async () => {
+      setBookingsLoading(true);
+      setBookingsError("");
+      try {
+        const data = await getMyBookings();
+        setBookings(Array.isArray(data) ? data : []);
+      } catch (e) {
+        setBookings([]);
+        setBookingsError(e?.message || "Could not load bookings.");
+      } finally {
+        setBookingsLoading(false);
+      }
+    };
+    void loadBookings();
   }, [view]);
 
   useEffect(() => {
@@ -441,6 +520,26 @@ export default function ManageAccount() {
       navigate(-1);
     } else {
       navigate("/", { replace: true });
+    }
+  };
+
+  const handleCancelBooking = async (booking) => {
+    if (!booking?.id || !canCancelBooking(booking.status)) return;
+    const ok = window.confirm("Cancel this booking?");
+    if (!ok) return;
+    setCancelBusyId(booking.id);
+    try {
+      const response = await cancelMyBooking(booking.id);
+      const updated = response?.booking;
+      if (updated?.id) {
+        setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+      } else {
+        setBookings((prev) => prev.map((b) => (b.id === booking.id ? { ...b, status: "CANCELLED" } : b)));
+      }
+    } catch (e) {
+      window.alert(e?.message || "Could not cancel booking");
+    } finally {
+      setCancelBusyId("");
     }
   };
 
@@ -867,10 +966,96 @@ export default function ManageAccount() {
         {view === "bookings" && (
           <>
             <h1 style={sectionHeading}>My bookings</h1>
-            <p style={subtleNote}>Room and resource bookings will appear here in a future update.</p>
-            <div style={cardStyle}>
-              <p style={{ margin: 0, color: "#6b7280", fontSize: "15px" }}>No bookings yet.</p>
-            </div>
+            <p style={subtleNote}>You can view only your own bookings and cancel pending/approved requests.</p>
+            {bookingsLoading && (
+              <div style={cardStyle}>
+                <p style={{ margin: 0, color: "#6b7280", fontSize: "15px" }}>Loading bookings...</p>
+              </div>
+            )}
+            {!bookingsLoading && bookingsError && (
+              <div style={cardStyle}>
+                <p style={{ margin: 0, color: "#b91c1c", fontSize: "15px", fontWeight: 700 }}>{bookingsError}</p>
+              </div>
+            )}
+            {!bookingsLoading && !bookingsError && bookings.length === 0 && (
+              <div style={cardStyle}>
+                <p style={{ margin: 0, color: "#6b7280", fontSize: "15px" }}>No bookings yet.</p>
+              </div>
+            )}
+            {!bookingsLoading && !bookingsError && bookings.length > 0 && (
+              <div style={{ display: "grid", gap: "14px", maxWidth: "980px" }}>
+                {bookings.map((booking) => (
+                  <article key={booking.id || `${booking.resourceId}-${booking.bookingDate}-${booking.startTime}`} style={{ ...bookingCardStyle, border: "1px solid #F5E7C6" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "flex-start", flexWrap: "wrap", marginBottom: "10px" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <h3 style={{ margin: "0 0 3px 0", fontSize: "17px", fontWeight: 800, color: "#111827" }}>
+                          {booking.resourceName || "Resource"}
+                        </h3>
+                      </div>
+                      <span style={{ ...bookingChipStyle, ...bookingStatusChip(booking.status) }}>
+                        {booking.status || "PENDING"}
+                      </span>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 14px", fontSize: "14px", color: "#374151" }}>
+                      <div><strong>Resource Type:</strong> {booking.resourceType || "—"}</div>
+                      <div><strong>Date:</strong> {formatBookingDate(booking.bookingDate)}</div>
+                      <div><strong>Time Range:</strong> {booking.startTime || "—"} - {booking.endTime || "—"}</div>
+                      <div><strong>Created Date:</strong> {formatBookingDateTime(booking.createdAt)}</div>
+                      <div style={{ gridColumn: "1 / -1" }}><strong>Purpose:</strong> {booking.purpose || "—"}</div>
+                      <div><strong>Status:</strong> {booking.status || "PENDING"}</div>
+                      <div><strong>Admin Reason / Comment:</strong> {booking.reviewReason || "—"}</div>
+                    </div>
+
+                    {expandedBookingId === booking.id && (
+                      <div style={{ marginTop: "10px", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "#f9fafb" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 14px", fontSize: "14px", color: "#374151" }}>
+                          <div><strong>Expected Attendees:</strong> {booking.expectedAttendees ?? "—"}</div>
+                          <div><strong>Total Duration:</strong> {durationHours(booking.startTime, booking.endTime)}</div>
+                          <div style={{ gridColumn: "1 / -1" }}><strong>Additional Notes:</strong> {booking.additionalNotes || "—"}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ display: "flex", gap: "8px", marginTop: "12px", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedBookingId((id) => (id === booking.id ? "" : booking.id))}
+                        style={{
+                          padding: "7px 12px",
+                          borderRadius: "8px",
+                          border: "1px solid #d1d5db",
+                          backgroundColor: "#fff",
+                          color: "#374151",
+                          fontWeight: 700,
+                          fontSize: "13px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {expandedBookingId === booking.id ? "Hide Details" : "View Details"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!canCancelBooking(booking.status) || cancelBusyId === booking.id}
+                        onClick={() => handleCancelBooking(booking)}
+                        style={{
+                          padding: "7px 12px",
+                          borderRadius: "8px",
+                          border: "none",
+                          backgroundColor: canCancelBooking(booking.status) ? "#dc2626" : "#d1d5db",
+                          color: "#fff",
+                          fontWeight: 700,
+                          fontSize: "13px",
+                          cursor: !canCancelBooking(booking.status) || cancelBusyId === booking.id ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {cancelBusyId === booking.id ? "Cancelling..." : "Cancel Booking"}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </>
         )}
 
