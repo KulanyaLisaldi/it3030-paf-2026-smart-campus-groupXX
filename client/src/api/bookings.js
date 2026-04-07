@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "./http";
+import { apiGet, apiPatch, apiPost } from "./http";
 
 export function checkBookingAvailability({ resourceId, bookingDate, startTime, endTime }) {
   const params = new URLSearchParams({
@@ -12,4 +12,25 @@ export function checkBookingAvailability({ resourceId, bookingDate, startTime, e
 
 export function createBooking(payload) {
   return apiPost("/api/bookings", payload);
+}
+
+export function getBookedSlots({ resourceId, bookingDate, excludeBookingId }) {
+  const params = new URLSearchParams({
+    resourceId: String(resourceId || ""),
+    bookingDate: String(bookingDate || ""),
+  });
+  if (excludeBookingId) params.set("excludeBookingId", String(excludeBookingId));
+  return apiGet(`/api/bookings/slots?${params.toString()}`);
+}
+
+export function getMyBookings() {
+  return apiGet("/api/bookings/my");
+}
+
+export function updateMyBooking(bookingId, payload) {
+  return apiPatch(`/api/bookings/${encodeURIComponent(bookingId)}`, payload);
+}
+
+export function cancelMyBooking(bookingId, reason) {
+  return apiPatch(`/api/bookings/${encodeURIComponent(bookingId)}/cancel`, { reason });
 }

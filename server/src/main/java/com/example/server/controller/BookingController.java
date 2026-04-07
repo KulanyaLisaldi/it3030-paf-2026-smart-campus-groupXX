@@ -1,12 +1,16 @@
 package com.example.server.controller;
 
 import com.example.server.dto.booking.CreateBookingRequest;
+import com.example.server.dto.booking.CancelBookingRequest;
+import com.example.server.dto.booking.UpdateMyBookingRequest;
 import com.example.server.model.Booking;
 import com.example.server.service.BookingService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -46,6 +50,28 @@ public class BookingController {
         return bookingService.getMyBookings(authentication.getName());
     }
 
+    @PatchMapping("/{id}")
+    public ResponseEntity<?> updateMyBooking(
+        Authentication authentication,
+        @PathVariable("id") String id,
+        @Valid @RequestBody UpdateMyBookingRequest request
+    ) {
+        return bookingService.updateMyPendingBooking(id, authentication.getName(), request)
+            .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Booking updated successfully", "booking", updated)))
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found")));
+    }
+
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelMyBooking(
+        Authentication authentication,
+        @PathVariable("id") String id,
+        @Valid @RequestBody CancelBookingRequest request
+    ) {
+        return bookingService.cancelMyBooking(id, authentication.getName(), request.getReason())
+            .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Booking cancelled successfully", "booking", updated)))
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found")));
+    }
+
     @GetMapping("/availability")
     public ResponseEntity<?> checkAvailability(
         @RequestParam("resourceId") String resourceId,
@@ -68,5 +94,21 @@ public class BookingController {
                 "message", "Resource is available for the selected time"
             )
         );
+    }
+
+    @GetMapping("/slots")
+    public ResponseEntity<?> getBookedSlots(
+        @RequestParam("resourceId") String resourceId,
+        @RequestParam("bookingDate") String bookingDate,
+        @RequestParam(value = "excludeBookingId", required = false) String excludeBookingId
+    ) {
+        List<Booking> bookings = bookingService.getBookedSlots(resourceId, bookingDate, excludeBookingId);
+        List<Map<String, String>> bookedSlots = bookings.stream()
+            .map(b -> Map.of(
+                "startTime", b.getStartTime() == null ? "" : b.getStartTime(),
+                "endTime", b.getEndTime() == null ? "" : b.getEndTime()
+            ))
+            .toList();
+        return ResponseEntity.ok(Map.of("bookedSlots", bookedSlots));
     }
 }

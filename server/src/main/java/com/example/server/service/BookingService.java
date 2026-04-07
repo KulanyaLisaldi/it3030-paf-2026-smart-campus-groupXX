@@ -1,6 +1,7 @@
 package com.example.server.service;
 
 import com.example.server.dto.booking.CreateBookingRequest;
+import com.example.server.dto.booking.UpdateMyBookingRequest;
 import com.example.server.model.Booking;
 import com.example.server.model.Resource;
 import com.example.server.repository.BookingRepo;
@@ -12,6 +13,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 
 @Service
 public class BookingService {
@@ -79,6 +82,80 @@ public class BookingService {
         return bookingRepo.findByCreatedByOrderByCreatedAtDesc(createdBy);
     }
 
+    public Optional<Booking> cancelMyBooking(String bookingId, String createdBy, String reasonRaw) {
+        Optional<Booking> maybe = bookingRepo.findById(bookingId);
+        if (maybe.isEmpty()) {
+            return Optional.empty();
+        }
+        Booking booking = maybe.get();
+        if (!safeTrim(booking.getCreatedBy()).equals(safeTrim(createdBy))) {
+            throw new IllegalArgumentException("You can cancel only your own bookings");
+        }
+        String reason = safeTrim(reasonRaw);
+        if (reason.isEmpty()) {
+            throw new IllegalArgumentException("Cancellation reason is required");
+        }
+        String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
+        if (!"PENDING".equals(status) && !"APPROVED".equals(status)) {
+            throw new IllegalArgumentException("Only pending or approved bookings can be cancelled");
+        }
+        booking.setStatus("CANCELLED");
+        booking.setCancellationReason(reason);
+        booking.setUpdatedAt(Instant.now());
+        return Optional.of(bookingRepo.save(booking));
+    }
+
+    public Optional<Booking> updateMyPendingBooking(String bookingId, String createdBy, UpdateMyBookingRequest request) {
+        Optional<Booking> maybe = bookingRepo.findById(bookingId);
+        if (maybe.isEmpty()) {
+            return Optional.empty();
+        }
+        Booking booking = maybe.get();
+        if (!safeTrim(booking.getCreatedBy()).equals(safeTrim(createdBy))) {
+            throw new IllegalArgumentException("You can update only your own bookings");
+        }
+        String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
+        if (!"PENDING".equals(status)) {
+            throw new IllegalArgumentException("Only pending bookings can be updated");
+        }
+
+        String bookingDate = safeTrim(request.getBookingDate());
+        String startTime = safeTrim(request.getStartTime());
+        String endTime = safeTrim(request.getEndTime());
+        String purpose = safeTrim(request.getPurpose());
+        String additionalNotes = safeTrim(request.getAdditionalNotes());
+
+        validateDateAndTime(bookingDate, startTime, endTime);
+        if (purpose.isEmpty()) {
+            throw new IllegalArgumentException("Purpose is required");
+        }
+
+        Resource resource = resourceRepo.findById(safeTrim(booking.getResourceId()))
+            .orElseThrow(() -> new IllegalArgumentException("Selected resource does not exist"));
+
+        if (hasConflictExcludingBooking(safeTrim(booking.getId()), safeTrim(booking.getResourceId()), bookingDate, startTime, endTime)) {
+            throw new IllegalArgumentException("Selected time slot is not available");
+        }
+
+        Integer expectedAttendees = request.getExpectedAttendees();
+        if (!"EQUIPMENT".equalsIgnoreCase(safeTrim(resource.getType())) && expectedAttendees == null) {
+            throw new IllegalArgumentException("Expected attendees is required for this resource");
+        }
+        if (expectedAttendees != null && resource.getCapacity() != null && expectedAttendees > resource.getCapacity()) {
+            throw new IllegalArgumentException("Expected attendees cannot exceed resource capacity");
+        }
+
+        booking.setBookingDate(bookingDate);
+        booking.setStartTime(startTime);
+        booking.setEndTime(endTime);
+        booking.setPurpose(purpose);
+        booking.setExpectedAttendees(expectedAttendees);
+        booking.setAdditionalNotes(additionalNotes);
+        booking.setStatus("PENDING");
+        booking.setUpdatedAt(Instant.now());
+        return Optional.of(bookingRepo.save(booking));
+    }
+
     public boolean isAvailable(String resourceId, String bookingDate, String startTime, String endTime) {
         String rid = safeTrim(resourceId);
         String date = safeTrim(bookingDate);
@@ -88,6 +165,29 @@ public class BookingService {
         validateDateAndTime(date, start, end);
         resourceRepo.findById(rid).orElseThrow(() -> new IllegalArgumentException("Selected resource does not exist"));
         return !hasConflict(rid, date, start, end);
+    }
+
+    public List<Booking> getBookedSlots(String resourceId, String bookingDate, String excludeBookingId) {
+        String rid = safeTrim(resourceId);
+        String date = safeTrim(bookingDate);
+        String excludeId = safeTrim(excludeBookingId);
+        if (rid.isEmpty()) {
+            throw new IllegalArgumentException("Resource is required");
+        }
+        if (date.isEmpty()) {
+            throw new IllegalArgumentException("Booking date is required");
+        }
+        try {
+            LocalDate.parse(date);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("Booking date must be in YYYY-MM-DD format");
+        }
+        resourceRepo.findById(rid).orElseThrow(() -> new IllegalArgumentException("Selected resource does not exist"));
+        List<Booking> bookings = bookingRepo.findByResourceIdAndBookingDateAndStatusIn(rid, date, CONFLICT_STATUSES);
+        if (excludeId.isEmpty()) {
+            return bookings;
+        }
+        return bookings.stream().filter(b -> !excludeId.equals(safeTrim(b.getId()))).toList();
     }
 
     private boolean hasConflict(String resourceId, String bookingDate, String startTime, String endTime) {
@@ -100,6 +200,29 @@ public class BookingService {
             CONFLICT_STATUSES
         );
         for (Booking booking : existing) {
+            LocalTime existingStart = LocalTime.parse(safeTrim(booking.getStartTime()));
+            LocalTime existingEnd = LocalTime.parse(safeTrim(booking.getEndTime()));
+            boolean overlaps = requestedStart.isBefore(existingEnd) && requestedEnd.isAfter(existingStart);
+            if (overlaps) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasConflictExcludingBooking(String bookingId, String resourceId, String bookingDate, String startTime, String endTime) {
+        LocalTime requestedStart = LocalTime.parse(startTime);
+        LocalTime requestedEnd = LocalTime.parse(endTime);
+
+        List<Booking> existing = bookingRepo.findByResourceIdAndBookingDateAndStatusIn(
+            resourceId,
+            bookingDate,
+            CONFLICT_STATUSES
+        );
+        for (Booking booking : existing) {
+            if (safeTrim(booking.getId()).equals(bookingId)) {
+                continue;
+            }
             LocalTime existingStart = LocalTime.parse(safeTrim(booking.getStartTime()));
             LocalTime existingEnd = LocalTime.parse(safeTrim(booking.getEndTime()));
             boolean overlaps = requestedStart.isBefore(existingEnd) && requestedEnd.isAfter(existingStart);
