@@ -377,7 +377,6 @@ export default function BookResourcePage() {
             <div><strong>Selected date:</strong> {form.bookingDate || "—"}</div>
             <div><strong>Selected slots:</strong> {selectedSlotKeys.length > 0 ? selectedOrderedSlots.map((s) => prettySlot(s.startTime, s.endTime)).join(", ") : "—"}</div>
             <div><strong>Total duration:</strong> {selectedDurationHours > 0 ? `${selectedDurationHours} hours` : "—"}</div>
-            <div><strong>Status after submit:</strong> PENDING</div>
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
