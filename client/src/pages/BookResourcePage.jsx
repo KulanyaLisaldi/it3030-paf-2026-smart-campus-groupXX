@@ -50,6 +50,14 @@ function parseAvailabilityWindow(raw) {
   return { start, end };
 }
 
+function todayIsoDate() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function BookResourcePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -107,8 +115,16 @@ export default function BookResourcePage() {
     const startMin = toMinutes(availabilityWindow.start);
     const endMin = toMinutes(availabilityWindow.end);
     if (startMin == null || endMin == null || startMin >= endMin) return [];
+    const isToday = form.bookingDate === todayIsoDate();
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const effectiveStartMin = isToday ? Math.max(startMin, currentMinutes) : startMin;
     const slots = [];
-    let cursor = startMin;
+    let cursor = effectiveStartMin;
+    const remainder = cursor % 120;
+    if (remainder !== 0) {
+      cursor += 120 - remainder;
+    }
     while (cursor + SLOT_DURATION_HOURS * 60 <= endMin) {
       const startTime = toHHMM(cursor);
       const endTime = toHHMM(cursor + SLOT_DURATION_HOURS * 60);
@@ -116,7 +132,7 @@ export default function BookResourcePage() {
       cursor += SLOT_DURATION_HOURS * 60;
     }
     return slots;
-  }, [availabilityWindow]);
+  }, [availabilityWindow, form.bookingDate]);
 
   useEffect(() => {
     if (!form.resourceId || !form.bookingDate) {
@@ -273,7 +289,13 @@ export default function BookResourcePage() {
           <div style={gridStyle}>
             <div>
               <label style={{ display: "block", marginBottom: 6, color: "#334155", fontWeight: 700 }}>Booking Date</label>
-              <input type="date" style={inputStyle} value={form.bookingDate} onChange={(e) => setForm((s) => ({ ...s, bookingDate: e.target.value }))} />
+              <input
+                type="date"
+                min={todayIsoDate()}
+                style={inputStyle}
+                value={form.bookingDate}
+                onChange={(e) => setForm((s) => ({ ...s, bookingDate: e.target.value }))}
+              />
             </div>
             <div />
 
