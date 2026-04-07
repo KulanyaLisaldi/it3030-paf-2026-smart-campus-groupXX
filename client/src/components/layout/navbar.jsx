@@ -471,36 +471,6 @@ const Navbar = () => {
                   </button>
                 </div>
                 <hr style={dividerStyle} />
-                <div style={{ padding: "4px 0" }}>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      navigate("/my-tickets");
-                    }}
-                    style={{
-                      width: "100%",
-                      textAlign: "left",
-                      padding: "12px 20px",
-                      border: "none",
-                      background: "none",
-                      fontSize: "14px",
-                      fontWeight: 500,
-                      color: "#111827",
-                      cursor: "pointer",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#FAF3E1";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                    }}
-                  >
-                    My Tickets
-                  </button>
-                </div>
-                <hr style={dividerStyle} />
                 <div style={{ padding: "4px 0 8px" }}>
                   <button
                     type="button"
