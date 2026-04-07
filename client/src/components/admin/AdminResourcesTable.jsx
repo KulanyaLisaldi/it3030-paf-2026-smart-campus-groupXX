@@ -133,6 +133,26 @@ function normalizeResources(payload) {
   return [];
 }
 
+/** URLs safe to treat as persisted (server paths). Never blob/data previews — they break after refresh. */
+function sanitizePersistedImageUrls(urls) {
+  if (!Array.isArray(urls)) return [];
+  return urls
+    .filter((u) => typeof u === "string")
+    .map((u) => u.trim())
+    .filter((u) => u && !u.startsWith("blob:") && !u.startsWith("data:"));
+}
+
+function resourceWithSanitizedImages(resource) {
+  if (!resource || typeof resource !== "object") return resource;
+  const list = Array.isArray(resource.imageUrls) && resource.imageUrls.length > 0
+    ? resource.imageUrls
+    : resource.imageUrl
+      ? [resource.imageUrl]
+      : [];
+  const clean = sanitizePersistedImageUrls(list);
+  return { ...resource, imageUrls: clean, imageUrl: clean[0] || "" };
+}
+
 export default function AdminResourcesTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -189,7 +209,7 @@ export default function AdminResourcesTable() {
         minCapacity: minCapacityFilter === "" ? undefined : Number(minCapacityFilter),
         location: locationFilter,
       });
-      setResources(normalizeResources(data));
+      setResources(normalizeResources(data).map(resourceWithSanitizedImages));
     } catch (e) {
       setResources([]);
       setError(e?.message || "Could not load resources.");
@@ -294,7 +314,13 @@ export default function AdminResourcesTable() {
       description: resource.description || "",
       availabilityWindows: resource.availability || resource.availabilityText || "",
       status: resource.status || "ACTIVE",
-      imageUrls: (Array.isArray(resource.imageUrls) && resource.imageUrls.length > 0 ? resource.imageUrls : (resource.imageUrl ? [resource.imageUrl] : [])),
+      imageUrls: sanitizePersistedImageUrls(
+        Array.isArray(resource.imageUrls) && resource.imageUrls.length > 0
+          ? resource.imageUrls
+          : resource.imageUrl
+            ? [resource.imageUrl]
+            : []
+      ),
       newImageFiles: [],
       newImagePreviews: [],
     });
@@ -350,8 +376,8 @@ export default function AdminResourcesTable() {
         description: formData.description.trim(),
         availability: formData.availabilityWindows.trim(),
         status: formData.status,
-        imageUrls: formData.resourceImagePreviews,
-        imageUrl: formData.resourceImagePreviews[0] || "",
+        imageUrls: [],
+        imageUrl: "",
       }, ...prev]);
       setAddModalOpen(false);
     } finally {
@@ -401,22 +427,22 @@ export default function AdminResourcesTable() {
       await load();
     } catch (err) {
       if (String(editResourceId).startsWith("tmp-")) {
-        setResources((prev) => prev.map((r) => (
-          r.id === editResourceId
-            ? {
-                ...r,
-                name: editFormData.resourceName.trim(),
-                type: editFormData.resourceType,
-                capacity: capacityNumber,
-                location: editFormData.location.trim(),
-                description: editFormData.description.trim(),
-                availability: editFormData.availabilityWindows.trim(),
-                status: editFormData.status,
-                imageUrls: [...editFormData.imageUrls, ...editFormData.newImagePreviews],
-                imageUrl: [...editFormData.imageUrls, ...editFormData.newImagePreviews][0] || "",
-              }
-            : r
-        )));
+        setResources((prev) => prev.map((r) => {
+          if (r.id !== editResourceId) return r;
+          const keptOnly = sanitizePersistedImageUrls(editFormData.imageUrls);
+          return {
+            ...r,
+            name: editFormData.resourceName.trim(),
+            type: editFormData.resourceType,
+            capacity: capacityNumber,
+            location: editFormData.location.trim(),
+            description: editFormData.description.trim(),
+            availability: editFormData.availabilityWindows.trim(),
+            status: editFormData.status,
+            imageUrls: keptOnly,
+            imageUrl: keptOnly[0] || "",
+          };
+        }));
         setEditDrawerOpen(false);
       } else {
         setEditError(err?.message || "Could not update resource.");
@@ -828,8 +854,24 @@ export default function AdminResourcesTable() {
                 <div><div style={labelStyle}>Availability Windows</div><div>{selectedResource?.availability || "—"}</div></div>
                 <div><div style={labelStyle}>Status</div><div>{selectedResource?.status || "—"}</div></div>
               </div>
-              <div style={{ padding: 16, borderTop: "1px solid #e5e7eb" }}>
-                <button type="button" style={{ ...smallBtnStyle("primary"), ...primaryActionBtnStyle, width: "100%", padding: "10px 12px" }} onClick={() => openEditDrawer(selectedResource)}>Edit</button>
+              <div style={{ padding: 16, borderTop: "1px solid #e5e7eb", display: "flex", gap: 10 }}>
+                <button
+                  type="button"
+                  style={{ ...smallBtnStyle(), flex: 1, padding: "10px 12px", fontWeight: 800 }}
+                  onClick={() => {
+                    setViewDrawerOpen(false);
+                    setEditDrawerOpen(false);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  style={{ ...smallBtnStyle("primary"), ...primaryActionBtnStyle, flex: 1, padding: "10px 12px" }}
+                  onClick={() => openEditDrawer(selectedResource)}
+                >
+                  Edit
+                </button>
               </div>
             </aside>
           </div>

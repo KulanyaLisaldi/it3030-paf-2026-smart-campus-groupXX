@@ -99,6 +99,24 @@ function formatResourceType(type) {
     .join(" ");
 }
 
+function normalizeImageUrl(url) {
+  const value = String(url || "").trim();
+  if (!value) return "";
+  if (value.startsWith("blob:")) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("/")) return value;
+  return `/${value.replace(/^\.?\/*/, "")}`;
+}
+
+function getResourceCardImage(resource) {
+  if (!resource || typeof resource !== "object") return "";
+  if (Array.isArray(resource.imageUrls) && resource.imageUrls.length > 0) {
+    const firstValid = resource.imageUrls.map((u) => normalizeImageUrl(u)).find(Boolean);
+    if (firstValid) return firstValid;
+  }
+  return normalizeImageUrl(resource.imageUrl);
+}
+
 export default function ResourcesPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -308,10 +326,28 @@ export default function ResourcesPage() {
                   <div style={{ ...cardGridStyle, marginTop: 0 }}>
                     {resourcesByType[typeKey].map((r) => (
                       <article key={r.id || r.code} style={cardStyle}>
+                        <div style={{ width: "100%", height: 150, borderRadius: 12, overflow: "hidden", border: "1px solid #e5e7eb", backgroundColor: "#f8fafc", marginBottom: 12 }}>
+                          {getResourceCardImage(r) ? (
+                            <img
+                              src={getResourceCardImage(r)}
+                              alt={r.name || r.resourceName || "Resource"}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const fallback = e.currentTarget.nextElementSibling;
+                                if (fallback) fallback.style.display = "flex";
+                              }}
+                            />
+                          ) : (
+                            null
+                          )}
+                          <div style={{ width: "100%", height: "100%", display: getResourceCardImage(r) ? "none" : "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: 13, fontWeight: 700 }}>
+                            No image
+                          </div>
+                        </div>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
                           <div>
                             <h3 style={{ margin: 0, color: "#0f172a", fontSize: 18, fontWeight: 900 }}>{r.name || r.resourceName || "—"}</h3>
-                            <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 12, fontWeight: 700 }}>{r.code || r.resourceCode || "—"}</p>
                           </div>
                           <span style={statusBadge(r.status)}>{r.status || "—"}</span>
                         </div>
@@ -345,7 +381,6 @@ export default function ResourcesPage() {
                             color: "#fff",
                             fontWeight: 800,
                             cursor: String(r.status || "").toUpperCase() === "OUT_OF_SERVICE" ? "not-allowed" : "pointer",
-                            boxShadow: String(r.status || "").toUpperCase() === "OUT_OF_SERVICE" ? "none" : "0 8px 20px rgba(250,129,18,0.28)",
                           }}
                             onClick={() => handleBook(r)}
                           >
