@@ -42,7 +42,7 @@ export default function ResourceDetailsPage() {
       navigate("/signin");
       return;
     }
-    window.alert("Booking flow will be connected next.");
+    navigate(`/book-resource?resourceId=${encodeURIComponent(id || "")}`);
   };
 
   return (
