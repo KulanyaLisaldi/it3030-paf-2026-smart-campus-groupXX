@@ -94,14 +94,26 @@ export default function AdminResourceDetailsPage() {
         {!loading && error && <p style={{ margin: 0, color: "#b91c1c", fontWeight: 800 }}>{error}</p>}
 
         {!loading && !error && resource && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px 16px" }}>
-            {rows.map((row) => (
-              <div key={row.label}>
-                <div style={labelStyle}>{row.label}</div>
-                <div style={valueStyle}>{row.value}</div>
+          <>
+            {resource.imageUrl ? (
+              <div style={{ marginBottom: 18 }}>
+                <div style={labelStyle}>Resource image</div>
+                <img
+                  src={resource.imageUrl}
+                  alt={resource.name || "Resource image"}
+                  style={{ marginTop: 8, width: "100%", maxWidth: 420, maxHeight: 240, objectFit: "cover", borderRadius: 12, border: "1px solid #e5e7eb" }}
+                />
               </div>
-            ))}
-          </div>
+            ) : null}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px 16px" }}>
+              {rows.map((row) => (
+                <div key={row.label}>
+                  <div style={labelStyle}>{row.label}</div>
+                  <div style={valueStyle}>{row.value}</div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </AdminLayout>

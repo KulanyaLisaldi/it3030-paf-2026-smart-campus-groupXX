@@ -7,6 +7,7 @@ import com.example.server.model.Resource;
 import com.example.server.service.ResourceService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,7 +19,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -33,13 +36,33 @@ public class ResourceController {
     }
 
     @PostMapping
-    public ResponseEntity<?> create(@Valid @RequestBody CreateResourceRequest request) {
+    public ResponseEntity<?> create(@Valid @RequestBody CreateResourceRequest request) throws IOException {
         Resource created = resourceService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(
             Map.of(
                 "message", "Resource created successfully",
                 "resource", created
             )
+        );
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> createMultipart(
+        @RequestParam("code") String code,
+        @RequestParam("name") String name,
+        @RequestParam("type") String type,
+        @RequestParam("capacity") Integer capacity,
+        @RequestParam("location") String location,
+        @RequestParam(value = "description", required = false) String description,
+        @RequestParam(value = "availability", required = false) String availability,
+        @RequestParam("status") String status,
+        @RequestParam(value = "images", required = false) MultipartFile[] images
+    ) throws IOException {
+        Resource created = resourceService.createWithImage(
+            code, name, type, capacity, location, description, availability, status, images
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+            Map.of("message", "Resource created successfully", "resource", created)
         );
     }
 
@@ -69,6 +92,31 @@ public class ResourceController {
         @Valid @RequestBody UpdateResourceRequest request
     ) {
         return resourceService.update(id, request)
+            .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(
+                Map.of("message", "Resource updated successfully", "resource", updated)
+            ))
+            .orElseGet(() -> ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", "Resource not found"))
+            );
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateMultipart(
+        @PathVariable("id") String id,
+        @RequestParam("name") String name,
+        @RequestParam("type") String type,
+        @RequestParam("capacity") Integer capacity,
+        @RequestParam("location") String location,
+        @RequestParam(value = "description", required = false) String description,
+        @RequestParam(value = "availability", required = false) String availability,
+        @RequestParam("status") String status,
+        @RequestParam(value = "images", required = false) MultipartFile[] images,
+        @RequestParam(value = "keptImageUrls", required = false) List<String> keptImageUrls
+    ) throws IOException {
+        return resourceService.updateWithImage(
+                id, name, type, capacity, location, description, availability, status, images, keptImageUrls
+            )
             .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(
                 Map.of("message", "Resource updated successfully", "resource", updated)
             ))

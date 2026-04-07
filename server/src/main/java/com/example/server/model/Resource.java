@@ -4,6 +4,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Document(collection = "resources")
 public class Resource {
@@ -18,6 +20,8 @@ public class Resource {
     private String location;
     private String description;
     private String availability;
+    private String imageUrl;
+    private List<String> imageUrls = new ArrayList<>();
     private String status;
     private Instant createdAt;
     private Instant updatedAt;
@@ -88,6 +92,22 @@ public class Resource {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public List<String> getImageUrls() {
+        return imageUrls;
+    }
+
+    public void setImageUrls(List<String> imageUrls) {
+        this.imageUrls = imageUrls;
     }
 
     public Instant getCreatedAt() {
