@@ -18,6 +18,7 @@ public class Resource {
     private String location;
     private String description;
     private String availability;
+    private String imageUrl;
     private String status;
     private Instant createdAt;
     private Instant updatedAt;
@@ -88,6 +89,14 @@ public class Resource {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public Instant getCreatedAt() {

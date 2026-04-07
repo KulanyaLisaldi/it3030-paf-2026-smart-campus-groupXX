@@ -94,6 +94,8 @@ export default function AdminResourcesTable() {
     description: "",
     availabilityWindows: "",
     status: "ACTIVE",
+    resourceImageFile: null,
+    resourceImagePreview: "",
   });
   const [editResourceId, setEditResourceId] = useState("");
   const [editFormData, setEditFormData] = useState({
@@ -203,6 +205,8 @@ export default function AdminResourcesTable() {
       description: "",
       availabilityWindows: "",
       status: "ACTIVE",
+      resourceImageFile: null,
+      resourceImagePreview: "",
     });
     setCreateError("");
     setAddModalOpen(true);
@@ -241,16 +245,18 @@ export default function AdminResourcesTable() {
       return;
     }
 
-    const payload = {
-      code: formData.resourceCode.trim(),
-      name: formData.resourceName.trim(),
-      type: formData.resourceType,
-      capacity: capacityNumber,
-      location: formData.location.trim(),
-      description: formData.description.trim(),
-      availability: formData.availabilityWindows.trim(),
-      status: formData.status,
-    };
+    const payload = new FormData();
+    payload.append("code", formData.resourceCode.trim());
+    payload.append("name", formData.resourceName.trim());
+    payload.append("type", formData.resourceType);
+    payload.append("capacity", String(capacityNumber));
+    payload.append("location", formData.location.trim());
+    payload.append("description", formData.description.trim());
+    payload.append("availability", formData.availabilityWindows.trim());
+    payload.append("status", formData.status);
+    if (formData.resourceImageFile) {
+      payload.append("image", formData.resourceImageFile);
+    }
 
     setCreateBusy(true);
     setCreateError("");
@@ -260,7 +266,18 @@ export default function AdminResourcesTable() {
       await load();
     } catch {
       const localId = `tmp-${Date.now()}`;
-      setResources((prev) => [{ id: localId, ...payload }, ...prev]);
+      setResources((prev) => [{
+        id: localId,
+        code: formData.resourceCode.trim(),
+        name: formData.resourceName.trim(),
+        type: formData.resourceType,
+        capacity: capacityNumber,
+        location: formData.location.trim(),
+        description: formData.description.trim(),
+        availability: formData.availabilityWindows.trim(),
+        status: formData.status,
+        imageUrl: formData.resourceImagePreview || "",
+      }, ...prev]);
       setAddModalOpen(false);
     } finally {
       setCreateBusy(false);
@@ -418,11 +435,11 @@ export default function AdminResourcesTable() {
         <div
           role="dialog"
           aria-modal="true"
-          style={{ position: "fixed", inset: 0, zIndex: 1002, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px" }}
+          style={{ position: "fixed", inset: 0, zIndex: 1002, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px", overflowY: "auto" }}
           onMouseDown={(e) => { if (e.target === e.currentTarget) setAddModalOpen(false); }}
         >
-          <div style={{ width: "100%", maxWidth: "860px", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+          <div style={{ width: "100%", maxWidth: "860px", maxHeight: "calc(100vh - 36px)", margin: "auto 0", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexShrink: 0 }}>
               <div>
                 <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Add Resource</div>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Create a new facility or asset entry.</div>
@@ -430,7 +447,7 @@ export default function AdminResourcesTable() {
               <button type="button" onClick={() => setAddModalOpen(false)} style={{ padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, fontSize: "14px", cursor: "pointer", color: "#0f172a" }}>Cancel</button>
             </div>
 
-            <form onSubmit={handleCreateResource} style={{ padding: "18px 22px 22px", display: "grid", gap: "16px" }}>
+            <form onSubmit={handleCreateResource} style={{ padding: "18px 22px 22px", display: "grid", gap: "16px", overflowY: "auto" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
                   <label style={labelStyle}>Resource Code</label>
@@ -468,6 +485,38 @@ export default function AdminResourcesTable() {
                 <textarea value={formData.description} onChange={(e) => updateForm("description", e.target.value)} style={{ ...inputStyle, minHeight: "88px", resize: "vertical" }} placeholder="Short description of the resource" />
               </div>
 
+              <div>
+                <label style={labelStyle}>Upload Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ ...inputStyle, height: "auto", padding: "10px" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    if (!file) {
+                      updateForm("resourceImageFile", null);
+                      updateForm("resourceImagePreview", "");
+                      return;
+                    }
+                    updateForm("resourceImageFile", file);
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      updateForm("resourceImagePreview", typeof reader.result === "string" ? reader.result : "");
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+                {formData.resourceImagePreview ? (
+                  <div style={{ marginTop: 10 }}>
+                    <img
+                      src={formData.resourceImagePreview}
+                      alt="Resource preview"
+                      style={{ width: "100%", maxWidth: "260px", maxHeight: "160px", objectFit: "cover", borderRadius: "10px", border: "1px solid #e5e7eb" }}
+                    />
+                  </div>
+                ) : null}
+              </div>
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
                   <label style={labelStyle}>Availability Windows</label>
@@ -499,11 +548,11 @@ export default function AdminResourcesTable() {
         <div
           role="dialog"
           aria-modal="true"
-          style={{ position: "fixed", inset: 0, zIndex: 1002, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px" }}
+          style={{ position: "fixed", inset: 0, zIndex: 1002, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px", overflowY: "auto" }}
           onMouseDown={(e) => { if (e.target === e.currentTarget) setEditModalOpen(false); }}
         >
-          <div style={{ width: "100%", maxWidth: "860px", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+          <div style={{ width: "100%", maxWidth: "860px", maxHeight: "calc(100vh - 36px)", margin: "auto 0", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexShrink: 0 }}>
               <div>
                 <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Edit Resource</div>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Update existing resource details.</div>
@@ -511,7 +560,7 @@ export default function AdminResourcesTable() {
               <button type="button" onClick={() => setEditModalOpen(false)} style={{ padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, fontSize: "14px", cursor: "pointer", color: "#0f172a" }}>Cancel</button>
             </div>
 
-            <form onSubmit={handleEditResource} style={{ padding: "18px 22px 22px", display: "grid", gap: "16px" }}>
+            <form onSubmit={handleEditResource} style={{ padding: "18px 22px 22px", display: "grid", gap: "16px", overflowY: "auto" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
                   <label style={labelStyle}>Resource Code</label>

@@ -5,12 +5,19 @@ import com.example.server.dto.resource.UpdateResourceRequest;
 import com.example.server.model.Resource;
 import com.example.server.repository.ResourceRepo;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class ResourceService {
@@ -24,15 +31,52 @@ public class ResourceService {
         this.resourceRepo = resourceRepo;
     }
 
-    public Resource create(CreateResourceRequest request) {
-        String code = safeTrim(request.getCode()).toUpperCase(Locale.ROOT);
-        String name = safeTrim(request.getName());
-        String type = safeTrim(request.getType()).toUpperCase(Locale.ROOT);
-        Integer capacity = request.getCapacity();
-        String location = safeTrim(request.getLocation());
-        String description = safeTrim(request.getDescription());
-        String availability = safeTrim(request.getAvailability());
-        String status = safeTrim(request.getStatus()).toUpperCase(Locale.ROOT);
+    public Resource create(CreateResourceRequest request) throws IOException {
+        return createInternal(
+            request.getCode(),
+            request.getName(),
+            request.getType(),
+            request.getCapacity(),
+            request.getLocation(),
+            request.getDescription(),
+            request.getAvailability(),
+            request.getStatus(),
+            null
+        );
+    }
+
+    public Resource createWithImage(
+        String code,
+        String name,
+        String type,
+        Integer capacity,
+        String location,
+        String description,
+        String availability,
+        String status,
+        MultipartFile image
+    ) throws IOException {
+        return createInternal(code, name, type, capacity, location, description, availability, status, image);
+    }
+
+    private Resource createInternal(
+        String rawCode,
+        String rawName,
+        String rawType,
+        Integer capacity,
+        String rawLocation,
+        String rawDescription,
+        String rawAvailability,
+        String rawStatus,
+        MultipartFile image
+    ) throws IOException {
+        String code = safeTrim(rawCode).toUpperCase(Locale.ROOT);
+        String name = safeTrim(rawName);
+        String type = safeTrim(rawType).toUpperCase(Locale.ROOT);
+        String location = safeTrim(rawLocation);
+        String description = safeTrim(rawDescription);
+        String availability = safeTrim(rawAvailability);
+        String status = safeTrim(rawStatus).toUpperCase(Locale.ROOT);
 
         validate(type, status, capacity);
 
@@ -48,6 +92,7 @@ public class ResourceService {
         resource.setLocation(location);
         resource.setDescription(description);
         resource.setAvailability(availability);
+        resource.setImageUrl(saveImage(image));
         resource.setStatus(status);
         resource.setCreatedAt(Instant.now());
         resource.setUpdatedAt(Instant.now());
@@ -142,5 +187,22 @@ public class ResourceService {
             return "";
         }
         return trimmed;
+    }
+
+    private String saveImage(MultipartFile image) throws IOException {
+        if (image == null || image.isEmpty()) {
+            return "";
+        }
+        String contentType = image.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("Only image files are allowed");
+        }
+        Path uploadDir = Paths.get("uploads", "resources").toAbsolutePath().normalize();
+        Files.createDirectories(uploadDir);
+        String originalName = image.getOriginalFilename() == null ? "resource-image" : image.getOriginalFilename();
+        String safeFileName = UUID.randomUUID() + "-" + originalName.replaceAll("[^a-zA-Z0-9._-]", "_");
+        Path destination = uploadDir.resolve(safeFileName);
+        Files.copy(image.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
+        return "/uploads/resources/" + safeFileName;
     }
 }
