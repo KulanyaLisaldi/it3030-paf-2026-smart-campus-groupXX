@@ -110,6 +110,8 @@ export default function ResourcesPage() {
   const [minCapacity, setMinCapacity] = useState("");
   const [location, setLocation] = useState("");
   const resultsAnchorRef = useRef(null);
+  const categorySectionRefs = useRef({});
+  const [scrollTargetType, setScrollTargetType] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -164,8 +166,18 @@ export default function ResourcesPage() {
 
   const handleQuickTypeSelect = (type) => {
     setTypeFilter(type);
-    resultsAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setScrollTargetType(type);
   };
+
+  useEffect(() => {
+    if (!scrollTargetType || loading) return;
+    const frame = window.requestAnimationFrame(() => {
+      const targetEl = categorySectionRefs.current[scrollTargetType] || resultsAnchorRef.current;
+      targetEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setScrollTargetType("");
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [scrollTargetType, loading, orderedTypeKeys]);
 
   const handleBook = (resource) => {
     if (!getAuthToken()) {
@@ -282,7 +294,13 @@ export default function ResourcesPage() {
           {!loading && filtered.length > 0 && (
             <div style={{ marginTop: 16, display: "grid", gap: 18 }}>
               {orderedTypeKeys.map((typeKey) => (
-                <section key={typeKey} aria-label={`${formatResourceType(typeKey)} resources`}>
+                <section
+                  key={typeKey}
+                  ref={(el) => {
+                    if (el) categorySectionRefs.current[typeKey] = el;
+                  }}
+                  aria-label={`${formatResourceType(typeKey)} resources`}
+                >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
                     <h2 style={{ margin: 0, color: "#14213D", fontSize: 18, fontWeight: 900 }}>{formatResourceType(typeKey)}</h2>
                     <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>{resourcesByType[typeKey].length} item(s)</span>
