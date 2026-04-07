@@ -4,24 +4,22 @@ import { getMyTickets } from "../api/tickets";
 import { getAuthToken } from "../api/http";
 import { formatDurationSeconds, formatTicketInstant } from "../utils/slaFormat";
 import { appFontFamily } from "../utils/appFont";
+import AccountLayout from "../components/account/AccountLayout";
 
 const pageStyle = {
-  minHeight: "100vh",
-  backgroundColor: "#FFFFFF",
-  padding: "28px 16px",
-  display: "flex",
-  justifyContent: "center",
+  width: "100%",
   fontFamily: appFontFamily,
 };
 
 const cardStyle = {
   width: "100%",
-  maxWidth: "1280px",
+  maxWidth: "none",
   backgroundColor: "#FFFFFF",
   borderRadius: "12px",
   boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
   padding: "24px",
 };
+
 
 const headerStripStyle = {
   backgroundColor: "#FFFFFF",
@@ -305,17 +303,18 @@ export default function MyTickets() {
   }, []);
 
   return (
-    <div style={pageStyle}>
-      <section style={cardStyle}>
-        <div style={headerStripStyle}>
-          <h1 style={titleStyle}>My Tickets</h1>
-        </div>
+    <AccountLayout active="tickets">
+      <div style={pageStyle}>
+        <section style={cardStyle}>
+          <div style={headerStripStyle}>
+            <h1 style={titleStyle}>My Tickets</h1>
+          </div>
 
-        {location.state?.createdSuccess && (
-          <p style={{ color: "#2e7d32", marginTop: "10px", marginBottom: "8px" }}>
-            Ticket submitted successfully.
-          </p>
-        )}
+          {location.state?.createdSuccess && (
+            <p style={{ color: "#2e7d32", marginTop: "10px", marginBottom: "8px" }}>
+              Ticket submitted successfully.
+            </p>
+          )}
 
         {loading && <p>Loading tickets...</p>}
         {!loading && error && <p style={{ color: "#d32f2f" }}>{error}</p>}
@@ -606,7 +605,8 @@ export default function MyTickets() {
             ))}
           </div>
         )}
-      </section>
-    </div>
+        </section>
+      </div>
+    </AccountLayout>
   );
 }
