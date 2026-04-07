@@ -1,10 +1,38 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getAuthToken } from "../api/http";
 import { getResourceById } from "../api/resources";
 
 const wrapStyle = { maxWidth: 900, margin: "0 auto", padding: "28px 20px 40px", boxSizing: "border-box" };
 const cardStyle = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: 18, boxShadow: "0 8px 24px rgba(15,23,42,0.06)" };
+
+function normalizeImageUrl(url) {
+  const value = String(url || "").trim();
+  if (!value) return "";
+  if (value.startsWith("blob:")) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("/")) return value;
+  return `/${value.replace(/^\.?\/*/, "")}`;
+}
+
+/** Uploaded images for a resource (matches ResourcesPage URL rules). */
+function getResourceDetailImageUrls(resource) {
+  if (!resource || typeof resource !== "object") return [];
+  const raw = [];
+  if (Array.isArray(resource.imageUrls)) {
+    for (const u of resource.imageUrls) raw.push(u);
+  }
+  if (resource.imageUrl) raw.push(resource.imageUrl);
+  const seen = new Set();
+  const out = [];
+  for (const u of raw) {
+    const n = normalizeImageUrl(u);
+    if (!n || seen.has(n)) continue;
+    seen.add(n);
+    out.push(n);
+  }
+  return out;
+}
 
 function fmtDate(value) {
   if (!value) return "—";
@@ -19,6 +47,15 @@ export default function ResourceDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [resource, setResource] = useState(null);
+  const [imageIndex, setImageIndex] = useState(0);
+  const [mainImageBroken, setMainImageBroken] = useState(false);
+
+  const imageUrls = useMemo(() => getResourceDetailImageUrls(resource), [resource]);
+
+  useEffect(() => {
+    setImageIndex(0);
+    setMainImageBroken(false);
+  }, [id, resource?.id]);
 
   useEffect(() => {
     const load = async () => {
@@ -48,8 +85,22 @@ export default function ResourceDetailsPage() {
   return (
     <main style={{ flex: 1, background: "#f8fafc" }}>
       <div style={wrapStyle}>
-        <button type="button" onClick={() => navigate("/resources")} style={{ padding: "9px 12px", borderRadius: 10, border: "1px solid #e2e8f0", background: "#fff", fontWeight: 800, cursor: "pointer" }}>
-          Back to Resources
+        <button
+          type="button"
+          onClick={() => navigate("/resources")}
+          style={{
+            padding: "9px 12px",
+            borderRadius: 10,
+            border: "1px solid #e2e8f0",
+            background: "#fff",
+            fontWeight: 700,
+            fontSize: 14,
+            lineHeight: 1.2,
+            fontFamily: "inherit",
+            cursor: "pointer",
+          }}
+        >
+          ← Back
         </button>
 
         <div style={{ ...cardStyle, marginTop: 12 }}>
@@ -60,6 +111,68 @@ export default function ResourceDetailsPage() {
             <>
               <h1 style={{ margin: "0 0 4px", fontSize: 28, color: "#0f172a" }}>{resource.name || resource.resourceName || "—"}</h1>
               <p style={{ margin: "0 0 14px", color: "#64748b", fontWeight: 700 }}>{resource.code || resource.resourceCode || "—"}</p>
+
+              {imageUrls.length > 0 && (
+                <div style={{ marginBottom: 18 }}>
+                  <div
+                    style={{
+                      width: "100%",
+                      maxHeight: 420,
+                      minHeight: 200,
+                      borderRadius: 12,
+                      overflow: "hidden",
+                      border: "1px solid #e5e7eb",
+                      background: "#f8fafc",
+                      display: mainImageBroken ? "flex" : "block",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {!mainImageBroken && imageUrls[imageIndex] ? (
+                      <img
+                        src={imageUrls[imageIndex]}
+                        alt={`${resource.name || "Resource"} — photo ${imageIndex + 1}`}
+                        style={{ width: "100%", height: "100%", maxHeight: 420, objectFit: "cover", display: "block" }}
+                        onError={() => setMainImageBroken(true)}
+                      />
+                    ) : (
+                      <span style={{ color: "#94a3b8", fontSize: 13, fontWeight: 700, padding: 24 }}>Image unavailable</span>
+                    )}
+                  </div>
+                  {imageUrls.length > 1 && (
+                    <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                      {imageUrls.map((src, idx) => (
+                        <button
+                          key={`${src}-${idx}`}
+                          type="button"
+                          onClick={() => {
+                            setImageIndex(idx);
+                            setMainImageBroken(false);
+                          }}
+                          style={{
+                            padding: 0,
+                            border: idx === imageIndex ? "2px solid #FA8112" : "1px solid #e2e8f0",
+                            borderRadius: 8,
+                            overflow: "hidden",
+                            cursor: "pointer",
+                            width: 72,
+                            height: 54,
+                            background: "#fff",
+                            flexShrink: 0,
+                          }}
+                          aria-label={`Show image ${idx + 1}`}
+                          aria-current={idx === imageIndex ? "true" : undefined}
+                        >
+                          <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {imageUrls.length === 1 && (
+                    <p style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b", fontWeight: 600 }}>Uploaded facility photo</p>
+                  )}
+                </div>
+              )}
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, color: "#334155", fontSize: 14 }}>
                 <div><strong>Type:</strong> {resource.type || "—"}</div>

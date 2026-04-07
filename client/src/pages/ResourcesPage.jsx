@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getResources } from "../api/resources";
 import { getAuthToken } from "../api/http";
 
@@ -99,19 +99,64 @@ function formatResourceType(type) {
     .join(" ");
 }
 
+function normalizeImageUrl(url) {
+  const value = String(url || "").trim();
+  if (!value) return "";
+  if (value.startsWith("blob:")) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("/")) return value;
+  return `/${value.replace(/^\.?\/*/, "")}`;
+}
+
+function getResourceCardImage(resource) {
+  if (!resource || typeof resource !== "object") return "";
+  if (Array.isArray(resource.imageUrls) && resource.imageUrls.length > 0) {
+    const firstValid = resource.imageUrls.map((u) => normalizeImageUrl(u)).find(Boolean);
+    if (firstValid) return firstValid;
+  }
+  return normalizeImageUrl(resource.imageUrl);
+}
+
+const RESOURCE_TYPE_PARAM_VALUES = new Set(["LAB", "LECTURE_HALL", "MEETING_ROOM", "EQUIPMENT"]);
+
+function parseResourceTypeFromSearchString(search) {
+  const params = new URLSearchParams(search);
+  const raw = params.get("type");
+  const t = raw ? String(raw).trim().toUpperCase().replace(/-/g, "_") : "";
+  return RESOURCE_TYPE_PARAM_VALUES.has(t) ? t : "ALL";
+}
+
 export default function ResourcesPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [resources, setResources] = useState([]);
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState(() =>
+    parseResourceTypeFromSearchString(typeof window !== "undefined" ? window.location.search : "")
+  );
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [minCapacity, setMinCapacity] = useState("");
   const [location, setLocation] = useState("");
   const resultsAnchorRef = useRef(null);
   const categorySectionRefs = useRef({});
-  const [scrollTargetType, setScrollTargetType] = useState("");
+  const [scrollTargetType, setScrollTargetType] = useState(() => {
+    const initial = parseResourceTypeFromSearchString(typeof window !== "undefined" ? window.location.search : "");
+    return initial !== "ALL" ? initial : "";
+  });
+
+  useEffect(() => {
+    const raw = searchParams.get("type");
+    const t = raw ? String(raw).trim().toUpperCase().replace(/-/g, "_") : "";
+    if (RESOURCE_TYPE_PARAM_VALUES.has(t)) {
+      setTypeFilter(t);
+      setScrollTargetType(t);
+    } else {
+      setTypeFilter("ALL");
+      setScrollTargetType("");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const load = async () => {
@@ -164,9 +209,22 @@ export default function ResourcesPage() {
     { key: "EQUIPMENT", title: "Projector", subtitle: "Projectors and related equipment", image: "/resource proj.jpeg" },
   ];
 
+  const syncTypeToUrl = (nextType) => {
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        if (nextType === "ALL") p.delete("type");
+        else p.set("type", nextType);
+        return p;
+      },
+      { replace: true }
+    );
+  };
+
   const handleQuickTypeSelect = (type) => {
     setTypeFilter(type);
     setScrollTargetType(type);
+    syncTypeToUrl(type);
   };
 
   useEffect(() => {
@@ -267,7 +325,16 @@ export default function ResourcesPage() {
           <div ref={resultsAnchorRef} style={{ ...panelStyle, marginTop: 16 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
             <input style={{ ...inputStyle, gridColumn: "span 2" }} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by resource name or code" />
-            <select style={inputStyle} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+            <select
+              style={inputStyle}
+              value={typeFilter}
+              onChange={(e) => {
+                const v = e.target.value;
+                setTypeFilter(v);
+                if (v !== "ALL") setScrollTargetType(v);
+                syncTypeToUrl(v);
+              }}
+            >
               <option value="ALL">All Types</option>
               <option value="LECTURE_HALL">Lecture Hall</option>
               <option value="LAB">Lab</option>
@@ -308,10 +375,28 @@ export default function ResourcesPage() {
                   <div style={{ ...cardGridStyle, marginTop: 0 }}>
                     {resourcesByType[typeKey].map((r) => (
                       <article key={r.id || r.code} style={cardStyle}>
+                        <div style={{ width: "100%", height: 150, borderRadius: 12, overflow: "hidden", border: "1px solid #e5e7eb", backgroundColor: "#f8fafc", marginBottom: 12 }}>
+                          {getResourceCardImage(r) ? (
+                            <img
+                              src={getResourceCardImage(r)}
+                              alt={r.name || r.resourceName || "Resource"}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const fallback = e.currentTarget.nextElementSibling;
+                                if (fallback) fallback.style.display = "flex";
+                              }}
+                            />
+                          ) : (
+                            null
+                          )}
+                          <div style={{ width: "100%", height: "100%", display: getResourceCardImage(r) ? "none" : "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: 13, fontWeight: 700 }}>
+                            No image
+                          </div>
+                        </div>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
                           <div>
                             <h3 style={{ margin: 0, color: "#0f172a", fontSize: 18, fontWeight: 900 }}>{r.name || r.resourceName || "—"}</h3>
-                            <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: 12, fontWeight: 700 }}>{r.code || r.resourceCode || "—"}</p>
                           </div>
                           <span style={statusBadge(r.status)}>{r.status || "—"}</span>
                         </div>
@@ -345,7 +430,6 @@ export default function ResourcesPage() {
                             color: "#fff",
                             fontWeight: 800,
                             cursor: String(r.status || "").toUpperCase() === "OUT_OF_SERVICE" ? "not-allowed" : "pointer",
-                            boxShadow: String(r.status || "").toUpperCase() === "OUT_OF_SERVICE" ? "none" : "0 8px 20px rgba(250,129,18,0.28)",
                           }}
                             onClick={() => handleBook(r)}
                           >

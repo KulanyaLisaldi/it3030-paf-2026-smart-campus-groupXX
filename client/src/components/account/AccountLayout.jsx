@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { persistCampusUser } from "../../utils/campusUserStorage";
 
 const pageWrap = {
-  minHeight: "100vh",
+  height: "100vh",
+  maxHeight: "100vh",
   display: "flex",
+  overflow: "hidden",
   backgroundColor: "#f3f4f6",
   fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
 };
@@ -16,12 +18,16 @@ const sidebarStyle = {
   borderRight: "1px solid #e5e7eb",
   display: "flex",
   flexDirection: "column",
-  minHeight: "100vh",
+  height: "100%",
+  flexShrink: 0,
+  overflow: "hidden",
   boxSizing: "border-box",
 };
 
 const mainStyle = {
   flex: 1,
+  minWidth: 0,
+  minHeight: 0,
   overflow: "auto",
   padding: "32px 40px 48px",
   boxSizing: "border-box",
@@ -59,6 +65,40 @@ const sectionBtn = (open) => ({
   textTransform: "uppercase",
 });
 
+const footerBtnBase = {
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "8px",
+  padding: "10px 14px",
+  borderRadius: "8px",
+  fontWeight: 600,
+  fontSize: "14px",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  boxSizing: "border-box",
+};
+
+function IconBackArrow({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+  );
+}
+
+function IconLogout({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
 export default function AccountLayout({ active = "personal", children }) {
   const navigate = useNavigate();
   const [accountOpen, setAccountOpen] = useState(true);
@@ -76,7 +116,7 @@ export default function AccountLayout({ active = "personal", children }) {
             </div>
           </div>
         </div>
-        <div style={{ padding: "8px 8px 0", flex: 1, overflow: "auto" }}>
+        <div style={{ padding: "8px 8px 0", flex: 1, minHeight: 0, overflow: "hidden" }}>
           <button type="button" style={sectionBtn(accountOpen)} onClick={() => setAccountOpen((o) => !o)} aria-expanded={accountOpen}>
             Account
             <span style={{ fontSize: "10px", color: "#9ca3af" }}>{accountOpen ? "▼" : "▶"}</span>
@@ -99,7 +139,28 @@ export default function AccountLayout({ active = "personal", children }) {
             </div>
           )}
         </div>
-        <div style={{ padding: "12px 16px 8px", borderTop: "1px solid #f3f4f6" }}>
+        <div style={{ padding: "12px 16px 12px", borderTop: "1px solid #f3f4f6", display: "flex", flexDirection: "column", gap: "12px", alignItems: "stretch" }}>
+          <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+            <a
+              href="/"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate("/");
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                fontSize: "14px",
+                fontWeight: 500,
+                color: "#374151",
+                textDecoration: "none",
+              }}
+            >
+              <IconBackArrow />
+              <span style={{ textDecoration: "underline" }}>Back</span>
+            </a>
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -107,9 +168,15 @@ export default function AccountLayout({ active = "personal", children }) {
               localStorage.removeItem("smartCampusAuthToken");
               navigate("/", { replace: true });
             }}
-            style={{ width: "100%", padding: "10px 14px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "#ffffff", fontWeight: 600, fontSize: "14px", color: "#374151", cursor: "pointer" }}
+            style={{
+              ...footerBtnBase,
+              border: "1px solid #e5e7eb",
+              background: "#ffffff",
+              color: "#374151",
+            }}
           >
-            Log out
+            <IconLogout />
+            Logout
           </button>
         </div>
       </aside>
