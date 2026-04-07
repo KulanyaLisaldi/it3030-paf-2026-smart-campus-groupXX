@@ -13,3 +13,11 @@ export function checkBookingAvailability({ resourceId, bookingDate, startTime, e
 export function createBooking(payload) {
   return apiPost("/api/bookings", payload);
 }
+
+export function getBookedSlots({ resourceId, bookingDate }) {
+  const params = new URLSearchParams({
+    resourceId: String(resourceId || ""),
+    bookingDate: String(bookingDate || ""),
+  });
+  return apiGet(`/api/bookings/slots?${params.toString()}`);
+}
