@@ -23,7 +23,10 @@ import AdminAnalyticsPage from "./pages/AdminAnalyticsPage.jsx";
 import AdminContactMessagesPage from "./pages/AdminContactMessagesPage.jsx";
 import ContactUs from "./pages/ContactUs.jsx";
 import AboutUs from "./pages/AboutUs.jsx";
-import ManageAccount from "./pages/ManageAccount.jsx";
+import AccountPersonalPage from "./pages/AccountPersonalPage.jsx";
+import AccountBookingsPage from "./pages/AccountBookingsPage.jsx";
+import AccountContactMessagesPage from "./pages/AccountContactMessagesPage.jsx";
+import AccountNotificationsPage from "./pages/AccountNotificationsPage.jsx";
 
 function AppContent() {
   const location = useLocation();
@@ -33,7 +36,8 @@ function AppContent() {
     location.pathname === "/adminticket" ||
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/technician") ||
-    location.pathname === "/account";
+    location.pathname.startsWith("/account") ||
+    location.pathname === "/my-tickets";
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -61,7 +65,10 @@ function AppContent() {
         <Route path="/adminnotifications" element={<AdminNotificationsPage />} />
         <Route path="/adminanalytics" element={<AdminAnalyticsPage />} />
         <Route path="/adminticket" element={<AdminTicketDashboard />} />
-        <Route path="/account" element={<ManageAccount />} />
+        <Route path="/account" element={<AccountPersonalPage />} />
+        <Route path="/account/bookings" element={<AccountBookingsPage />} />
+        <Route path="/account/contact-messages" element={<AccountContactMessagesPage />} />
+        <Route path="/account/notifications" element={<AccountNotificationsPage />} />
       </Routes>
       {!hideNavAndFooter && <Footer />}
     </div>
