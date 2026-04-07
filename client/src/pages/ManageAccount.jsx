@@ -266,8 +266,11 @@ export default function ManageAccount() {
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsError, setBookingsError] = useState("");
-  const [expandedBookingId, setExpandedBookingId] = useState("");
+  const [detailBooking, setDetailBooking] = useState(null);
   const [cancelBusyId, setCancelBusyId] = useState("");
+  const [cancelBookingTarget, setCancelBookingTarget] = useState(null);
+  const [cancelReasonDraft, setCancelReasonDraft] = useState("");
+  const [cancelReasonError, setCancelReasonError] = useState("");
 
   const loadProfile = useCallback(async () => {
     setLoadError("");
@@ -525,19 +528,24 @@ export default function ManageAccount() {
 
   const handleCancelBooking = async (booking) => {
     if (!booking?.id || !canCancelBooking(booking.status)) return;
-    const ok = window.confirm("Cancel this booking?");
-    if (!ok) return;
+    const reason = (cancelReasonDraft || "").trim();
+    if (!reason) {
+      setCancelReasonError("Cancellation reason is required.");
+      return;
+    }
     setCancelBusyId(booking.id);
     try {
-      const response = await cancelMyBooking(booking.id);
+      const response = await cancelMyBooking(booking.id, reason);
       const updated = response?.booking;
       if (updated?.id) {
         setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
-      } else {
-        setBookings((prev) => prev.map((b) => (b.id === booking.id ? { ...b, status: "CANCELLED" } : b)));
+        if (detailBooking?.id === updated.id) setDetailBooking(updated);
       }
+      setCancelBookingTarget(null);
+      setCancelReasonDraft("");
+      setCancelReasonError("");
     } catch (e) {
-      window.alert(e?.message || "Could not cancel booking");
+      setCancelReasonError(e?.message || "Could not cancel booking");
     } finally {
       setCancelBusyId("");
     }
@@ -1001,26 +1009,13 @@ export default function ManageAccount() {
                       <div><strong>Resource Type:</strong> {booking.resourceType || "—"}</div>
                       <div><strong>Date:</strong> {formatBookingDate(booking.bookingDate)}</div>
                       <div><strong>Time Range:</strong> {booking.startTime || "—"} - {booking.endTime || "—"}</div>
-                      <div><strong>Created Date:</strong> {formatBookingDateTime(booking.createdAt)}</div>
-                      <div style={{ gridColumn: "1 / -1" }}><strong>Purpose:</strong> {booking.purpose || "—"}</div>
                       <div><strong>Status:</strong> {booking.status || "PENDING"}</div>
-                      <div><strong>Admin Reason / Comment:</strong> {booking.reviewReason || "—"}</div>
                     </div>
-
-                    {expandedBookingId === booking.id && (
-                      <div style={{ marginTop: "10px", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "#f9fafb" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 14px", fontSize: "14px", color: "#374151" }}>
-                          <div><strong>Expected Attendees:</strong> {booking.expectedAttendees ?? "—"}</div>
-                          <div><strong>Total Duration:</strong> {durationHours(booking.startTime, booking.endTime)}</div>
-                          <div style={{ gridColumn: "1 / -1" }}><strong>Additional Notes:</strong> {booking.additionalNotes || "—"}</div>
-                        </div>
-                      </div>
-                    )}
 
                     <div style={{ display: "flex", gap: "8px", marginTop: "12px", flexWrap: "wrap" }}>
                       <button
                         type="button"
-                        onClick={() => setExpandedBookingId((id) => (id === booking.id ? "" : booking.id))}
+                        onClick={() => setDetailBooking(booking)}
                         style={{
                           padding: "7px 12px",
                           borderRadius: "8px",
@@ -1032,12 +1027,16 @@ export default function ManageAccount() {
                           cursor: "pointer",
                         }}
                       >
-                        {expandedBookingId === booking.id ? "Hide Details" : "View Details"}
+                        View Details
                       </button>
                       <button
                         type="button"
                         disabled={!canCancelBooking(booking.status) || cancelBusyId === booking.id}
-                        onClick={() => handleCancelBooking(booking)}
+                        onClick={() => {
+                          setCancelBookingTarget(booking);
+                          setCancelReasonDraft("");
+                          setCancelReasonError("");
+                        }}
                         style={{
                           padding: "7px 12px",
                           borderRadius: "8px",
@@ -1057,6 +1056,150 @@ export default function ManageAccount() {
               </div>
             )}
           </>
+        )}
+
+        {view === "bookings" && detailBooking && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setDetailBooking(null)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "rgba(15, 23, 42, 0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "20px",
+              zIndex: 1200,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "100%",
+                maxWidth: "760px",
+                backgroundColor: "#fff",
+                borderRadius: "14px",
+                border: "1px solid #e5e7eb",
+                boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)",
+                padding: "18px 18px 14px",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 800, color: "#111827" }}>Booking Details</h2>
+                <button
+                  type="button"
+                  onClick={() => setDetailBooking(null)}
+                  style={{
+                    border: "1px solid #d1d5db",
+                    backgroundColor: "#fff",
+                    borderRadius: "8px",
+                    padding: "6px 10px",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    color: "#374151",
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 14px", fontSize: "14px", color: "#374151" }}>
+                <div><strong>Booking ID:</strong> {detailBooking.id || "—"}</div>
+                <div><strong>Resource Name:</strong> {detailBooking.resourceName || "—"}</div>
+                <div><strong>Resource Type:</strong> {detailBooking.resourceType || "—"}</div>
+                <div><strong>Date:</strong> {formatBookingDate(detailBooking.bookingDate)}</div>
+                <div><strong>Time Range:</strong> {detailBooking.startTime || "—"} - {detailBooking.endTime || "—"}</div>
+                <div><strong>Status:</strong> {detailBooking.status || "PENDING"}</div>
+                <div style={{ gridColumn: "1 / -1" }}><strong>Purpose:</strong> {detailBooking.purpose || "—"}</div>
+                <div style={{ gridColumn: "1 / -1" }}><strong>Admin Reason / Comment:</strong> {detailBooking.reviewReason || detailBooking.cancellationReason || "—"}</div>
+                <div><strong>Created Date:</strong> {formatBookingDateTime(detailBooking.createdAt)}</div>
+                <div><strong>Total Duration:</strong> {durationHours(detailBooking.startTime, detailBooking.endTime)}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === "bookings" && cancelBookingTarget && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            onClick={() => {
+              if (cancelBusyId) return;
+              setCancelBookingTarget(null);
+              setCancelReasonDraft("");
+              setCancelReasonError("");
+            }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "rgba(15, 23, 42, 0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "20px",
+              zIndex: 1300,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "100%",
+                maxWidth: "560px",
+                backgroundColor: "#fff",
+                borderRadius: "14px",
+                border: "1px solid #e5e7eb",
+                boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)",
+                padding: "18px",
+              }}
+            >
+              <h3 style={{ margin: "0 0 8px 0", fontSize: "20px", fontWeight: 800, color: "#111827" }}>
+                Cancel Booking
+              </h3>
+              <p style={{ margin: "0 0 12px 0", color: "#374151", fontSize: "14px", lineHeight: 1.5 }}>
+                Are you sure you want to cancel this booking?
+              </p>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#111827", marginBottom: "6px" }}>
+                Cancellation reason
+              </label>
+              <textarea
+                value={cancelReasonDraft}
+                onChange={(e) => {
+                  setCancelReasonDraft(e.target.value);
+                  setCancelReasonError("");
+                }}
+                maxLength={500}
+                rows={4}
+                style={{ width: "100%", border: "1px solid #d1d5db", borderRadius: "8px", padding: "10px 12px", boxSizing: "border-box", resize: "vertical", fontSize: "14px" }}
+                placeholder="Please provide the reason for cancellation..."
+              />
+              {cancelReasonError && (
+                <p style={{ margin: "8px 0 0 0", color: "#b91c1c", fontSize: "13px", fontWeight: 600 }}>{cancelReasonError}</p>
+              )}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "14px" }}>
+                <button
+                  type="button"
+                  disabled={!!cancelBusyId}
+                  onClick={() => {
+                    setCancelBookingTarget(null);
+                    setCancelReasonDraft("");
+                    setCancelReasonError("");
+                  }}
+                  style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontWeight: 700, cursor: cancelBusyId ? "not-allowed" : "pointer" }}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  disabled={cancelBusyId === cancelBookingTarget.id}
+                  onClick={() => handleCancelBooking(cancelBookingTarget)}
+                  style={{ padding: "8px 12px", borderRadius: "8px", border: "none", background: "#dc2626", color: "#fff", fontWeight: 700, cursor: cancelBusyId === cancelBookingTarget.id ? "not-allowed" : "pointer" }}
+                >
+                  {cancelBusyId === cancelBookingTarget.id ? "Cancelling..." : "Confirm Cancel"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {view === "contactMessages" && (

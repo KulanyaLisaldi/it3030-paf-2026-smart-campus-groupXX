@@ -81,7 +81,7 @@ public class BookingService {
         return bookingRepo.findByCreatedByOrderByCreatedAtDesc(createdBy);
     }
 
-    public Optional<Booking> cancelMyBooking(String bookingId, String createdBy) {
+    public Optional<Booking> cancelMyBooking(String bookingId, String createdBy, String reasonRaw) {
         Optional<Booking> maybe = bookingRepo.findById(bookingId);
         if (maybe.isEmpty()) {
             return Optional.empty();
@@ -90,11 +90,16 @@ public class BookingService {
         if (!safeTrim(booking.getCreatedBy()).equals(safeTrim(createdBy))) {
             throw new IllegalArgumentException("You can cancel only your own bookings");
         }
+        String reason = safeTrim(reasonRaw);
+        if (reason.isEmpty()) {
+            throw new IllegalArgumentException("Cancellation reason is required");
+        }
         String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
         if (!"PENDING".equals(status) && !"APPROVED".equals(status)) {
             throw new IllegalArgumentException("Only pending or approved bookings can be cancelled");
         }
         booking.setStatus("CANCELLED");
+        booking.setCancellationReason(reason);
         booking.setUpdatedAt(Instant.now());
         return Optional.of(bookingRepo.save(booking));
     }

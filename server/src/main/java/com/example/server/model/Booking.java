@@ -22,6 +22,7 @@ public class Booking {
     private String additionalNotes;
     private String status;
     private String reviewReason;
+    private String cancellationReason;
     private String createdBy;
     private Instant createdAt;
     private Instant updatedAt;
@@ -116,6 +117,14 @@ public class Booking {
 
     public void setReviewReason(String reviewReason) {
         this.reviewReason = reviewReason;
+    }
+
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    public void setCancellationReason(String cancellationReason) {
+        this.cancellationReason = cancellationReason;
     }
 
     public String getCreatedBy() {

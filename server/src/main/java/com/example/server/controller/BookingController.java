@@ -1,6 +1,7 @@
 package com.example.server.controller;
 
 import com.example.server.dto.booking.CreateBookingRequest;
+import com.example.server.dto.booking.CancelBookingRequest;
 import com.example.server.model.Booking;
 import com.example.server.service.BookingService;
 import jakarta.validation.Valid;
@@ -51,9 +52,10 @@ public class BookingController {
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<?> cancelMyBooking(
         Authentication authentication,
-        @PathVariable("id") String id
+        @PathVariable("id") String id,
+        @Valid @RequestBody CancelBookingRequest request
     ) {
-        return bookingService.cancelMyBooking(id, authentication.getName())
+        return bookingService.cancelMyBooking(id, authentication.getName(), request.getReason())
             .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Booking cancelled successfully", "booking", updated)))
             .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found")));
     }
