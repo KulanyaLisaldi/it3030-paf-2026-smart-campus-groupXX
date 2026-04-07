@@ -32,6 +32,11 @@ const summaryCardStyle = {
   padding: "12px",
   boxShadow: "0 6px 20px rgba(15,23,42,0.04)",
 };
+const primaryActionBtnStyle = {
+  border: "none",
+  background: "#FA8112",
+  color: "#fff",
+};
 
 const smallBtnStyle = (variant = "neutral") => {
   const base = {
@@ -44,8 +49,64 @@ const smallBtnStyle = (variant = "neutral") => {
     background: "#fff",
   };
   if (variant === "danger") return { ...base, border: "1px solid #fecaca", color: "#b91c1c" };
-  if (variant === "primary") return { ...base, border: "1px solid rgba(250,129,18,0.35)", color: "#9a3412", background: "rgba(250,129,18,0.10)" };
+  if (variant === "primary") return { ...base, border: "1px solid #e5e7eb", color: "#0f172a", background: "#fff" };
   return { ...base, border: "1px solid #e5e7eb", color: "#0f172a" };
+};
+
+function statusToggleStyle(active, disabled) {
+  return {
+    width: 46,
+    height: 26,
+    borderRadius: 999,
+    border: active ? "1px solid #86efac" : "1px solid #fecaca",
+    background: active ? "#dcfce7" : "#fee2e2",
+    padding: 2,
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.7 : 1,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: active ? "flex-end" : "flex-start",
+    transition: "all 0.15s ease",
+    boxSizing: "border-box",
+  };
+}
+
+const statusToggleKnobStyle = {
+  width: 20,
+  height: 20,
+  borderRadius: "50%",
+  background: "#fff",
+  border: "1px solid #e5e7eb",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+};
+
+const iconOnlyBtnStyle = (variant = "neutral") => {
+  if (variant === "danger") {
+    return {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      border: "none",
+      background: "transparent",
+      color: "#b91c1c",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      cursor: "pointer",
+    };
+  }
+  return {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    color: "#0f172a",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+  };
 };
 
 function statusPill(status) {
@@ -372,7 +433,7 @@ export default function AdminResourcesTable() {
           <div style={{ fontSize: 20, fontWeight: 900, color: "#14213D", marginBottom: 4 }}>Resource Catalogue</div>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b" }}>Manage facilities and assets in one place.</div>
         </div>
-        <button type="button" style={smallBtnStyle("primary")} onClick={openAddModal}>+ Add Resource</button>
+        <button type="button" style={{ ...smallBtnStyle("primary"), ...primaryActionBtnStyle }} onClick={openAddModal}>+ Add Resource</button>
       </div>
 
       <div style={summaryGridStyle}>
@@ -452,8 +513,26 @@ export default function AdminResourcesTable() {
                   <td style={tdStyle}>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button type="button" style={smallBtnStyle()} onClick={() => openViewDrawer(r)}>View</button>
-                      <button type="button" style={smallBtnStyle("primary")} disabled={busyId === r.id} onClick={() => onToggleStatus(r)}>{(r.status || "OUT_OF_SERVICE") === "ACTIVE" ? "Change to Out of Service" : "Change to Active"}</button>
-                      <button type="button" style={smallBtnStyle("danger")} disabled={busyId === r.id} onClick={() => onDelete(r)}>Delete</button>
+                      <button
+                        type="button"
+                        disabled={busyId === r.id}
+                        onClick={() => onToggleStatus(r)}
+                        style={{ border: "none", background: "transparent", padding: 0, margin: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: busyId === r.id ? "not-allowed" : "pointer" }}
+                        title={(r.status || "OUT_OF_SERVICE") === "ACTIVE" ? "Set Out of Service" : "Set Active"}
+                        aria-label={(r.status || "OUT_OF_SERVICE") === "ACTIVE" ? "Set Out of Service" : "Set Active"}
+                      >
+                        <span style={statusToggleStyle((r.status || "OUT_OF_SERVICE") === "ACTIVE", busyId === r.id)}>
+                          <span style={statusToggleKnobStyle} />
+                        </span>
+                      </button>
+                      <button type="button" style={{ ...iconOnlyBtnStyle("danger"), opacity: busyId === r.id ? 0.7 : 1 }} disabled={busyId === r.id} onClick={() => onDelete(r)} title="Delete" aria-label="Delete">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+                          <path d="M3.5 7.5h17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                          <path d="M9 4.5h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                          <path d="M7.5 7.5l1 11a1.5 1.5 0 0 0 1.5 1.36h4a1.5 1.5 0 0 0 1.5-1.36l1-11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="M10 11v6M12 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -582,7 +661,7 @@ export default function AdminResourcesTable() {
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button type="button" onClick={() => setAddModalOpen(false)} style={smallBtnStyle()}>Cancel</button>
-                <button type="submit" disabled={createBusy} style={{ ...smallBtnStyle("primary"), opacity: createBusy ? 0.7 : 1 }}>
+                <button type="submit" disabled={createBusy} style={{ ...smallBtnStyle("primary"), ...primaryActionBtnStyle, opacity: createBusy ? 0.7 : 1 }}>
                   {createBusy ? "Creating..." : "Create Resource"}
                 </button>
               </div>
@@ -708,7 +787,7 @@ export default function AdminResourcesTable() {
                   {editError ? <p style={{ margin: 0, color: "#b91c1c", fontSize: 14, fontWeight: 700 }}>{editError}</p> : null}
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                     <button type="button" onClick={() => setEditDrawerOpen(false)} style={smallBtnStyle()}>Cancel</button>
-                    <button type="submit" disabled={editBusy} style={{ ...smallBtnStyle("primary"), opacity: editBusy ? 0.7 : 1 }}>
+                    <button type="submit" disabled={editBusy} style={{ ...smallBtnStyle("primary"), ...primaryActionBtnStyle, opacity: editBusy ? 0.7 : 1 }}>
                       {editBusy ? "Saving..." : "Save Changes"}
                     </button>
                   </div>
@@ -750,7 +829,7 @@ export default function AdminResourcesTable() {
                 <div><div style={labelStyle}>Status</div><div>{selectedResource?.status || "—"}</div></div>
               </div>
               <div style={{ padding: 16, borderTop: "1px solid #e5e7eb" }}>
-                <button type="button" style={{ ...smallBtnStyle("primary"), width: "100%", padding: "10px 12px" }} onClick={() => openEditDrawer(selectedResource)}>Edit</button>
+                <button type="button" style={{ ...smallBtnStyle("primary"), ...primaryActionBtnStyle, width: "100%", padding: "10px 12px" }} onClick={() => openEditDrawer(selectedResource)}>Edit</button>
               </div>
             </aside>
           </div>
