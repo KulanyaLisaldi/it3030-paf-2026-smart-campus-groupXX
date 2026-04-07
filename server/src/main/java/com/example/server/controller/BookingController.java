@@ -2,6 +2,7 @@ package com.example.server.controller;
 
 import com.example.server.dto.booking.CreateBookingRequest;
 import com.example.server.dto.booking.CancelBookingRequest;
+import com.example.server.dto.booking.UpdateMyBookingRequest;
 import com.example.server.model.Booking;
 import com.example.server.service.BookingService;
 import jakarta.validation.Valid;
@@ -47,6 +48,17 @@ public class BookingController {
     @GetMapping("/my")
     public List<Booking> getMyBookings(Authentication authentication) {
         return bookingService.getMyBookings(authentication.getName());
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<?> updateMyBooking(
+        Authentication authentication,
+        @PathVariable("id") String id,
+        @Valid @RequestBody UpdateMyBookingRequest request
+    ) {
+        return bookingService.updateMyPendingBooking(id, authentication.getName(), request)
+            .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Booking updated successfully", "booking", updated)))
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found")));
     }
 
     @PatchMapping("/{id}/cancel")

@@ -26,6 +26,10 @@ export function getMyBookings() {
   return apiGet("/api/bookings/my");
 }
 
+export function updateMyBooking(bookingId, payload) {
+  return apiPatch(`/api/bookings/${encodeURIComponent(bookingId)}`, payload);
+}
+
 export function cancelMyBooking(bookingId, reason) {
   return apiPatch(`/api/bookings/${encodeURIComponent(bookingId)}/cancel`, { reason });
 }

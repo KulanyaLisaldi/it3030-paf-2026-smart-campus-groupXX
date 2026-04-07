@@ -23,7 +23,7 @@ import {
   phoneCharsValid,
   subjectCharsValid,
 } from "../utils/contactMessageValidation";
-import { cancelMyBooking, getMyBookings } from "../api/bookings";
+import { cancelMyBooking, getMyBookings, updateMyBooking } from "../api/bookings";
 
 /** Same localStorage key as ContactUs.jsx uses when saving submissions. */
 const CONTACT_MESSAGES_STORAGE_KEY = "smartCampusContactMessages";
@@ -242,6 +242,10 @@ function canCancelBooking(statusRaw) {
   return status === "PENDING" || status === "APPROVED";
 }
 
+function canEditBooking(statusRaw) {
+  return String(statusRaw || "").toUpperCase() === "PENDING";
+}
+
 export default function ManageAccount() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -271,6 +275,10 @@ export default function ManageAccount() {
   const [cancelBookingTarget, setCancelBookingTarget] = useState(null);
   const [cancelReasonDraft, setCancelReasonDraft] = useState("");
   const [cancelReasonError, setCancelReasonError] = useState("");
+  const [editBookingTarget, setEditBookingTarget] = useState(null);
+  const [editBookingDraft, setEditBookingDraft] = useState({ bookingDate: "", startTime: "", endTime: "", purpose: "", expectedAttendees: "", additionalNotes: "" });
+  const [editBookingError, setEditBookingError] = useState("");
+  const [editBusyId, setEditBusyId] = useState("");
 
   const loadProfile = useCallback(async () => {
     setLoadError("");
@@ -548,6 +556,50 @@ export default function ManageAccount() {
       setCancelReasonError(e?.message || "Could not cancel booking");
     } finally {
       setCancelBusyId("");
+    }
+  };
+
+  const openEditBooking = (booking) => {
+    setEditBookingTarget(booking);
+    setEditBookingDraft({
+      bookingDate: booking?.bookingDate || "",
+      startTime: booking?.startTime || "",
+      endTime: booking?.endTime || "",
+      purpose: booking?.purpose || "",
+      expectedAttendees: booking?.expectedAttendees == null ? "" : String(booking.expectedAttendees),
+      additionalNotes: booking?.additionalNotes || "",
+    });
+    setEditBookingError("");
+  };
+
+  const handleUpdateBooking = async () => {
+    if (!editBookingTarget?.id) return;
+    if (!editBookingDraft.bookingDate || !editBookingDraft.startTime || !editBookingDraft.endTime || !editBookingDraft.purpose.trim()) {
+      setEditBookingError("Please complete all required fields.");
+      return;
+    }
+    setEditBusyId(editBookingTarget.id);
+    setEditBookingError("");
+    try {
+      const response = await updateMyBooking(editBookingTarget.id, {
+        bookingDate: editBookingDraft.bookingDate,
+        startTime: editBookingDraft.startTime,
+        endTime: editBookingDraft.endTime,
+        purpose: editBookingDraft.purpose.trim(),
+        expectedAttendees: editBookingDraft.expectedAttendees === "" ? null : Number(editBookingDraft.expectedAttendees),
+        additionalNotes: editBookingDraft.additionalNotes.trim(),
+      });
+      const updated = response?.booking;
+      if (updated?.id) {
+        setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+        if (detailBooking?.id === updated.id) setDetailBooking(updated);
+      }
+      setEditBookingTarget(null);
+      setEditBookingError("");
+    } catch (e) {
+      setEditBookingError(e?.message || "Could not update booking.");
+    } finally {
+      setEditBusyId("");
     }
   };
 
@@ -1015,6 +1067,23 @@ export default function ManageAccount() {
                     <div style={{ display: "flex", gap: "8px", marginTop: "12px", flexWrap: "wrap" }}>
                       <button
                         type="button"
+                        disabled={!canEditBooking(booking.status) || editBusyId === booking.id}
+                        onClick={() => openEditBooking(booking)}
+                        style={{
+                          padding: "7px 12px",
+                          borderRadius: "8px",
+                          border: "none",
+                          backgroundColor: canEditBooking(booking.status) ? "#FA8112" : "#d1d5db",
+                          color: "#fff",
+                          fontWeight: 700,
+                          fontSize: "13px",
+                          cursor: !canEditBooking(booking.status) || editBusyId === booking.id ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {editBusyId === booking.id ? "Updating..." : "Edit"}
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setDetailBooking(booking)}
                         style={{
                           padding: "7px 12px",
@@ -1196,6 +1265,94 @@ export default function ManageAccount() {
                   style={{ padding: "8px 12px", borderRadius: "8px", border: "none", background: "#dc2626", color: "#fff", fontWeight: 700, cursor: cancelBusyId === cancelBookingTarget.id ? "not-allowed" : "pointer" }}
                 >
                   {cancelBusyId === cancelBookingTarget.id ? "Cancelling..." : "Confirm Cancel"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === "bookings" && editBookingTarget && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            onClick={() => {
+              if (editBusyId) return;
+              setEditBookingTarget(null);
+              setEditBookingError("");
+            }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "rgba(15, 23, 42, 0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "20px",
+              zIndex: 1250,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "100%",
+                maxWidth: "620px",
+                backgroundColor: "#fff",
+                borderRadius: "14px",
+                border: "1px solid #e5e7eb",
+                boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)",
+                padding: "18px",
+              }}
+            >
+              <h3 style={{ margin: "0 0 10px 0", fontSize: "20px", fontWeight: 800, color: "#111827" }}>Edit Booking</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 12px" }}>
+                <div>
+                  <label style={labelStyle}>Date</label>
+                  <input type="date" value={editBookingDraft.bookingDate} onChange={(e) => setEditBookingDraft((d) => ({ ...d, bookingDate: e.target.value }))} style={inputEditable} />
+                </div>
+                <div />
+                <div>
+                  <label style={labelStyle}>Start Time</label>
+                  <input type="time" value={editBookingDraft.startTime} onChange={(e) => setEditBookingDraft((d) => ({ ...d, startTime: e.target.value }))} style={inputEditable} />
+                </div>
+                <div>
+                  <label style={labelStyle}>End Time</label>
+                  <input type="time" value={editBookingDraft.endTime} onChange={(e) => setEditBookingDraft((d) => ({ ...d, endTime: e.target.value }))} style={inputEditable} />
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label style={labelStyle}>Purpose</label>
+                  <textarea rows={3} value={editBookingDraft.purpose} onChange={(e) => setEditBookingDraft((d) => ({ ...d, purpose: e.target.value }))} style={{ ...inputEditable, height: "auto", resize: "vertical" }} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Expected Attendees</label>
+                  <input value={editBookingDraft.expectedAttendees} onChange={(e) => setEditBookingDraft((d) => ({ ...d, expectedAttendees: e.target.value.replace(/[^\d]/g, "") }))} style={inputEditable} />
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label style={labelStyle}>Additional Notes</label>
+                  <textarea rows={3} value={editBookingDraft.additionalNotes} onChange={(e) => setEditBookingDraft((d) => ({ ...d, additionalNotes: e.target.value }))} style={{ ...inputEditable, height: "auto", resize: "vertical" }} />
+                </div>
+              </div>
+              {editBookingError && (
+                <p style={{ margin: "10px 0 0", color: "#b91c1c", fontSize: "13px", fontWeight: 600 }}>{editBookingError}</p>
+              )}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "14px" }}>
+                <button
+                  type="button"
+                  disabled={!!editBusyId}
+                  onClick={() => {
+                    setEditBookingTarget(null);
+                    setEditBookingError("");
+                  }}
+                  style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontWeight: 700, cursor: editBusyId ? "not-allowed" : "pointer" }}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  disabled={editBusyId === editBookingTarget.id}
+                  onClick={handleUpdateBooking}
+                  style={{ padding: "8px 12px", borderRadius: "8px", border: "none", background: "#FA8112", color: "#fff", fontWeight: 700, cursor: editBusyId === editBookingTarget.id ? "not-allowed" : "pointer" }}
+                >
+                  {editBusyId === editBookingTarget.id ? "Updating..." : "Update Booking"}
                 </button>
               </div>
             </div>
