@@ -301,9 +301,9 @@ export default function ResourcesPage() {
                   }}
                   aria-label={`${formatResourceType(typeKey)} resources`}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                  <div style={{ marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
                     <h2 style={{ margin: 0, color: "#14213D", fontSize: 18, fontWeight: 900 }}>{formatResourceType(typeKey)}</h2>
-                    <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700 }}>{resourcesByType[typeKey].length} item(s)</span>
+                    <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>{resourcesByType[typeKey].length} item(s)</span>
                   </div>
                   <div style={{ ...cardGridStyle, marginTop: 0 }}>
                     {resourcesByType[typeKey].map((r) => (
@@ -334,7 +334,19 @@ export default function ResourcesPage() {
                           </button>
                           <button
                             type="button"
-                            style={{ flex: 1, height: 42, padding: "0 12px", borderRadius: 10, border: "none", background: "#FA8112", color: "#fff", fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 20px rgba(250,129,18,0.28)" }}
+                          disabled={String(r.status || "").toUpperCase() === "OUT_OF_SERVICE"}
+                          style={{
+                            flex: 1,
+                            height: 42,
+                            padding: "0 12px",
+                            borderRadius: 10,
+                            border: "none",
+                            background: String(r.status || "").toUpperCase() === "OUT_OF_SERVICE" ? "#cbd5e1" : "#FA8112",
+                            color: "#fff",
+                            fontWeight: 800,
+                            cursor: String(r.status || "").toUpperCase() === "OUT_OF_SERVICE" ? "not-allowed" : "pointer",
+                            boxShadow: String(r.status || "").toUpperCase() === "OUT_OF_SERVICE" ? "none" : "0 8px 20px rgba(250,129,18,0.28)",
+                          }}
                             onClick={() => handleBook(r)}
                           >
                             Book Now
