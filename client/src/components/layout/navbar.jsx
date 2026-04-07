@@ -294,43 +294,63 @@ const Navbar = () => {
           {showDropdown && (
             <div style={dropdownStyle}>
               <a
-                href="#lab-booking"
+                href="/resources?type=LAB"
                 style={dropdownItemStyle}
                 onMouseEnter={(e) => handleDropdownItemHover(e, true)}
                 onMouseLeave={(e) => handleDropdownItemHover(e, false)}
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
                   setShowDropdown(false);
                   setPinnedDropdown(false);
+                  navigate("/resources?type=LAB");
                 }}
               >
                 Lab Booking
               </a>
               <a
-                href="#meeting-room-booking"
+                href="/resources?type=LECTURE_HALL"
                 style={dropdownItemStyle}
                 onMouseEnter={(e) => handleDropdownItemHover(e, true)}
                 onMouseLeave={(e) => handleDropdownItemHover(e, false)}
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
                   setShowDropdown(false);
                   setPinnedDropdown(false);
+                  navigate("/resources?type=LECTURE_HALL");
+                }}
+              >
+                Lecture Hall Booking
+              </a>
+              <a
+                href="/resources?type=MEETING_ROOM"
+                style={dropdownItemStyle}
+                onMouseEnter={(e) => handleDropdownItemHover(e, true)}
+                onMouseLeave={(e) => handleDropdownItemHover(e, false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowDropdown(false);
+                  setPinnedDropdown(false);
+                  navigate("/resources?type=MEETING_ROOM");
                 }}
               >
                 Meeting Room Booking
               </a>
               <a
-                href="#equipment-booking"
+                href="/resources?type=EQUIPMENT"
                 style={dropdownItemStyle}
                 onMouseEnter={(e) => handleDropdownItemHover(e, true)}
                 onMouseLeave={(e) => handleDropdownItemHover(e, false)}
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
                   setShowDropdown(false);
                   setPinnedDropdown(false);
+                  navigate("/resources?type=EQUIPMENT");
                 }}
               >
                 Equipment Booking
               </a>
               <a
-                href="#support-desk"
+                href="/tickets/create"
                 style={dropdownItemStyle}
                 onMouseEnter={(e) => handleDropdownItemHover(e, true)}
                 onMouseLeave={(e) => handleDropdownItemHover(e, false)}

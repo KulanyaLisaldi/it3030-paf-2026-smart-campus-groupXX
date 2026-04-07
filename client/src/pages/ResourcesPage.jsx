@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getResources } from "../api/resources";
 import { getAuthToken } from "../api/http";
 
@@ -117,19 +117,46 @@ function getResourceCardImage(resource) {
   return normalizeImageUrl(resource.imageUrl);
 }
 
+const RESOURCE_TYPE_PARAM_VALUES = new Set(["LAB", "LECTURE_HALL", "MEETING_ROOM", "EQUIPMENT"]);
+
+function parseResourceTypeFromSearchString(search) {
+  const params = new URLSearchParams(search);
+  const raw = params.get("type");
+  const t = raw ? String(raw).trim().toUpperCase().replace(/-/g, "_") : "";
+  return RESOURCE_TYPE_PARAM_VALUES.has(t) ? t : "ALL";
+}
+
 export default function ResourcesPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [resources, setResources] = useState([]);
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState(() =>
+    parseResourceTypeFromSearchString(typeof window !== "undefined" ? window.location.search : "")
+  );
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [minCapacity, setMinCapacity] = useState("");
   const [location, setLocation] = useState("");
   const resultsAnchorRef = useRef(null);
   const categorySectionRefs = useRef({});
-  const [scrollTargetType, setScrollTargetType] = useState("");
+  const [scrollTargetType, setScrollTargetType] = useState(() => {
+    const initial = parseResourceTypeFromSearchString(typeof window !== "undefined" ? window.location.search : "");
+    return initial !== "ALL" ? initial : "";
+  });
+
+  useEffect(() => {
+    const raw = searchParams.get("type");
+    const t = raw ? String(raw).trim().toUpperCase().replace(/-/g, "_") : "";
+    if (RESOURCE_TYPE_PARAM_VALUES.has(t)) {
+      setTypeFilter(t);
+      setScrollTargetType(t);
+    } else {
+      setTypeFilter("ALL");
+      setScrollTargetType("");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const load = async () => {
@@ -182,9 +209,22 @@ export default function ResourcesPage() {
     { key: "EQUIPMENT", title: "Projector", subtitle: "Projectors and related equipment", image: "/resource proj.jpeg" },
   ];
 
+  const syncTypeToUrl = (nextType) => {
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        if (nextType === "ALL") p.delete("type");
+        else p.set("type", nextType);
+        return p;
+      },
+      { replace: true }
+    );
+  };
+
   const handleQuickTypeSelect = (type) => {
     setTypeFilter(type);
     setScrollTargetType(type);
+    syncTypeToUrl(type);
   };
 
   useEffect(() => {
@@ -285,7 +325,16 @@ export default function ResourcesPage() {
           <div ref={resultsAnchorRef} style={{ ...panelStyle, marginTop: 16 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
             <input style={{ ...inputStyle, gridColumn: "span 2" }} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by resource name or code" />
-            <select style={inputStyle} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+            <select
+              style={inputStyle}
+              value={typeFilter}
+              onChange={(e) => {
+                const v = e.target.value;
+                setTypeFilter(v);
+                if (v !== "ALL") setScrollTargetType(v);
+                syncTypeToUrl(v);
+              }}
+            >
               <option value="ALL">All Types</option>
               <option value="LECTURE_HALL">Lecture Hall</option>
               <option value="LAB">Lab</option>
