@@ -484,12 +484,6 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
         </div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: "#14213D", marginBottom: 4 }}>All Users</div>
-        </div>
-      </div>
-
       <div
         style={{
           display: "grid",
@@ -653,7 +647,6 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  <th style={thStyle}>User ID</th>
                   <th style={thStyle}>Name</th>
                   <th style={thStyle}>Email</th>
                   <th style={thStyle}>Role</th>
@@ -667,7 +660,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td style={tdStyle} colSpan={10}>
+                    <td style={tdStyle} colSpan={8}>
                       No users found.
                     </td>
                   </tr>
@@ -679,7 +672,6 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                     onMouseEnter={() => setHoveredRowId(u.userId)}
                     onMouseLeave={() => setHoveredRowId("")}
                   >
-                    <td style={tdStyle}>{u.userId}</td>
                     <td style={tdStyle}>{u.name || "—"}</td>
                     <td style={tdStyle}>{u.email || "—"}</td>
                     <td style={tdStyle}>
