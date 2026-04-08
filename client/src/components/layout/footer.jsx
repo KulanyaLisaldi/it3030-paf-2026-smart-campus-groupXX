@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Footer = () => {
   const navigate = useNavigate();
@@ -53,44 +53,44 @@ const Footer = () => {
             <h3 className="text-lg font-semibold mb-4" style={{ color: '#FFFFFF' }}>Quick Links</h3>
             <ul className="space-y-2">
               <li>
-                <a 
-                  href="#" 
+                <Link
+                  to="/"
                   style={footerLinkStyle}
                   onMouseEnter={(e) => handleLinkHover(e, true)}
                   onMouseLeave={(e) => handleLinkHover(e, false)}
                 >
                   Dashboard
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
-                  href="#" 
+                <Link
+                  to="/resources"
                   style={footerLinkStyle}
                   onMouseEnter={(e) => handleLinkHover(e, true)}
                   onMouseLeave={(e) => handleLinkHover(e, false)}
                 >
                   Resources
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
-                  href="#" 
+                <Link
+                  to="/account/bookings"
                   style={footerLinkStyle}
                   onMouseEnter={(e) => handleLinkHover(e, true)}
                   onMouseLeave={(e) => handleLinkHover(e, false)}
                 >
                   My Bookings
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
-                  href="#" 
+                <Link
+                  to="/my-tickets"
                   style={footerLinkStyle}
                   onMouseEnter={(e) => handleLinkHover(e, true)}
                   onMouseLeave={(e) => handleLinkHover(e, false)}
                 >
                   My Tickets
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -107,16 +107,6 @@ const Footer = () => {
                   onMouseLeave={(e) => handleLinkHover(e, false)}
                 >
                   Help / FAQs
-                </a>
-              </li>
-              <li>
-                <a 
-                  href="#" 
-                  style={footerLinkStyle}
-                  onMouseEnter={(e) => handleLinkHover(e, true)}
-                  onMouseLeave={(e) => handleLinkHover(e, false)}
-                >
-                  System Status
                 </a>
               </li>
               <li>
