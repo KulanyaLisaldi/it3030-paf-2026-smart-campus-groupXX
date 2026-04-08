@@ -85,8 +85,8 @@ export default function AdminBookingsPage() {
   };
 
   useEffect(() => {
-    void loadRows();
-  }, []);
+    void loadRows(filters);
+  }, [filters]);
 
   const resourceTypes = useMemo(() => {
     const set = new Set();
@@ -181,13 +181,11 @@ export default function AdminBookingsPage() {
           </select>
         </div>
         <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-          <button type="button" onClick={loadRows} style={{ ...buttonStyle, background: "#FA8112", color: "#fff" }} disabled={loading}>{loading ? "Loading..." : "Apply Filters"}</button>
+          <button type="button" onClick={() => void loadRows(filters)} style={{ ...buttonStyle, background: "#FA8112", color: "#fff" }} disabled={loading}>{loading ? "Loading..." : "Refresh"}</button>
           <button
             type="button"
             onClick={() => {
-              const cleared = { status: "ALL", date: "", resourceType: "ALL", resource: "", user: "", approvalState: "ALL" };
-              setFilters(cleared);
-              void loadRows(cleared);
+              setFilters({ status: "ALL", date: "", resourceType: "ALL", resource: "", user: "", approvalState: "ALL" });
             }}
             style={{ ...buttonStyle, background: "#fff", color: "#0f172a", border: "1px solid #d1d5db" }}
           >
