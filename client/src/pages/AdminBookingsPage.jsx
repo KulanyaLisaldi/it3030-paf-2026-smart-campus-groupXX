@@ -56,6 +56,19 @@ function cancellationOrRejectionLabel(row) {
   return "Reason";
 }
 
+function countByStatus(rows) {
+  const counts = { total: rows.length, pending: 0, approved: 0, rejected: 0, cancelled: 0 };
+  rows.forEach((row) => {
+    const s = String(row?.status || "").toUpperCase();
+    if (s === "PENDING") counts.pending += 1;
+    if (s === "APPROVED") counts.approved += 1;
+    if (s === "REJECTED") counts.rejected += 1;
+    if (s === "CANCELLED") counts.cancelled += 1;
+  });
+  return counts;
+}
+
+
 export default function AdminBookingsPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -71,6 +84,7 @@ export default function AdminBookingsPage() {
     user: "",
     approvalState: "ALL",
   });
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   const loadRows = async (nextFilters = filters) => {
     setLoading(true);
@@ -98,6 +112,8 @@ export default function AdminBookingsPage() {
     });
     return ["ALL", ...Array.from(set)];
   }, [rows]);
+
+  const statusCounts = useMemo(() => countByStatus(rows), [rows]);
 
   const openAction = (type, row) => setActionModal({ type, row, reason: "", error: "" });
   const closeAction = () => setActionModal({ type: "", row: null, reason: "", error: "" });
@@ -160,6 +176,78 @@ export default function AdminBookingsPage() {
   return (
     <AdminLayout activeSection="bookings" pageTitle="Booking Management" description="Review booking requests, approve/reject decisions, monitor conflicts, and manage booking lifecycle.">
       <section style={panelStyle}>
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 10 }}>
+            {[
+              { label: "Total Bookings", value: statusCounts.total },
+              { label: "Pending", value: statusCounts.pending },
+              { label: "Approved", value: statusCounts.approved },
+              { label: "Rejected", value: statusCounts.rejected },
+              { label: "Cancelled", value: statusCounts.cancelled },
+            ].map((card) => (
+              <div
+                key={card.label}
+                style={{
+                  background: "linear-gradient(160deg, #ffffff 0%, #f8fafc 65%, #eef2ff 100%)",
+                  border: "1px solid #dbe4ee",
+                  borderRadius: 14,
+                  padding: "12px 14px",
+                  minHeight: 76,
+                  boxShadow: "0 10px 20px rgba(15,23,42,0.12), 0 2px 4px rgba(15,23,42,0.08), inset 0 1px 0 rgba(255,255,255,0.9)",
+                  transform: "translateZ(0)",
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>{card.label}</p>
+                <p style={{ margin: "8px 0 0", fontSize: 28, fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{card.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: 10, borderBottom: "1px solid #e2e8f0", paddingBottom: 8 }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab("dashboard")}
+            style={{
+              ...buttonStyle,
+              height: 34,
+              background: "transparent",
+              borderRadius: 0,
+              borderBottom: activeTab === "dashboard" ? "2px solid #FA8112" : "2px solid transparent",
+              color: activeTab === "dashboard" ? "#0f172a" : "#64748b",
+              padding: "0 2px",
+            }}
+          >
+            Dashboard
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("details")}
+            style={{
+              ...buttonStyle,
+              height: 34,
+              background: "transparent",
+              borderRadius: 0,
+              borderBottom: activeTab === "details" ? "2px solid #FA8112" : "2px solid transparent",
+              color: activeTab === "details" ? "#0f172a" : "#64748b",
+              padding: "0 2px",
+            }}
+          >
+            Booking Details
+          </button>
+          </div>
+
+          {activeTab === "dashboard" && (
+            <div>
+              <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Dashboard</h3>
+              <p style={{ margin: 0, color: "#64748b", fontSize: 14 }}>
+                Charts are removed for now. You can add them later.
+              </p>
+            </div>
+          )}
+
+          {activeTab === "details" && (
+            <>
+      <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 10 }}>
           <select value={filters.status} onChange={(e) => setFilters((s) => ({ ...s, status: e.target.value }))} style={inputStyle}>
             <option value="ALL">Status: All</option>
@@ -196,7 +284,7 @@ export default function AdminBookingsPage() {
         {error && <p style={{ margin: "10px 0 0", color: "#b91c1c", fontWeight: 700 }}>{error}</p>}
       </section>
 
-      <section style={{ ...panelStyle, marginTop: 12, padding: 0, overflowX: "auto" }}>
+      <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, marginTop: 12, padding: 0, overflowX: "auto", background: "#fff" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1160 }}>
           <thead>
             <tr style={{ background: "#f8fafc", color: "#334155", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -248,6 +336,10 @@ export default function AdminBookingsPage() {
             ))}
           </tbody>
         </table>
+      </section>
+            </>
+          )}
+        </div>
       </section>
 
       {viewRow && (
