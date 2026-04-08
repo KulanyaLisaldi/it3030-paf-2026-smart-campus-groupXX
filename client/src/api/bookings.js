@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost } from "./http";
+import { apiDelete, apiGet, apiPatch, apiPost } from "./http";
 
 export function checkBookingAvailability({ resourceId, bookingDate, startTime, endTime }) {
   const params = new URLSearchParams({
@@ -33,4 +33,32 @@ export function updateMyBooking(bookingId, payload) {
 
 export function cancelMyBooking(bookingId, reason) {
   return apiPatch(`/api/bookings/${encodeURIComponent(bookingId)}/cancel`, { reason });
+}
+
+export function getAdminBookings(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.status && filters.status !== "ALL") params.set("status", String(filters.status));
+  if (filters.date) params.set("date", String(filters.date));
+  if (filters.resourceType && filters.resourceType !== "ALL") params.set("resourceType", String(filters.resourceType));
+  if (filters.resource) params.set("resource", String(filters.resource));
+  if (filters.user) params.set("user", String(filters.user));
+  if (filters.approvalState && filters.approvalState !== "ALL") params.set("approvalState", String(filters.approvalState));
+  const qs = params.toString();
+  return apiGet(`/api/bookings/admin${qs ? `?${qs}` : ""}`);
+}
+
+export function approveBookingByAdmin(bookingId, reason = "") {
+  return apiPatch(`/api/bookings/admin/${encodeURIComponent(bookingId)}/approve`, { reason });
+}
+
+export function rejectBookingByAdmin(bookingId, reason) {
+  return apiPatch(`/api/bookings/admin/${encodeURIComponent(bookingId)}/reject`, { reason });
+}
+
+export function cancelBookingByAdmin(bookingId, reason) {
+  return apiPatch(`/api/bookings/admin/${encodeURIComponent(bookingId)}/cancel`, { reason });
+}
+
+export function deleteBookingByAdmin(bookingId) {
+  return apiDelete(`/api/bookings/admin/${encodeURIComponent(bookingId)}`);
 }

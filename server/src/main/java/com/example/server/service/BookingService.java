@@ -1,11 +1,14 @@
 package com.example.server.service;
 
 import com.example.server.dto.booking.CreateBookingRequest;
+import com.example.server.dto.booking.AdminBookingRowResponse;
 import com.example.server.dto.booking.UpdateMyBookingRequest;
 import com.example.server.model.Booking;
 import com.example.server.model.Resource;
+import com.example.server.model.User;
 import com.example.server.repository.BookingRepo;
 import com.example.server.repository.ResourceRepo;
+import com.example.server.repository.UserRepo;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -14,7 +17,9 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class BookingService {
@@ -23,10 +28,12 @@ public class BookingService {
 
     private final BookingRepo bookingRepo;
     private final ResourceRepo resourceRepo;
+    private final UserRepo userRepo;
 
-    public BookingService(BookingRepo bookingRepo, ResourceRepo resourceRepo) {
+    public BookingService(BookingRepo bookingRepo, ResourceRepo resourceRepo, UserRepo userRepo) {
         this.bookingRepo = bookingRepo;
         this.resourceRepo = resourceRepo;
+        this.userRepo = userRepo;
     }
 
     public Booking createBooking(CreateBookingRequest request, String createdBy) {
@@ -82,6 +89,71 @@ public class BookingService {
         return bookingRepo.findByCreatedByOrderByCreatedAtDesc(createdBy);
     }
 
+    public List<AdminBookingRowResponse> getAllBookingsForAdmin(
+        String statusRaw,
+        String bookingDateRaw,
+        String resourceTypeRaw,
+        String resourceRaw,
+        String userRaw,
+        String approvalStateRaw
+    ) {
+        String statusFilter = safeTrim(statusRaw).toUpperCase(Locale.ROOT);
+        String dateFilter = safeTrim(bookingDateRaw);
+        String resourceTypeFilter = safeTrim(resourceTypeRaw).toUpperCase(Locale.ROOT);
+        String resourceFilter = safeTrim(resourceRaw).toLowerCase(Locale.ROOT);
+        String userFilter = safeTrim(userRaw).toLowerCase(Locale.ROOT);
+        String approvalStateFilter = safeTrim(approvalStateRaw).toUpperCase(Locale.ROOT);
+
+        if (!dateFilter.isEmpty()) {
+            try {
+                LocalDate.parse(dateFilter);
+            } catch (DateTimeParseException ex) {
+                throw new IllegalArgumentException("Date must be in YYYY-MM-DD format");
+            }
+        }
+
+        List<Booking> bookings = bookingRepo.findAllByOrderByCreatedAtDesc();
+        List<User> users = userRepo.findAll();
+        Map<String, User> usersById = users.stream()
+            .collect(Collectors.toMap(
+                u -> safeTrim(u.getId()),
+                u -> u,
+                (a, b) -> a
+            ));
+        Map<String, User> usersByEmail = users.stream()
+            .collect(Collectors.toMap(
+                u -> safeTrim(u.getEmail()).toLowerCase(Locale.ROOT),
+                u -> u,
+                (a, b) -> a
+            ));
+
+        return bookings.stream()
+            .filter(b -> matchesStatusFilter(safeTrim(b.getStatus()).toUpperCase(Locale.ROOT), statusFilter))
+            .filter(b -> dateFilter.isEmpty() || dateFilter.equals(safeTrim(b.getBookingDate())))
+            .filter(b -> resourceTypeFilter.isEmpty() || resourceTypeFilter.equals(safeTrim(b.getResourceType()).toUpperCase(Locale.ROOT)))
+            .filter(b -> {
+                if (resourceFilter.isEmpty()) return true;
+                String rid = safeTrim(b.getResourceId()).toLowerCase(Locale.ROOT);
+                String rname = safeTrim(b.getResourceName()).toLowerCase(Locale.ROOT);
+                return rid.contains(resourceFilter) || rname.contains(resourceFilter);
+            })
+            .map(b -> {
+                User bookingUser = resolveBookingUser(b, usersById, usersByEmail);
+                return new AdminBookingRowResponse(
+                    b,
+                    userDisplayName(bookingUser),
+                    userEmail(bookingUser)
+                );
+            })
+            .filter(row -> {
+                if (userFilter.isEmpty()) return true;
+                return safeTrim(row.getUserEmail()).toLowerCase(Locale.ROOT).contains(userFilter)
+                    || safeTrim(row.getUserName()).toLowerCase(Locale.ROOT).contains(userFilter);
+            })
+            .filter(row -> matchesApprovalStateFilter(safeTrim(row.getStatus()).toUpperCase(Locale.ROOT), approvalStateFilter))
+            .toList();
+    }
+
     public Optional<Booking> cancelMyBooking(String bookingId, String createdBy, String reasonRaw) {
         Optional<Booking> maybe = bookingRepo.findById(bookingId);
         if (maybe.isEmpty()) {
@@ -103,6 +175,77 @@ public class BookingService {
         booking.setCancellationReason(reason);
         booking.setUpdatedAt(Instant.now());
         return Optional.of(bookingRepo.save(booking));
+    }
+
+    public Optional<Booking> approveBookingByAdmin(String bookingId, String reasonRaw) {
+        Optional<Booking> maybe = bookingRepo.findById(bookingId);
+        if (maybe.isEmpty()) {
+            return Optional.empty();
+        }
+        Booking booking = maybe.get();
+        String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
+        if (!"PENDING".equals(status)) {
+            throw new IllegalArgumentException("Only pending bookings can be approved");
+        }
+        booking.setStatus("APPROVED");
+        booking.setReviewReason(safeTrim(reasonRaw));
+        booking.setUpdatedAt(Instant.now());
+        return Optional.of(bookingRepo.save(booking));
+    }
+
+    public Optional<Booking> rejectBookingByAdmin(String bookingId, String reasonRaw) {
+        Optional<Booking> maybe = bookingRepo.findById(bookingId);
+        if (maybe.isEmpty()) {
+            return Optional.empty();
+        }
+        Booking booking = maybe.get();
+        String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
+        if (!"PENDING".equals(status)) {
+            throw new IllegalArgumentException("Only pending bookings can be rejected");
+        }
+        String reason = safeTrim(reasonRaw);
+        if (reason.isEmpty()) {
+            throw new IllegalArgumentException("Rejection reason is required");
+        }
+        booking.setStatus("REJECTED");
+        booking.setReviewReason(reason);
+        booking.setUpdatedAt(Instant.now());
+        return Optional.of(bookingRepo.save(booking));
+    }
+
+    public Optional<Booking> cancelBookingByAdmin(String bookingId, String reasonRaw) {
+        Optional<Booking> maybe = bookingRepo.findById(bookingId);
+        if (maybe.isEmpty()) {
+            return Optional.empty();
+        }
+        Booking booking = maybe.get();
+        String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
+        if (!"PENDING".equals(status) && !"APPROVED".equals(status)) {
+            throw new IllegalArgumentException("Only pending or approved bookings can be cancelled");
+        }
+        String reason = safeTrim(reasonRaw);
+        if (reason.isEmpty()) {
+            throw new IllegalArgumentException("Cancellation reason is required");
+        }
+        booking.setStatus("CANCELLED");
+        booking.setReviewReason(reason);
+        booking.setCancellationReason("");
+        booking.setUpdatedAt(Instant.now());
+        return Optional.of(bookingRepo.save(booking));
+    }
+
+    public boolean deleteCancelledBookingByAdmin(String bookingId) {
+        Optional<Booking> maybe = bookingRepo.findById(bookingId);
+        if (maybe.isEmpty()) {
+            return false;
+        }
+        Booking booking = maybe.get();
+        String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
+        if (!"CANCELLED".equals(status)) {
+            throw new IllegalArgumentException("Only cancelled bookings can be deleted");
+        }
+        bookingRepo.deleteById(bookingId);
+        return true;
     }
 
     public Optional<Booking> updateMyPendingBooking(String bookingId, String createdBy, UpdateMyBookingRequest request) {
@@ -256,5 +399,44 @@ public class BookingService {
 
     private String safeTrim(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private boolean matchesStatusFilter(String status, String filter) {
+        if (filter.isEmpty() || "ALL".equals(filter)) return true;
+        return status.equals(filter);
+    }
+
+    private boolean matchesApprovalStateFilter(String status, String filter) {
+        if (filter.isEmpty() || "ALL".equals(filter)) return true;
+        return switch (filter) {
+            case "PENDING", "UNREVIEWED" -> "PENDING".equals(status);
+            case "REVIEWED" -> "APPROVED".equals(status) || "REJECTED".equals(status);
+            case "APPROVED" -> "APPROVED".equals(status);
+            case "REJECTED" -> "REJECTED".equals(status);
+            case "CANCELLED" -> "CANCELLED".equals(status);
+            default -> true;
+        };
+    }
+
+    private String userDisplayName(User user) {
+        if (user == null) return "Unknown User";
+        String first = safeTrim(user.getFirstName());
+        String last = safeTrim(user.getLastName());
+        String full = (first + " " + last).trim();
+        return full.isEmpty() ? "Unknown User" : full;
+    }
+
+    private String userEmail(User user) {
+        return user == null ? "" : safeTrim(user.getEmail());
+    }
+
+    private User resolveBookingUser(Booking booking, Map<String, User> usersById, Map<String, User> usersByEmail) {
+        String createdBy = safeTrim(booking.getCreatedBy());
+        if (createdBy.isEmpty()) return null;
+
+        User byId = usersById.get(createdBy);
+        if (byId != null) return byId;
+
+        return usersByEmail.get(createdBy.toLowerCase(Locale.ROOT));
     }
 }
