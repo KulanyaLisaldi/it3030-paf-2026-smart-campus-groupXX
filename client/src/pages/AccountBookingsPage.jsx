@@ -14,6 +14,13 @@ const bookingCardStyle = { backgroundColor: "#ffffff", borderRadius: "12px", box
 const bookingChipStyle = { display: "inline-flex", alignItems: "center", padding: "5px 10px", borderRadius: "999px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.03em", textTransform: "uppercase" };
 const inputDisabled = { width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #d1d5db", backgroundColor: "#f9fafb", color: "#4b5563", fontSize: "14px", boxSizing: "border-box", cursor: "not-allowed", opacity: 1 };
 const inputEditable = { ...inputDisabled, backgroundColor: "#ffffff", color: "#111827", cursor: "text" };
+const filterBarGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 220px), 1fr))",
+  gap: "12px",
+  alignItems: "stretch",
+  width: "100%",
+};
 const labelStyle = { display: "block", fontSize: "13px", fontWeight: 600, color: "#111827", marginBottom: "6px" };
 const EDIT_SLOT_WINDOW_START = "08:00";
 const EDIT_SLOT_WINDOW_END = "18:00";
@@ -181,7 +188,7 @@ export default function AccountBookingsPage() {
   const [editSlotsLoading, setEditSlotsLoading] = useState(false);
   const [editBookedRanges, setEditBookedRanges] = useState([]);
   const [editSelectedSlotKeys, setEditSelectedSlotKeys] = useState([]);
-  const [activeBookingsTab, setActiveBookingsTab] = useState("upcoming");
+  const bookingsView = location.pathname.endsWith("/history") ? "history" : "upcoming";
   const [filters, setFilters] = useState({
     status: "ALL",
     date: "",
@@ -562,28 +569,127 @@ export default function AccountBookingsPage() {
 
   return (
     <AccountLayout active="bookings">
-      <h1 style={sectionHeading}>My bookings</h1>
+      <style>{`
+        .bookings-filter-select {
+          appearance: none;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          width: 100%;
+          min-width: 0;
+          max-width: 100%;
+          height: 40px;
+          box-sizing: border-box;
+          padding: 8px 38px 8px 12px;
+          border-radius: 8px;
+          border: 1px solid #d1d5db;
+          background-color: #ffffff;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 10px center;
+          background-size: 18px 18px;
+          font-size: 14px;
+          font-weight: 500;
+          font-family: inherit;
+          color: #111827;
+          cursor: pointer;
+          transition: border-color 0.15s ease, box-shadow 0.15s ease;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+        }
+        .bookings-filter-select:hover {
+          border-color: #fdba74;
+        }
+        .bookings-filter-select:focus {
+          outline: none;
+          border-color: #fdba74;
+          box-shadow: none;
+        }
+        .bookings-filter-select option {
+          font-weight: 500;
+          padding: 10px 14px;
+          background-color: #ffffff;
+          color: #111827;
+        }
+        .bookings-filter-text,
+        .bookings-filter-date {
+          width: 100%;
+          min-width: 0;
+          max-width: 100%;
+          height: 40px;
+          box-sizing: border-box;
+          padding: 8px 12px;
+          border-radius: 8px;
+          border: 1px solid #d1d5db;
+          background-color: #ffffff;
+          font-size: 14px;
+          font-weight: 500;
+          font-family: inherit;
+          color: #111827;
+          transition: border-color 0.15s ease, box-shadow 0.15s ease;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+        }
+        .bookings-filter-text::placeholder {
+          color: #9ca3af;
+          font-weight: 450;
+        }
+        .bookings-filter-date {
+          cursor: pointer;
+          color-scheme: light;
+        }
+        .bookings-filter-text:hover,
+        .bookings-filter-date:hover {
+          border-color: #fdba74;
+        }
+        .bookings-filter-text:focus,
+        .bookings-filter-date:focus {
+          outline: none;
+          border-color: #fdba74;
+          box-shadow: none;
+        }
+        .bookings-filter-reset {
+          padding: 8px 16px;
+          border-radius: 8px;
+          border: 1px solid #fdba74;
+          background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+          color: #9a3412;
+          font-weight: 700;
+          font-size: 14px;
+          font-family: inherit;
+          cursor: pointer;
+          transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+          box-shadow: 0 1px 2px rgba(251, 146, 60, 0.12);
+        }
+        .bookings-filter-reset:hover {
+          background: linear-gradient(180deg, #ffedd5 0%, #fed7aa 100%);
+          border-color: #fb923c;
+          color: #7c2d12;
+        }
+        .bookings-filter-reset:focus-visible {
+          outline: none;
+          border-color: #fb923c;
+        }
+      `}</style>
+      <h1 style={sectionHeading}>{bookingsView === "history" ? "Booking history" : "Upcoming bookings"}</h1>
       <p style={subtleNote}>You can view only your own bookings and cancel pending/approved requests.</p>
       {bookingsLoading && <div style={cardStyle}><p style={{ margin: 0, color: "#6b7280", fontSize: "15px" }}>Loading bookings...</p></div>}
       {!bookingsLoading && bookingsError && <div style={cardStyle}><p style={{ margin: 0, color: "#b91c1c", fontSize: "15px", fontWeight: 700 }}>{bookingsError}</p></div>}
       {!bookingsLoading && !bookingsError && bookings.length === 0 && <div style={cardStyle}><p style={{ margin: 0, color: "#6b7280", fontSize: "15px" }}>No bookings yet.</p></div>}
       {!bookingsLoading && !bookingsError && bookings.length > 0 && (
         <div style={{ ...cardStyle, padding: "14px 16px" }}>
-          <section style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, background: "#fff", marginBottom: 12 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 10 }}>
-              <select value={filters.status} onChange={(e) => setFilters((s) => ({ ...s, status: e.target.value }))} style={{ ...inputEditable, height: 40 }}>
+          <section style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 14px 16px", background: "#fff", marginBottom: 12, boxSizing: "border-box", overflow: "hidden" }}>
+            <div style={filterBarGrid}>
+              <select value={filters.status} onChange={(e) => setFilters((s) => ({ ...s, status: e.target.value }))} className="bookings-filter-select" aria-label="Filter by status">
                 <option value="ALL">Status: All</option>
                 <option value="PENDING">Pending</option>
                 <option value="APPROVED">Approved</option>
                 <option value="REJECTED">Rejected</option>
                 <option value="CANCELLED">Cancelled</option>
               </select>
-              <input type="date" value={filters.date} onChange={(e) => setFilters((s) => ({ ...s, date: e.target.value }))} style={{ ...inputEditable, height: 40 }} />
-              <select value={filters.resourceType} onChange={(e) => setFilters((s) => ({ ...s, resourceType: e.target.value }))} style={{ ...inputEditable, height: 40 }}>
+              <input type="date" value={filters.date} onChange={(e) => setFilters((s) => ({ ...s, date: e.target.value }))} className="bookings-filter-date" aria-label="Filter by date" />
+              <select value={filters.resourceType} onChange={(e) => setFilters((s) => ({ ...s, resourceType: e.target.value }))} className="bookings-filter-select" aria-label="Filter by resource type">
                 {resourceTypes.map((t) => <option key={t} value={t}>{t === "ALL" ? "Resource Type: All" : t}</option>)}
               </select>
-              <input value={filters.resource} onChange={(e) => setFilters((s) => ({ ...s, resource: e.target.value }))} style={{ ...inputEditable, height: 40 }} placeholder="Resource name/id" />
-              <select value={filters.approvalState} onChange={(e) => setFilters((s) => ({ ...s, approvalState: e.target.value }))} style={{ ...inputEditable, height: 40 }}>
+              <input value={filters.resource} onChange={(e) => setFilters((s) => ({ ...s, resource: e.target.value }))} className="bookings-filter-text" placeholder="Resource name/id" aria-label="Filter by resource name or id" />
+              <select value={filters.approvalState} onChange={(e) => setFilters((s) => ({ ...s, approvalState: e.target.value }))} className="bookings-filter-select" aria-label="Filter by approval state">
                 <option value="ALL">Approval State: All</option>
                 <option value="UNREVIEWED">Unreviewed</option>
                 <option value="REVIEWED">Reviewed</option>
@@ -592,57 +698,18 @@ export default function AccountBookingsPage() {
                 <option value="CANCELLED">Cancelled</option>
               </select>
             </div>
-            <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+            <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
               <button
                 type="button"
+                className="bookings-filter-reset"
                 onClick={() => setFilters({ status: "ALL", date: "", resourceType: "ALL", resource: "", approvalState: "ALL" })}
-                style={{ padding: "7px 12px", borderRadius: "8px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontWeight: 700, cursor: "pointer" }}
               >
                 Reset
               </button>
             </div>
           </section>
 
-          <div style={{ display: "flex", gap: 10, borderBottom: "1px solid #e5e7eb", marginBottom: 12, paddingBottom: 8 }}>
-            <button
-              type="button"
-              onClick={() => setActiveBookingsTab("upcoming")}
-              style={{
-                border: "1px solid",
-                borderColor: activeBookingsTab === "upcoming" ? "#fb923c" : "#e5e7eb",
-                background: activeBookingsTab === "upcoming" ? "linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%)" : "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)",
-                borderRadius: 10,
-                padding: "8px 12px",
-                fontSize: "15px",
-                fontWeight: 800,
-                color: activeBookingsTab === "upcoming" ? "#111827" : "#6b7280",
-                boxShadow: activeBookingsTab === "upcoming" ? "inset 0 0 0 1px rgba(251,146,60,0.15)" : "none",
-                cursor: "pointer",
-              }}
-            >
-              Upcoming Bookings ({filteredUpcomingBookings.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveBookingsTab("history")}
-              style={{
-                border: "1px solid",
-                borderColor: activeBookingsTab === "history" ? "#94a3b8" : "#e5e7eb",
-                background: activeBookingsTab === "history" ? "linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%)" : "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)",
-                borderRadius: 10,
-                padding: "8px 12px",
-                fontSize: "15px",
-                fontWeight: 800,
-                color: activeBookingsTab === "history" ? "#111827" : "#6b7280",
-                boxShadow: activeBookingsTab === "history" ? "inset 0 0 0 1px rgba(148,163,184,0.2)" : "none",
-                cursor: "pointer",
-              }}
-            >
-              Booking History ({filteredHistoryBookings.length})
-            </button>
-          </div>
-
-          {activeBookingsTab === "upcoming" && (
+          {bookingsView === "upcoming" && (
             filteredUpcomingBookings.length === 0 ? (
               <div style={{ ...cardStyle, padding: "16px 18px" }}><p style={{ margin: 0, color: "#6b7280", fontSize: "14px" }}>No upcoming bookings.</p></div>
             ) : (
@@ -650,7 +717,7 @@ export default function AccountBookingsPage() {
             )
           )}
 
-          {activeBookingsTab === "history" && (
+          {bookingsView === "history" && (
             filteredHistoryBookings.length === 0 ? (
               <div style={{ ...cardStyle, padding: "16px 18px" }}><p style={{ margin: 0, color: "#6b7280", fontSize: "14px" }}>No booking history yet.</p></div>
             ) : (
@@ -663,7 +730,7 @@ export default function AccountBookingsPage() {
         <div role="dialog" aria-modal="true" onClick={() => setDetailBooking(null)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", zIndex: 1200 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: "820px", backgroundColor: "#fff", borderRadius: "14px", border: "1px solid #e5e7eb", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)", padding: "18px 18px 14px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 800, color: "#111827" }}>Booking Details</h2>
+              <h2 style={{ ...sectionHeading, margin: 0 }}>Booking Details</h2>
               <button type="button" onClick={() => setDetailBooking(null)} style={{ border: "1px solid #d1d5db", backgroundColor: "#fff", borderRadius: "8px", padding: "6px 10px", cursor: "pointer", fontWeight: 700, color: "#374151" }}>Close</button>
             </div>
 
@@ -707,7 +774,195 @@ export default function AccountBookingsPage() {
         </div>
       )}
       {cancelBookingTarget && <div role="dialog" aria-modal="true" onClick={() => { if (cancelBusyId) return; setCancelBookingTarget(null); setCancelReasonDraft(""); setCancelReasonError(""); }} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", zIndex: 1300 }}><div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: "560px", backgroundColor: "#fff", borderRadius: "14px", border: "1px solid #e5e7eb", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)", padding: "18px" }}><h3 style={{ margin: "0 0 8px 0", fontSize: "20px", fontWeight: 800, color: "#111827" }}>Cancel Booking</h3><p style={{ margin: "0 0 12px 0", color: "#374151", fontSize: "14px", lineHeight: 1.5 }}>Are you sure you want to cancel this booking?</p><label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#111827", marginBottom: "6px" }}>Cancellation reason</label><textarea value={cancelReasonDraft} onChange={(e) => { setCancelReasonDraft(e.target.value); setCancelReasonError(""); }} maxLength={500} rows={4} style={{ width: "100%", border: "1px solid #d1d5db", borderRadius: "8px", padding: "10px 12px", boxSizing: "border-box", resize: "vertical", fontSize: "14px" }} placeholder="Please provide the reason for cancellation..." />{cancelReasonError && <p style={{ margin: "8px 0 0 0", color: "#b91c1c", fontSize: "13px", fontWeight: 600 }}>{cancelReasonError}</p>}<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "14px" }}><button type="button" disabled={!!cancelBusyId} onClick={() => { setCancelBookingTarget(null); setCancelReasonDraft(""); setCancelReasonError(""); }} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontWeight: 700, cursor: cancelBusyId ? "not-allowed" : "pointer" }}>Close</button><button type="button" disabled={cancelBusyId === cancelBookingTarget.id} onClick={() => handleCancelBooking(cancelBookingTarget)} style={{ padding: "8px 12px", borderRadius: "8px", border: "none", background: "#dc2626", color: "#fff", fontWeight: 700, cursor: cancelBusyId === cancelBookingTarget.id ? "not-allowed" : "pointer" }}>{cancelBusyId === cancelBookingTarget.id ? "Cancelling..." : "Confirm Cancel"}</button></div></div></div>}
-      {editBookingTarget && <div role="dialog" aria-modal="true" onClick={() => { if (editBusyId) return; setEditBookingTarget(null); setEditBookingError(""); }} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", zIndex: 1250 }}><div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: "620px", backgroundColor: "#fff", borderRadius: "14px", border: "1px solid #e5e7eb", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)", padding: "18px" }}><h3 style={{ margin: "0 0 10px 0", fontSize: "20px", fontWeight: 800, color: "#111827" }}>Edit Booking</h3><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 12px" }}><div><label style={labelStyle}>Date</label><input type="date" value={editBookingDraft.bookingDate} onChange={(e) => { setEditBookingDraft((d) => ({ ...d, bookingDate: e.target.value })); setEditSelectedSlotKeys([]); }} style={inputEditable} /></div><div /><div><label style={labelStyle}>Start Time</label><input type="time" value={editBookingDraft.startTime} readOnly disabled style={inputDisabled} /></div><div><label style={labelStyle}>End Time</label><input type="time" value={editBookingDraft.endTime} readOnly disabled style={inputDisabled} /></div><div style={{ gridColumn: "1 / -1" }}><label style={labelStyle}>Available Time Slots</label>{editSlotsLoading && <p style={{ margin: "0 0 8px 0", color: "#64748b", fontSize: "13px", fontWeight: 600 }}>Loading available slots...</p>}{!editSlotsLoading && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 8 }}>{editSlots.map((slot) => { const booked = !!editSlotStateMap[slot.key]; const selected = editSelectedSlotKeys.includes(slot.key); return <button key={slot.key} type="button" disabled={booked} onClick={() => handleEditSlotClick(slot)} style={{ height: 38, borderRadius: 8, border: selected ? "2px solid #0369a1" : "1px solid #d1d5db", background: booked ? "#e5e7eb" : selected ? "#e0f2fe" : "#fff", color: booked ? "#6b7280" : selected ? "#0c4a6e" : "#111827", fontWeight: 700, fontSize: "12px", cursor: booked ? "not-allowed" : "pointer" }}>{prettySlot(slot.startTime, slot.endTime)} {booked ? "• Booked" : ""}</button>; })}</div>}<p style={{ margin: "8px 0 0", color: "#64748b", fontSize: "12px", fontWeight: 600 }}>Select one or more continuous slots. Start/End time will be combined automatically.</p></div><div style={{ gridColumn: "1 / -1" }}><label style={labelStyle}>Purpose</label><textarea rows={3} value={editBookingDraft.purpose} onChange={(e) => setEditBookingDraft((d) => ({ ...d, purpose: e.target.value }))} style={{ ...inputEditable, height: "auto", resize: "vertical" }} /></div><div><label style={labelStyle}>Expected Attendees</label><input value={editBookingDraft.expectedAttendees} onChange={(e) => setEditBookingDraft((d) => ({ ...d, expectedAttendees: e.target.value.replace(/[^\d]/g, "") }))} style={inputEditable} /></div><div style={{ gridColumn: "1 / -1" }}><label style={labelStyle}>Additional Notes</label><textarea rows={3} value={editBookingDraft.additionalNotes} onChange={(e) => setEditBookingDraft((d) => ({ ...d, additionalNotes: e.target.value }))} style={{ ...inputEditable, height: "auto", resize: "vertical" }} /></div></div>{editBookingError && <p style={{ margin: "10px 0 0", color: "#b91c1c", fontSize: "13px", fontWeight: 600 }}>{editBookingError}</p>}<div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "14px" }}><button type="button" disabled={!!editBusyId} onClick={() => { setEditBookingTarget(null); setEditBookingError(""); }} style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontWeight: 700, cursor: editBusyId ? "not-allowed" : "pointer" }}>Close</button><button type="button" disabled={editBusyId === editBookingTarget.id} onClick={handleUpdateBooking} style={{ padding: "8px 12px", borderRadius: "8px", border: "none", background: "#FA8112", color: "#fff", fontWeight: 700, cursor: editBusyId === editBookingTarget.id ? "not-allowed" : "pointer" }}>{editBusyId === editBookingTarget.id ? "Updating..." : "Update Booking"}</button></div></div></div>}
+      {editBookingTarget && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-booking-title"
+          onClick={() => {
+            if (editBusyId) return;
+            setEditBookingTarget(null);
+            setEditBookingError("");
+          }}
+          style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", zIndex: 1250 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "620px",
+              maxHeight: "min(78vh, 600px)",
+              backgroundColor: "#fff",
+              borderRadius: "14px",
+              border: "1px solid #e5e7eb",
+              boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ flexShrink: 0, padding: "16px 18px 12px", borderBottom: "1px solid #f3f4f6" }}>
+              <h2 id="edit-booking-title" style={{ ...sectionHeading, margin: 0 }}>
+                Edit Booking
+              </h2>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: "auto",
+                WebkitOverflowScrolling: "touch",
+                padding: "14px 18px",
+              }}
+            >
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 12px" }}>
+                <div>
+                  <label style={labelStyle}>Date</label>
+                  <input
+                    type="date"
+                    value={editBookingDraft.bookingDate}
+                    onChange={(e) => {
+                      setEditBookingDraft((d) => ({ ...d, bookingDate: e.target.value }));
+                      setEditSelectedSlotKeys([]);
+                    }}
+                    style={inputEditable}
+                  />
+                </div>
+                <div />
+                <div>
+                  <label style={labelStyle}>Start Time</label>
+                  <input type="time" value={editBookingDraft.startTime} readOnly disabled style={inputDisabled} />
+                </div>
+                <div>
+                  <label style={labelStyle}>End Time</label>
+                  <input type="time" value={editBookingDraft.endTime} readOnly disabled style={inputDisabled} />
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label style={labelStyle}>Available Time Slots</label>
+                  {editSlotsLoading && <p style={{ margin: "0 0 8px 0", color: "#64748b", fontSize: "13px", fontWeight: 600 }}>Loading available slots...</p>}
+                  {!editSlotsLoading && (
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                        gap: 8,
+                        maxHeight: "min(200px, 28vh)",
+                        overflowY: "auto",
+                        padding: "2px",
+                      }}
+                    >
+                      {editSlots.map((slot) => {
+                        const booked = !!editSlotStateMap[slot.key];
+                        const selected = editSelectedSlotKeys.includes(slot.key);
+                        return (
+                          <button
+                            key={slot.key}
+                            type="button"
+                            disabled={booked}
+                            onClick={() => handleEditSlotClick(slot)}
+                            style={{
+                              height: 36,
+                              borderRadius: 8,
+                              border: selected ? "2px solid #0369a1" : "1px solid #d1d5db",
+                              background: booked ? "#e5e7eb" : selected ? "#e0f2fe" : "#fff",
+                              color: booked ? "#6b7280" : selected ? "#0c4a6e" : "#111827",
+                              fontWeight: 700,
+                              fontSize: "12px",
+                              cursor: booked ? "not-allowed" : "pointer",
+                            }}
+                          >
+                            {prettySlot(slot.startTime, slot.endTime)} {booked ? "• Booked" : ""}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p style={{ margin: "8px 0 0", color: "#64748b", fontSize: "12px", fontWeight: 600 }}>
+                    Select one or more continuous slots. Start/End time will be combined automatically.
+                  </p>
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label style={labelStyle}>Purpose</label>
+                  <textarea
+                    rows={2}
+                    value={editBookingDraft.purpose}
+                    onChange={(e) => setEditBookingDraft((d) => ({ ...d, purpose: e.target.value }))}
+                    style={{ ...inputEditable, height: "auto", minHeight: "72px", resize: "vertical" }}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Expected Attendees</label>
+                  <input
+                    value={editBookingDraft.expectedAttendees}
+                    onChange={(e) => setEditBookingDraft((d) => ({ ...d, expectedAttendees: e.target.value.replace(/[^\d]/g, "") }))}
+                    style={inputEditable}
+                  />
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label style={labelStyle}>Additional Notes</label>
+                  <textarea
+                    rows={2}
+                    value={editBookingDraft.additionalNotes}
+                    onChange={(e) => setEditBookingDraft((d) => ({ ...d, additionalNotes: e.target.value }))}
+                    style={{ ...inputEditable, height: "auto", minHeight: "72px", resize: "vertical" }}
+                  />
+                </div>
+              </div>
+            </div>
+            {editBookingError && (
+              <div style={{ flexShrink: 0, padding: "0 18px 8px" }}>
+                <p style={{ margin: 0, color: "#b91c1c", fontSize: "13px", fontWeight: 600 }}>{editBookingError}</p>
+              </div>
+            )}
+            <div
+              style={{
+                flexShrink: 0,
+                padding: "12px 18px 16px",
+                borderTop: "1px solid #f3f4f6",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "8px",
+              }}
+            >
+              <button
+                type="button"
+                disabled={!!editBusyId}
+                onClick={() => {
+                  setEditBookingTarget(null);
+                  setEditBookingError("");
+                }}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  border: "1px solid #d1d5db",
+                  background: "#fff",
+                  color: "#374151",
+                  fontWeight: 700,
+                  cursor: editBusyId ? "not-allowed" : "pointer",
+                }}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                disabled={editBusyId === editBookingTarget.id}
+                onClick={handleUpdateBooking}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: "#FA8112",
+                  color: "#fff",
+                  fontWeight: 700,
+                  cursor: editBusyId === editBookingTarget.id ? "not-allowed" : "pointer",
+                }}
+              >
+                {editBusyId === editBookingTarget.id ? "Updating..." : "Update Booking"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AccountLayout>
   );
 }

@@ -1,5 +1,26 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+
+const FEATURE_CARDS = [
+  {
+    title: 'Facility Booking',
+    description: 'Reserve rooms, labs, lecture halls and equipment with ease',
+    to: '/resources',
+    image: '/facility.jpg',
+  },
+  {
+    title: 'Maintenance Tracking',
+    description: 'Report issues and monitor resolution progress',
+    to: '/tickets/create',
+    image: '/maintain.jpg',
+  },
+  {
+    title: 'Real-time Updates',
+    description: 'Stay informed with instant notifications',
+    to: '/account/notifications',
+    image: '/notification.jpg',
+  },
+];
 
 /** Served from `client/public/` — add slide1.jpg and slide2.jpg (or change paths below). */
 const HERO_SLIDES = [
@@ -182,26 +203,34 @@ const Hero = () => {
 
       <section className="bg-bg-primary px-4 py-12 md:py-16">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-16 rounded-lg bg-bg-secondary p-8">
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-              <div className="rounded-lg bg-white p-6">
-                <div className="mb-4 text-4xl">🏛️</div>
-                <h3 className="mb-2 text-xl font-semibold text-dark-text">Facility Booking</h3>
-                <p className="text-dark-text">Reserve rooms, labs, lecture halls and equipment with ease</p>
-              </div>
-
-              <div className="rounded-lg bg-white p-6">
-                <div className="mb-4 text-4xl">🔧</div>
-                <h3 className="mb-2 text-xl font-semibold text-dark-text">Maintenance Tracking</h3>
-                <p className="text-dark-text">Report issues and monitor resolution progress</p>
-              </div>
-
-              <div className="rounded-lg bg-white p-6">
-                <div className="mb-4 text-4xl">📱</div>
-                <h3 className="mb-2 text-xl font-semibold text-dark-text">Real-time Updates</h3>
-                <p className="text-dark-text">Stay informed with instant notifications</p>
-              </div>
-            </div>
+          <div className="mb-16 grid grid-cols-1 gap-6 md:grid-cols-3 md:items-stretch">
+            {FEATURE_CARDS.map((card) => (
+              <Link
+                key={card.to}
+                to={card.to}
+                className="group relative flex min-h-[280px] overflow-hidden rounded-xl shadow-lg outline-none ring-offset-2 ring-offset-[#FAF3E1] transition-shadow hover:shadow-xl focus-visible:ring-2 focus-visible:ring-[#FA8112] md:min-h-[300px]"
+              >
+                <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+                  <span
+                    className="absolute inset-[-4px] bg-cover bg-center transition-transform duration-500 ease-out group-hover:scale-[1.02]"
+                    style={{
+                      backgroundImage: `url(${card.image})`,
+                      filter: 'blur(1.5px)',
+                    }}
+                  />
+                </span>
+                <div
+                  className="absolute inset-0 bg-gradient-to-t from-[#0f172a]/78 via-[#0f172a]/12 to-transparent"
+                  aria-hidden
+                />
+                <div className="relative z-[1] mt-auto flex w-full flex-col justify-end p-6 text-left text-white">
+                  <h3 className="mb-2 text-xl font-bold drop-shadow-sm">{card.title}</h3>
+                  <p className="text-sm font-medium leading-snug text-white/95 drop-shadow-sm md:text-[15px]">
+                    {card.description}
+                  </p>
+                </div>
+              </Link>
+            ))}
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">

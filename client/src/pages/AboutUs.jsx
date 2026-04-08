@@ -1,5 +1,4 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import { appFontFamily } from "../utils/appFont";
 
 /** Public asset: `client/public/about us.jpg` */
@@ -85,6 +84,22 @@ const sectionTitleStyle = {
   fontWeight: 800,
 };
 
+/** Centered content blocks: readable line length + spacing between sections */
+const aboutSectionStyle = {
+  textAlign: "center",
+  marginBottom: "52px",
+};
+
+const aboutSectionLastStyle = {
+  textAlign: "center",
+  marginBottom: 0,
+};
+
+const aboutHeadingStyle = {
+  ...sectionTitleStyle,
+  textAlign: "center",
+};
+
 const paragraphStyle = {
   margin: "0 0 16px 0",
   color: "#475569",
@@ -92,19 +107,39 @@ const paragraphStyle = {
   lineHeight: 1.7,
 };
 
+const paragraphCenteredStyle = {
+  ...paragraphStyle,
+  marginLeft: "auto",
+  marginRight: "auto",
+  marginBottom: 0,
+  maxWidth: "680px",
+};
+
+const listOuterStyle = {
+  display: "flex",
+  justifyContent: "center",
+  margin: "0",
+};
+
 const listStyle = {
-  margin: "0 0 20px 0",
+  margin: 0,
   paddingLeft: "22px",
   color: "#475569",
   fontSize: "15px",
   lineHeight: 1.75,
+  textAlign: "left",
+  display: "inline-block",
+  maxWidth: "680px",
 };
 
 const cardGridStyle = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-  gap: "14px",
-  marginTop: "8px",
+  gap: "16px",
+  marginTop: "12px",
+  marginLeft: "auto",
+  marginRight: "auto",
+  maxWidth: "960px",
 };
 
 const cardStyle = {
@@ -113,6 +148,7 @@ const cardStyle = {
   padding: "16px",
   backgroundColor: "#FFFFFF",
   boxShadow: "0 6px 14px rgba(20, 33, 61, 0.05)",
+  textAlign: "center",
 };
 
 const cardTitleStyle = {
@@ -129,40 +165,7 @@ const cardTextStyle = {
   lineHeight: 1.55,
 };
 
-const actionsStyle = {
-  marginTop: "24px",
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "10px",
-};
-
-const primaryBtnStyle = {
-  padding: "12px 20px",
-  borderRadius: "10px",
-  border: "none",
-  backgroundColor: "#FA8112",
-  color: "#FFFFFF",
-  fontWeight: 700,
-  fontSize: "14px",
-  cursor: "pointer",
-  fontFamily: appFontFamily,
-};
-
-const secondaryBtnStyle = {
-  padding: "12px 20px",
-  borderRadius: "10px",
-  border: "1px solid #E8E4DC",
-  backgroundColor: "#FFFFFF",
-  color: "#14213D",
-  fontWeight: 700,
-  fontSize: "14px",
-  cursor: "pointer",
-  fontFamily: appFontFamily,
-};
-
 export default function AboutUs() {
-  const navigate = useNavigate();
-
   return (
     <main style={pageStyle}>
       <section style={heroWrapStyle} aria-label="About CampusSync">
@@ -180,72 +183,70 @@ export default function AboutUs() {
 
       <div style={contentShellStyle}>
         <div style={innerMaxStyle}>
-          <h2 style={sectionTitleStyle}>Our mission</h2>
-          <p style={paragraphStyle}>
-            We help universities run day-to-day campus services more smoothly. Whether you need a lab or meeting room,
-            equipment for a project, or help from a technician, CampusSync keeps the workflow clear and trackable from
-            request to resolution.
-          </p>
+          <section style={aboutSectionStyle}>
+            <h2 style={aboutHeadingStyle}>Our mission</h2>
+            <p style={paragraphCenteredStyle}>
+              We help universities run day-to-day campus services more smoothly. Whether you need a lab or meeting room,
+              equipment for a project, or help from a technician, CampusSync keeps the workflow clear and trackable from
+              request to resolution.
+            </p>
+          </section>
 
-          <h2 style={{ ...sectionTitleStyle, marginTop: "24px" }}>What you can do here</h2>
-          <ul style={listStyle}>
-            <li>
-              <strong style={{ color: "#14213D" }}>Resources</strong> — Browse and discover campus facilities and
-              equipment with up-to-date information.
-            </li>
-            <li>
-              <strong style={{ color: "#14213D" }}>Bookings</strong> — Reserve rooms and equipment through structured
-              booking flows designed for campus use.
-            </li>
-            <li>
-              <strong style={{ color: "#14213D" }}>Support &amp; tickets</strong> — Report issues, follow progress, and
-              communicate with technicians when maintenance or IT support is needed.
-            </li>
-          </ul>
-
-          <h2 style={{ ...sectionTitleStyle, marginTop: "24px" }}>Who it is for</h2>
-          <div style={cardGridStyle}>
-            <div style={cardStyle}>
-              <h3 style={cardTitleStyle}>Students</h3>
-              <p style={cardTextStyle}>
-                Find what you need on campus, book shared spaces and gear, and raise support requests when something
-                needs attention.
-              </p>
+          <section style={aboutSectionStyle}>
+            <h2 style={aboutHeadingStyle}>What you can do here</h2>
+            <div style={listOuterStyle}>
+              <ul style={listStyle}>
+                <li>
+                  <strong style={{ color: "#14213D" }}>Resources</strong> — Browse and discover campus facilities and
+                  equipment with up-to-date information.
+                </li>
+                <li>
+                  <strong style={{ color: "#14213D" }}>Bookings</strong> — Reserve rooms and equipment through structured
+                  booking flows designed for campus use.
+                </li>
+                <li>
+                  <strong style={{ color: "#14213D" }}>Support &amp; tickets</strong> — Report issues, follow progress,
+                  and communicate with technicians when maintenance or IT support is needed.
+                </li>
+              </ul>
             </div>
-            <div style={cardStyle}>
-              <h3 style={cardTitleStyle}>Faculty &amp; staff</h3>
-              <p style={cardTextStyle}>
-                Coordinate resources and report facility or technical issues in a way that teams can assign, track, and
-                close efficiently.
-              </p>
-            </div>
-            <div style={cardStyle}>
-              <h3 style={cardTitleStyle}>Campus operations</h3>
-              <p style={cardTextStyle}>
-                Administrators and technicians get a clearer picture of demand, workload, and service quality across the
-                campus.
-              </p>
-            </div>
-          </div>
+          </section>
 
-          <h2 style={{ ...sectionTitleStyle, marginTop: "28px" }}>Our values</h2>
-          <p style={paragraphStyle}>
-            We prioritize clarity, accountability, and security. Sign-in options and role-based access help ensure the
-            right people see the right information—whether you sign in with your campus email or Google, or your team uses
-            dedicated admin and technician tools behind the scenes.
-          </p>
+          <section style={aboutSectionStyle}>
+            <h2 style={aboutHeadingStyle}>Who it is for</h2>
+            <div style={cardGridStyle}>
+              <div style={cardStyle}>
+                <h3 style={cardTitleStyle}>Students</h3>
+                <p style={cardTextStyle}>
+                  Find what you need on campus, book shared spaces and gear, and raise support requests when something
+                  needs attention.
+                </p>
+              </div>
+              <div style={cardStyle}>
+                <h3 style={cardTitleStyle}>Faculty &amp; staff</h3>
+                <p style={cardTextStyle}>
+                  Coordinate resources and report facility or technical issues in a way that teams can assign, track, and
+                  close efficiently.
+                </p>
+              </div>
+              <div style={cardStyle}>
+                <h3 style={cardTitleStyle}>Campus operations</h3>
+                <p style={cardTextStyle}>
+                  Administrators and technicians get a clearer picture of demand, workload, and service quality across the
+                  campus.
+                </p>
+              </div>
+            </div>
+          </section>
 
-          <div style={actionsStyle}>
-            <button type="button" style={primaryBtnStyle} onClick={() => navigate("/resources")}>
-              Explore resources
-            </button>
-            <button type="button" style={secondaryBtnStyle} onClick={() => navigate("/contact")}>
-              Contact us
-            </button>
-            <button type="button" style={secondaryBtnStyle} onClick={() => navigate("/")}>
-              Back to home
-            </button>
-          </div>
+          <section style={aboutSectionLastStyle}>
+            <h2 style={aboutHeadingStyle}>Our values</h2>
+            <p style={paragraphCenteredStyle}>
+              We prioritize clarity, accountability, and security. Sign-in options and role-based access help ensure the
+              right people see the right information—whether you sign in with your campus email or Google, or your team uses
+              dedicated admin and technician tools behind the scenes.
+            </p>
+          </section>
         </div>
       </div>
     </main>
