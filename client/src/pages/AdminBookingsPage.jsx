@@ -1,11 +1,34 @@
 import React, { useEffect, useMemo, useState } from "react";
 import AdminLayout from "../components/admin/AdminLayout.jsx";
 import { cancelBookingByAdmin, deleteBookingByAdmin, getAdminBookings, approveBookingByAdmin, rejectBookingByAdmin } from "../api/bookings";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 const panelStyle = { backgroundColor: "#FFFFFF", borderRadius: "14px", border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.04)", padding: "14px" };
 const inputStyle = { width: "100%", height: 40, borderRadius: 10, border: "1px solid #d1d5db", padding: "0 10px", boxSizing: "border-box", fontSize: 14 };
 const buttonStyle = { height: 38, borderRadius: 9, border: "none", padding: "0 12px", fontWeight: 700, cursor: "pointer" };
 const actionControlStyle = { height: 32, width: 108, borderRadius: 8, fontSize: 12, boxSizing: "border-box" };
+const chartPalette = {
+  navy: "#14213D",
+  orange: "#FA8112",
+  amber: "#FCA311",
+  green: "#2e7d32",
+  red: "#d32f2f",
+  gray: "#6b7280",
+};
 
 function statusChip(statusRaw) {
   const status = String(statusRaw || "").toUpperCase();
@@ -68,6 +91,27 @@ function countByStatus(rows) {
   return counts;
 }
 
+function normalizeResourceType(value) {
+  const upper = String(value || "").toUpperCase().replace(/\s+/g, "_").trim();
+  if (!upper) return "UNKNOWN";
+  return upper;
+}
+
+function formatTrendLabel(date, mode) {
+  if (mode === "DAY") return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  if (mode === "WEEK") return `W${Math.ceil(date.getDate() / 7)} ${date.toLocaleDateString(undefined, { month: "short" })}`;
+  return date.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+}
+
+function formatHourLabel(startTime) {
+  const [hRaw] = String(startTime || "").split(":");
+  const h = Number(hRaw);
+  if (!Number.isFinite(h)) return "Unknown";
+  const suffix = h >= 12 ? "PM" : "AM";
+  const normalized = h % 12 || 12;
+  return `${normalized}:00 ${suffix}`;
+}
+
 
 export default function AdminBookingsPage() {
   const [rows, setRows] = useState([]);
@@ -85,6 +129,7 @@ export default function AdminBookingsPage() {
     approvalState: "ALL",
   });
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [trendMode, setTrendMode] = useState("DAY");
 
   const loadRows = async (nextFilters = filters) => {
     setLoading(true);
@@ -114,6 +159,125 @@ export default function AdminBookingsPage() {
   }, [rows]);
 
   const statusCounts = useMemo(() => countByStatus(rows), [rows]);
+  const statusChartData = useMemo(
+    () => [
+      { name: "Pending", value: statusCounts.pending, color: chartPalette.navy },
+      { name: "Approved", value: statusCounts.approved, color: chartPalette.green },
+      { name: "Rejected", value: statusCounts.rejected, color: chartPalette.red },
+      { name: "Cancelled", value: statusCounts.cancelled, color: chartPalette.gray },
+    ],
+    [statusCounts]
+  );
+
+  const bookingsTrendData = useMemo(() => {
+    const now = new Date();
+    const keyMap = new Map();
+    if (trendMode === "DAY") {
+      for (let i = 13; i >= 0; i -= 1) {
+        const d = new Date(now);
+        d.setHours(0, 0, 0, 0);
+        d.setDate(now.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        keyMap.set(key, { label: formatTrendLabel(d, "DAY"), count: 0 });
+      }
+      rows.forEach((r) => {
+        const key = String(r?.bookingDate || "");
+        if (keyMap.has(key)) keyMap.get(key).count += 1;
+      });
+      return Array.from(keyMap.values());
+    }
+    if (trendMode === "WEEK") {
+      for (let i = 7; i >= 0; i -= 1) {
+        const d = new Date(now);
+        d.setHours(0, 0, 0, 0);
+        d.setDate(now.getDate() - i * 7);
+        const year = d.getFullYear();
+        const month = d.getMonth();
+        const week = Math.ceil(d.getDate() / 7);
+        const key = `${year}-${month + 1}-W${week}`;
+        keyMap.set(key, { label: formatTrendLabel(d, "WEEK"), count: 0 });
+      }
+      rows.forEach((r) => {
+        const d = new Date(`${r?.bookingDate || ""}T00:00:00`);
+        if (Number.isNaN(d.getTime())) return;
+        const key = `${d.getFullYear()}-${d.getMonth() + 1}-W${Math.ceil(d.getDate() / 7)}`;
+        if (keyMap.has(key)) keyMap.get(key).count += 1;
+      });
+      return Array.from(keyMap.values());
+    }
+    for (let i = 11; i >= 0; i -= 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+      keyMap.set(key, { label: formatTrendLabel(d, "MONTH"), count: 0 });
+    }
+    rows.forEach((r) => {
+      const d = new Date(`${r?.bookingDate || ""}T00:00:00`);
+      if (Number.isNaN(d.getTime())) return;
+      const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+      if (keyMap.has(key)) keyMap.get(key).count += 1;
+    });
+    return Array.from(keyMap.values());
+  }, [rows, trendMode]);
+
+  const resourceTypeChartData = useMemo(() => {
+    const tracked = ["LAB", "LECTURE_HALL", "MEETING_ROOM", "EQUIPMENT"];
+    const counts = Object.fromEntries(tracked.map((t) => [t, 0]));
+    rows.forEach((r) => {
+      const key = normalizeResourceType(r?.resourceType);
+      if (counts[key] != null) counts[key] += 1;
+    });
+    return tracked.map((key) => ({ type: key, count: counts[key] }));
+  }, [rows]);
+
+  const topResourcesChartData = useMemo(() => {
+    const map = new Map();
+    rows.forEach((r) => {
+      const name = String(r?.resourceName || "Unknown").trim() || "Unknown";
+      map.set(name, (map.get(name) || 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }, [rows]);
+
+  const decisionByTypeChartData = useMemo(() => {
+    const tracked = ["LAB", "LECTURE_HALL", "MEETING_ROOM", "EQUIPMENT"];
+    const seed = { approved: 0, rejected: 0, cancelled: 0, pending: 0 };
+    const map = new Map(tracked.map((t) => [t, { ...seed }]));
+    rows.forEach((r) => {
+      const type = normalizeResourceType(r?.resourceType);
+      if (!map.has(type)) map.set(type, { ...seed });
+      const status = String(r?.status || "").toUpperCase();
+      const obj = map.get(type);
+      if (status === "APPROVED") obj.approved += 1;
+      else if (status === "REJECTED") obj.rejected += 1;
+      else if (status === "CANCELLED") obj.cancelled += 1;
+      else obj.pending += 1;
+    });
+    return Array.from(map.entries()).map(([type, v]) => ({ type, ...v }));
+  }, [rows]);
+
+  const peakHoursChartData = useMemo(() => {
+    const map = new Map();
+    rows.forEach((r) => {
+      const label = formatHourLabel(r?.startTime);
+      map.set(label, (map.get(label) || 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([hour, count]) => ({ hour, count, sort: toSortHour(hour) }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ hour, count }) => ({ hour, count }));
+  }, [rows]);
+
+  function toSortHour(label) {
+    const m = String(label).match(/^(\d+):00\s(AM|PM)$/);
+    if (!m) return 999;
+    let h = Number(m[1]);
+    if (m[2] === "PM" && h !== 12) h += 12;
+    if (m[2] === "AM" && h === 12) h = 0;
+    return h;
+  }
 
   const openAction = (type, row) => setActionModal({ type, row, reason: "", error: "" });
   const closeAction = () => setActionModal({ type: "", row: null, reason: "", error: "" });
@@ -238,10 +402,114 @@ export default function AdminBookingsPage() {
 
           {activeTab === "dashboard" && (
             <div>
-              <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Dashboard</h3>
-              <p style={{ margin: 0, color: "#64748b", fontSize: 14 }}>
-                Charts are removed for now. You can add them later.
-              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Bookings by Status</h3>
+                  <div style={{ height: 260 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={statusChartData} dataKey="value" nameKey="name" innerRadius={58} outerRadius={94} paddingAngle={2}>
+                          {statusChartData.map((entry) => (
+                            <Cell key={entry.name} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Bookings Trend</h3>
+                    <select value={trendMode} onChange={(e) => setTrendMode(e.target.value)} style={{ ...inputStyle, width: 120, height: 32 }}>
+                      <option value="DAY">Day</option>
+                      <option value="WEEK">Week</option>
+                      <option value="MONTH">Month</option>
+                    </select>
+                  </div>
+                  <div style={{ height: 260 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={bookingsTrendData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="label" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="count" stroke={chartPalette.orange} strokeWidth={3} dot={{ r: 3 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Most Booked Resource Types</h3>
+                  <div style={{ height: 260 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={resourceTypeChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="type" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Bar dataKey="count" fill={chartPalette.navy} radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Top Booked Resources</h3>
+                  <div style={{ height: 260 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={topResourcesChartData} layout="vertical" margin={{ left: 30 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" allowDecimals={false} />
+                        <YAxis type="category" dataKey="name" width={130} />
+                        <Tooltip />
+                        <Bar dataKey="count" fill={chartPalette.amber} radius={[0, 6, 6, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Approval Decision by Resource Type</h3>
+                  <div style={{ height: 280 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={decisionByTypeChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="type" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="approved" stackId="a" fill={chartPalette.green} />
+                        <Bar dataKey="rejected" stackId="a" fill={chartPalette.red} />
+                        <Bar dataKey="cancelled" stackId="a" fill={chartPalette.gray} />
+                        <Bar dataKey="pending" stackId="a" fill={chartPalette.navy} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Peak Booking Hours</h3>
+                  <div style={{ height: 280 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={peakHoursChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="hour" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Bar dataKey="count" fill={chartPalette.orange} radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
