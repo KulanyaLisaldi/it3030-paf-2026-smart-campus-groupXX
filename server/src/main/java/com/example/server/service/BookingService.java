@@ -12,21 +12,27 @@ import com.example.server.repository.UserRepo;
 import org.springframework.stereotype.Service;
 import org.springframework.scheduling.annotation.Scheduled;
 
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
+import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import com.example.server.dto.booking.BookingCheckInValidationResponse;
+import com.example.server.dto.booking.CheckInValidateRequest;
+import com.example.server.dto.booking.MyBookingQrResponse;
 
 @Service
 public class BookingService {
 
-    private static final List<String> CONFLICT_STATUSES = List.of("PENDING", "APPROVED");
+    private static final List<String> CONFLICT_STATUSES = List.of("PENDING", "APPROVED", "CHECKED_IN");
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final BookingRepo bookingRepo;
     private final ResourceRepo resourceRepo;
@@ -81,6 +87,7 @@ public class BookingService {
         booking.setExpectedAttendees(expectedAttendees);
         booking.setAdditionalNotes(additionalNotes);
         booking.setStatus("PENDING");
+        booking.setCheckInStatus("NOT_CHECKED_IN");
         booking.setCreatedBy(createdBy.trim());
         booking.setCreatedAt(Instant.now());
         booking.setUpdatedAt(Instant.now());
@@ -196,6 +203,8 @@ public class BookingService {
             throw new IllegalArgumentException("Only pending bookings can be approved");
         }
         booking.setStatus("APPROVED");
+        booking.setCheckInStatus("NOT_CHECKED_IN");
+        ensureCheckInQr(booking);
         booking.setReviewReason(safeTrim(reasonRaw));
         booking.setUpdatedAt(Instant.now());
         return Optional.of(bookingRepo.save(booking));
@@ -254,6 +263,51 @@ public class BookingService {
         }
         bookingRepo.deleteById(bookingId);
         return true;
+    }
+
+    public Optional<MyBookingQrResponse> getMyBookingQr(String bookingId, String createdBy) {
+        Optional<Booking> maybe = bookingRepo.findById(bookingId);
+        if (maybe.isEmpty()) return Optional.empty();
+        Booking booking = maybe.get();
+        if (!safeTrim(booking.getCreatedBy()).equals(safeTrim(createdBy))) {
+            throw new IllegalArgumentException("You can access only your own booking QR");
+        }
+        String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
+        if (!"APPROVED".equals(status) && !"CHECKED_IN".equals(status)) {
+            throw new IllegalArgumentException("QR is available only for approved or checked-in bookings");
+        }
+        ensureCheckInQr(booking);
+        booking.setUpdatedAt(Instant.now());
+        Booking saved = bookingRepo.save(booking);
+        MyBookingQrResponse response = new MyBookingQrResponse();
+        response.setBookingId(saved.getId());
+        response.setQrValue(saved.getQrValue());
+        response.setBookingStatus(saved.getStatus());
+        response.setCheckInStatus(defaultCheckInStatus(saved));
+        return Optional.of(response);
+    }
+
+    public BookingCheckInValidationResponse validateCheckInByAdmin(CheckInValidateRequest request) {
+        Booking booking = findBookingFromCheckInRequest(request);
+        return validateBookingForCheckIn(booking);
+    }
+
+    public BookingCheckInValidationResponse confirmCheckInByAdmin(CheckInValidateRequest request, String adminUserId) {
+        Booking booking = findBookingFromCheckInRequest(request);
+        BookingCheckInValidationResponse validation = validateBookingForCheckIn(booking);
+        if (!validation.isValid()) {
+            throw new IllegalArgumentException(validation.getMessage());
+        }
+        booking.setStatus("CHECKED_IN");
+        booking.setCheckInStatus("CHECKED_IN");
+        booking.setCheckedInAt(Instant.now());
+        booking.setCheckedInBy(safeTrim(adminUserId));
+        booking.setVerificationMethod("QR_WEBCAM");
+        booking.setUpdatedAt(Instant.now());
+        Booking saved = bookingRepo.save(booking);
+        BookingCheckInValidationResponse response = toCheckInValidationResponse(saved, "Check-in confirmed successfully");
+        response.setValid(true);
+        return response;
     }
 
     public Optional<Booking> updateMyPendingBooking(String bookingId, String createdBy, UpdateMyBookingRequest request) {
@@ -413,6 +467,138 @@ public class BookingService {
         return value == null ? "" : value.trim();
     }
 
+    private void ensureCheckInQr(Booking booking) {
+        if (!safeTrim(booking.getCheckInToken()).isEmpty() && !safeTrim(booking.getQrValue()).isEmpty()) {
+            return;
+        }
+        String token = generateCheckInToken();
+        booking.setCheckInToken(token);
+        booking.setQrValue("BOOKING:" + safeTrim(booking.getId()) + ":" + token);
+    }
+
+    private String generateCheckInToken() {
+        byte[] bytes = new byte[18];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private Booking findBookingFromCheckInRequest(CheckInValidateRequest request) {
+        String bookingId = safeTrim(request == null ? "" : request.getBookingId());
+        String qrValue = safeTrim(request == null ? "" : request.getQrValue());
+        ParsedQrPayload parsed = parseQrValue(qrValue);
+        String effectiveBookingId = bookingId.isEmpty() ? parsed.bookingId : bookingId;
+        if (effectiveBookingId.isEmpty()) {
+            throw new IllegalArgumentException("Booking ID or QR value is required");
+        }
+        Booking booking = bookingRepo.findById(effectiveBookingId)
+            .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+        if (!parsed.token.isEmpty()) {
+            ensureCheckInQr(booking);
+            if (!parsed.token.equals(safeTrim(booking.getCheckInToken()))) {
+                throw new IllegalArgumentException("QR token mismatch");
+            }
+        }
+        if (!qrValue.isEmpty() && parsed.token.isEmpty() && !parsed.bookingId.isEmpty() && !parsed.bookingId.equals(safeTrim(booking.getId()))) {
+            throw new IllegalArgumentException("Invalid QR payload");
+        }
+        return booking;
+    }
+
+    private ParsedQrPayload parseQrValue(String qrRaw) {
+        String value = safeTrim(qrRaw);
+        if (value.isEmpty()) return new ParsedQrPayload("", "");
+        String[] parts = value.split(":");
+        if (parts.length == 1) return new ParsedQrPayload(parts[0], "");
+        if (parts.length == 3 && "BOOKING".equalsIgnoreCase(parts[0])) {
+            return new ParsedQrPayload(parts[1], parts[2]);
+        }
+        throw new IllegalArgumentException("Invalid QR value format");
+    }
+
+    private BookingCheckInValidationResponse validateBookingForCheckIn(Booking booking) {
+        String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
+        if ("CHECKED_IN".equals(status) || "CHECKED_IN".equals(defaultCheckInStatus(booking))) {
+            return invalidResponse(booking, "Booking is already checked in");
+        }
+        if ("CANCELLED".equals(status)) {
+            return invalidResponse(booking, "Cancelled booking cannot be checked in");
+        }
+        if ("REJECTED".equals(status)) {
+            return invalidResponse(booking, "Rejected booking cannot be checked in");
+        }
+        if (!"APPROVED".equals(status)) {
+            return invalidResponse(booking, "Only approved bookings can be checked in");
+        }
+        if (!isWithinAllowedCheckInWindow(booking)) {
+            return invalidResponse(booking, "Booking is outside the allowed check-in window");
+        }
+        BookingCheckInValidationResponse response = toCheckInValidationResponse(booking, "Booking is valid for check-in");
+        response.setValid(true);
+        return response;
+    }
+
+    private boolean isWithinAllowedCheckInWindow(Booking booking) {
+        try {
+            LocalDate bookingDate = LocalDate.parse(safeTrim(booking.getBookingDate()));
+            LocalTime start = LocalTime.parse(safeTrim(booking.getStartTime()));
+            LocalTime end = LocalTime.parse(safeTrim(booking.getEndTime()));
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime windowStart = LocalDateTime.of(bookingDate, start).minusMinutes(30);
+            LocalDateTime windowEnd = LocalDateTime.of(bookingDate, end).plusMinutes(30);
+            return !now.isBefore(windowStart) && !now.isAfter(windowEnd);
+        } catch (DateTimeParseException ex) {
+            return false;
+        }
+    }
+
+    private BookingCheckInValidationResponse invalidResponse(Booking booking, String message) {
+        BookingCheckInValidationResponse response = toCheckInValidationResponse(booking, message);
+        response.setValid(false);
+        return response;
+    }
+
+    private BookingCheckInValidationResponse toCheckInValidationResponse(Booking booking, String message) {
+        User user = resolveSingleBookingUser(booking);
+        BookingCheckInValidationResponse response = new BookingCheckInValidationResponse();
+        response.setMessage(message);
+        response.setBookingId(safeTrim(booking.getId()));
+        response.setUserName(userDisplayName(user));
+        response.setUserEmail(userEmail(user));
+        response.setResourceName(safeTrim(booking.getResourceName()));
+        response.setBookingDate(safeTrim(booking.getBookingDate()));
+        response.setStartTime(safeTrim(booking.getStartTime()));
+        response.setEndTime(safeTrim(booking.getEndTime()));
+        response.setBookingStatus(safeTrim(booking.getStatus()));
+        response.setCheckInStatus(defaultCheckInStatus(booking));
+        response.setPurpose(safeTrim(booking.getPurpose()));
+        return response;
+    }
+
+    private String defaultCheckInStatus(Booking booking) {
+        String checkInStatus = safeTrim(booking.getCheckInStatus());
+        if (!checkInStatus.isEmpty()) return checkInStatus;
+        String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
+        return "CHECKED_IN".equals(status) ? "CHECKED_IN" : "NOT_CHECKED_IN";
+    }
+
+    private User resolveSingleBookingUser(Booking booking) {
+        String createdBy = safeTrim(booking.getCreatedBy());
+        if (createdBy.isEmpty()) return null;
+        Optional<User> byId = userRepo.findById(createdBy);
+        if (byId.isPresent()) return byId.get();
+        return userRepo.findByEmail(createdBy).orElse(null);
+    }
+
+    private static final class ParsedQrPayload {
+        private final String bookingId;
+        private final String token;
+
+        private ParsedQrPayload(String bookingId, String token) {
+            this.bookingId = bookingId == null ? "" : bookingId;
+            this.token = token == null ? "" : token;
+        }
+    }
+
     @Scheduled(fixedDelay = 60000)
     public void rejectExpiredPendingBookings() {
         LocalDateTime now = LocalDateTime.now();
@@ -460,10 +646,11 @@ public class BookingService {
         if (filter.isEmpty() || "ALL".equals(filter)) return true;
         return switch (filter) {
             case "PENDING", "UNREVIEWED" -> "PENDING".equals(status);
-            case "REVIEWED" -> "APPROVED".equals(status) || "REJECTED".equals(status);
+            case "REVIEWED" -> "APPROVED".equals(status) || "REJECTED".equals(status) || "CHECKED_IN".equals(status);
             case "APPROVED" -> "APPROVED".equals(status);
             case "REJECTED" -> "REJECTED".equals(status);
             case "CANCELLED" -> "CANCELLED".equals(status);
+            case "CHECKED_IN" -> "CHECKED_IN".equals(status);
             default -> true;
         };
     }

@@ -4,6 +4,8 @@ import com.example.server.dto.booking.CreateBookingRequest;
 import com.example.server.dto.booking.CancelBookingRequest;
 import com.example.server.dto.booking.AdminBookingActionRequest;
 import com.example.server.dto.booking.AdminBookingRowResponse;
+import com.example.server.dto.booking.BookingCheckInValidationResponse;
+import com.example.server.dto.booking.CheckInValidateRequest;
 import com.example.server.dto.booking.UpdateMyBookingRequest;
 import com.example.server.model.Booking;
 import com.example.server.service.BookingService;
@@ -52,6 +54,16 @@ public class BookingController {
     @GetMapping("/my")
     public List<Booking> getMyBookings(Authentication authentication) {
         return bookingService.getMyBookings(authentication.getName());
+    }
+
+    @GetMapping("/{id}/qr")
+    public ResponseEntity<?> getMyBookingQr(
+        Authentication authentication,
+        @PathVariable("id") String id
+    ) {
+        return bookingService.getMyBookingQr(id, authentication.getName())
+            .<ResponseEntity<?>>map(qr -> ResponseEntity.ok(Map.of("message", "QR value generated successfully", "data", qr)))
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found")));
     }
 
     @GetMapping("/admin")
@@ -104,6 +116,23 @@ public class BookingController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found"));
         }
         return ResponseEntity.ok(Map.of("message", "Cancelled booking deleted successfully"));
+    }
+
+    @PostMapping("/admin/checkin/validate")
+    public ResponseEntity<?> validateCheckInByAdmin(
+        @Valid @RequestBody CheckInValidateRequest request
+    ) {
+        BookingCheckInValidationResponse response = bookingService.validateCheckInByAdmin(request);
+        return ResponseEntity.ok(Map.of("message", response.getMessage(), "data", response));
+    }
+
+    @PostMapping("/admin/checkin/confirm")
+    public ResponseEntity<?> confirmCheckInByAdmin(
+        Authentication authentication,
+        @Valid @RequestBody CheckInValidateRequest request
+    ) {
+        BookingCheckInValidationResponse response = bookingService.confirmCheckInByAdmin(request, authentication.getName());
+        return ResponseEntity.ok(Map.of("message", response.getMessage(), "data", response));
     }
 
     @PatchMapping("/{id}")

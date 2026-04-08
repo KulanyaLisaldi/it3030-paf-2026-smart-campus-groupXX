@@ -21,6 +21,12 @@ public class Booking {
     private Integer expectedAttendees;
     private String additionalNotes;
     private String status;
+    private String checkInStatus;
+    private String checkInToken;
+    private String qrValue;
+    private Instant checkedInAt;
+    private String checkedInBy;
+    private String verificationMethod;
     private String reviewReason;
     private String cancellationReason;
     private String createdBy;
@@ -109,6 +115,54 @@ public class Booking {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getCheckInStatus() {
+        return checkInStatus;
+    }
+
+    public void setCheckInStatus(String checkInStatus) {
+        this.checkInStatus = checkInStatus;
+    }
+
+    public String getCheckInToken() {
+        return checkInToken;
+    }
+
+    public void setCheckInToken(String checkInToken) {
+        this.checkInToken = checkInToken;
+    }
+
+    public String getQrValue() {
+        return qrValue;
+    }
+
+    public void setQrValue(String qrValue) {
+        this.qrValue = qrValue;
+    }
+
+    public Instant getCheckedInAt() {
+        return checkedInAt;
+    }
+
+    public void setCheckedInAt(Instant checkedInAt) {
+        this.checkedInAt = checkedInAt;
+    }
+
+    public String getCheckedInBy() {
+        return checkedInBy;
+    }
+
+    public void setCheckedInBy(String checkedInBy) {
+        this.checkedInBy = checkedInBy;
+    }
+
+    public String getVerificationMethod() {
+        return verificationMethod;
+    }
+
+    public void setVerificationMethod(String verificationMethod) {
+        this.verificationMethod = verificationMethod;
     }
 
     public String getReviewReason() {

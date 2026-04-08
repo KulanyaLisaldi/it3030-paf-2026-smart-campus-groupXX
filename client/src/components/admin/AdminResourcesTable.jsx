@@ -37,6 +37,8 @@ const primaryActionBtnStyle = {
   background: "#FA8112",
   color: "#fff",
 };
+const DEFAULT_AVAILABILITY_START = "08:00";
+const DEFAULT_AVAILABILITY_END = "18:00";
 
 const smallBtnStyle = (variant = "neutral") => {
   const base = {
@@ -133,6 +135,57 @@ function normalizeResources(payload) {
   return [];
 }
 
+function parseClockToken(tokenRaw) {
+  const token = String(tokenRaw || "").trim().toLowerCase().replace(".", ":");
+  const m = token.match(/^(\d{1,2}):(\d{2})\s*(am|pm)?$/);
+  if (!m) return null;
+  let hour = Number(m[1]);
+  const minute = Number(m[2]);
+  const suffix = m[3] || "";
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || minute < 0 || minute > 59) return null;
+  if (suffix) {
+    if (hour < 0 || hour > 12) return null;
+    if (hour === 0) hour = 12;
+    if (suffix === "am") {
+      if (hour === 12) hour = 0;
+    } else if (hour !== 12) {
+      hour += 12;
+    }
+  } else if (hour < 0 || hour > 23) {
+    return null;
+  }
+  if (hour === 24 && minute === 0) return 24 * 60;
+  if (hour < 0 || hour > 23) return null;
+  return hour * 60 + minute;
+}
+
+function toHHMM(totalMinutes) {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function parseAvailabilityRange(raw) {
+  const text = String(raw || "").trim();
+  const timeTokens = text.match(/\d{1,2}[:.]\d{2}\s*(?:am|pm)?/gi) || [];
+  if (timeTokens.length < 2) {
+    return { start: DEFAULT_AVAILABILITY_START, end: DEFAULT_AVAILABILITY_END };
+  }
+  const startMin = parseClockToken(timeTokens[0]);
+  let endMin = parseClockToken(timeTokens[1]);
+  if (endMin === 0 && /am/i.test(timeTokens[1])) endMin = 24 * 60;
+  if (startMin == null || endMin == null || startMin >= endMin) {
+    return { start: DEFAULT_AVAILABILITY_START, end: DEFAULT_AVAILABILITY_END };
+  }
+  return { start: toHHMM(startMin), end: toHHMM(endMin) };
+}
+
+function availabilityText(start, end) {
+  const s = String(start || "").trim();
+  const e = String(end || "").trim();
+  return `${s}-${e}`;
+}
+
 /** URLs safe to treat as persisted (server paths). Never blob/data previews — they break after refresh. */
 function sanitizePersistedImageUrls(urls) {
   if (!Array.isArray(urls)) return [];
@@ -173,7 +226,8 @@ export default function AdminResourcesTable() {
     capacity: "",
     location: "",
     description: "",
-    availabilityWindows: "",
+    availabilityStart: DEFAULT_AVAILABILITY_START,
+    availabilityEnd: DEFAULT_AVAILABILITY_END,
     status: "ACTIVE",
     resourceImageFiles: [],
     resourceImagePreviews: [],
@@ -186,7 +240,8 @@ export default function AdminResourcesTable() {
     capacity: "",
     location: "",
     description: "",
-    availabilityWindows: "",
+    availabilityStart: DEFAULT_AVAILABILITY_START,
+    availabilityEnd: DEFAULT_AVAILABILITY_END,
     status: "ACTIVE",
     imageUrls: [],
     newImageFiles: [],
@@ -287,7 +342,8 @@ export default function AdminResourcesTable() {
       capacity: "",
       location: "",
       description: "",
-      availabilityWindows: "",
+      availabilityStart: DEFAULT_AVAILABILITY_START,
+      availabilityEnd: DEFAULT_AVAILABILITY_END,
       status: "ACTIVE",
       resourceImageFiles: [],
       resourceImagePreviews: [],
@@ -303,6 +359,7 @@ export default function AdminResourcesTable() {
   };
 
   const openEditDrawer = (resource) => {
+    const parsedAvailability = parseAvailabilityRange(resource.availability || resource.availabilityText || "");
     setSelectedResource(resource);
     setEditResourceId(resource.id || "");
     setEditFormData({
@@ -312,7 +369,8 @@ export default function AdminResourcesTable() {
       capacity: String(resource.capacity ?? ""),
       location: resource.location || "",
       description: resource.description || "",
-      availabilityWindows: resource.availability || resource.availabilityText || "",
+      availabilityStart: parsedAvailability.start,
+      availabilityEnd: parsedAvailability.end,
       status: resource.status || "ACTIVE",
       imageUrls: sanitizePersistedImageUrls(
         Array.isArray(resource.imageUrls) && resource.imageUrls.length > 0
@@ -334,6 +392,11 @@ export default function AdminResourcesTable() {
   };
 
   const handleCreateResource = async (e) => {
+    if (formData.availabilityStart >= formData.availabilityEnd) {
+      setCreateError("Availability end time must be later than start time.");
+      return;
+    }
+
     e.preventDefault();
     const capacityNumber = Number(formData.capacity);
     if (!formData.resourceCode.trim() || !formData.resourceName.trim() || !formData.location.trim()) {
@@ -352,7 +415,7 @@ export default function AdminResourcesTable() {
     payload.append("capacity", String(capacityNumber));
     payload.append("location", formData.location.trim());
     payload.append("description", formData.description.trim());
-    payload.append("availability", formData.availabilityWindows.trim());
+    payload.append("availability", availabilityText(formData.availabilityStart, formData.availabilityEnd));
     payload.append("status", formData.status);
     for (const imageFile of formData.resourceImageFiles) {
       payload.append("images", imageFile);
@@ -374,7 +437,7 @@ export default function AdminResourcesTable() {
         capacity: capacityNumber,
         location: formData.location.trim(),
         description: formData.description.trim(),
-        availability: formData.availabilityWindows.trim(),
+        availability: availabilityText(formData.availabilityStart, formData.availabilityEnd),
         status: formData.status,
         imageUrls: [],
         imageUrl: "",
@@ -386,6 +449,11 @@ export default function AdminResourcesTable() {
   };
 
   const handleEditResource = async (e) => {
+    if (editFormData.availabilityStart >= editFormData.availabilityEnd) {
+      setEditError("Availability end time must be later than start time.");
+      return;
+    }
+
     e.preventDefault();
     const capacityNumber = Number(editFormData.capacity);
     if (!editResourceId) {
@@ -407,7 +475,7 @@ export default function AdminResourcesTable() {
     payload.append("capacity", String(capacityNumber));
     payload.append("location", editFormData.location.trim());
     payload.append("description", editFormData.description.trim());
-    payload.append("availability", editFormData.availabilityWindows.trim());
+    payload.append("availability", availabilityText(editFormData.availabilityStart, editFormData.availabilityEnd));
     payload.append("status", editFormData.status);
     for (const kept of editFormData.imageUrls) {
       payload.append("keptImageUrls", kept);
@@ -437,7 +505,7 @@ export default function AdminResourcesTable() {
             capacity: capacityNumber,
             location: editFormData.location.trim(),
             description: editFormData.description.trim(),
-            availability: editFormData.availabilityWindows.trim(),
+            availability: availabilityText(editFormData.availabilityStart, editFormData.availabilityEnd),
             status: editFormData.status,
             imageUrls: keptOnly,
             imageUrl: keptOnly[0] || "",
@@ -671,8 +739,12 @@ export default function AdminResourcesTable() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
-                  <label style={labelStyle}>Availability Windows</label>
-                  <textarea value={formData.availabilityWindows} onChange={(e) => updateForm("availabilityWindows", e.target.value)} style={{ ...inputStyle, minHeight: "88px", resize: "vertical" }} placeholder="Mon-Fri 08:00-18:00" />
+                  <label style={labelStyle}>Availability Start</label>
+                  <input type="time" value={formData.availabilityStart} onChange={(e) => updateForm("availabilityStart", e.target.value)} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Availability End</label>
+                  <input type="time" value={formData.availabilityEnd} onChange={(e) => updateForm("availabilityEnd", e.target.value)} style={inputStyle} />
                 </div>
                 <div>
                   <label style={labelStyle}>Status</label>
@@ -799,8 +871,12 @@ export default function AdminResourcesTable() {
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
-                      <label style={labelStyle}>Availability Windows</label>
-                      <textarea value={editFormData.availabilityWindows} onChange={(e) => updateEditForm("availabilityWindows", e.target.value)} style={{ ...inputStyle, minHeight: 82, resize: "vertical" }} />
+                      <label style={labelStyle}>Availability Start</label>
+                      <input type="time" value={editFormData.availabilityStart} onChange={(e) => updateEditForm("availabilityStart", e.target.value)} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Availability End</label>
+                      <input type="time" value={editFormData.availabilityEnd} onChange={(e) => updateEditForm("availabilityEnd", e.target.value)} style={inputStyle} />
                     </div>
                     <div>
                       <label style={labelStyle}>Status</label>

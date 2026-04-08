@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/admin/AdminLayout.jsx";
 import { cancelBookingByAdmin, deleteBookingByAdmin, getAdminBookings, approveBookingByAdmin, rejectBookingByAdmin } from "../api/bookings";
 import {
@@ -32,6 +33,7 @@ const chartPalette = {
 
 function statusChip(statusRaw) {
   const status = String(statusRaw || "").toUpperCase();
+  if (status === "CHECKED_IN") return { background: "#ccfbf1", color: "#0f766e" };
   if (status === "APPROVED") return { background: "#dcfce7", color: "#166534" };
   if (status === "REJECTED") return { background: "#fee2e2", color: "#b91c1c" };
   if (status === "CANCELLED") return { background: "#e5e7eb", color: "#374151" };
@@ -117,6 +119,7 @@ function monthKey(date) {
 }
 
 export default function AdminBookingsPage() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -477,6 +480,21 @@ export default function AdminBookingsPage() {
           >
             Booking Details
           </button>
+          <button
+            type="button"
+            onClick={() => navigate("/admin/qr-checkin")}
+            style={{
+              ...buttonStyle,
+              height: 34,
+              background: "transparent",
+              borderRadius: 0,
+              borderBottom: "2px solid transparent",
+              color: "#64748b",
+              padding: "0 2px",
+            }}
+          >
+            QR Check-In
+          </button>
           </div>
 
           {activeTab === "dashboard" && (
@@ -602,6 +620,7 @@ export default function AdminBookingsPage() {
             <option value="APPROVED">Approved</option>
             <option value="REJECTED">Rejected</option>
             <option value="CANCELLED">Cancelled</option>
+            <option value="CHECKED_IN">Checked In</option>
           </select>
           <input type="date" value={filters.date} onChange={(e) => setFilters((s) => ({ ...s, date: e.target.value }))} style={inputStyle} />
           <select value={filters.resourceType} onChange={(e) => setFilters((s) => ({ ...s, resourceType: e.target.value }))} style={inputStyle}>
@@ -615,6 +634,7 @@ export default function AdminBookingsPage() {
             <option value="REVIEWED">Reviewed</option>
             <option value="APPROVED">Approved</option>
             <option value="REJECTED">Rejected</option>
+            <option value="CHECKED_IN">Checked In</option>
           </select>
         </div>
         <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
