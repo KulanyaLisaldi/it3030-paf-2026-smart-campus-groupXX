@@ -213,6 +213,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
   const [hoveredRowId, setHoveredRowId] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [addUserMenuOpen, setAddUserMenuOpen] = useState(false);
+  const [mainTab, setMainTab] = useState("dashboard");
 
   const modalInputStyle = {
     width: "100%",
@@ -484,12 +485,78 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
         </div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: "#14213D", marginBottom: 4 }}>All Users</div>
+      {!loading && !error && (
+        <div role="tablist" aria-label="User management" style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: "2px solid #e5e7eb" }}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mainTab === "dashboard"}
+            id="user-mgmt-tab-dashboard"
+            onClick={() => setMainTab("dashboard")}
+            style={{
+              padding: "10px 16px",
+              border: "none",
+              borderBottom: mainTab === "dashboard" ? "3px solid #FA8112" : "3px solid transparent",
+              marginBottom: -2,
+              background: "transparent",
+              fontWeight: 800,
+              fontSize: 14,
+              color: mainTab === "dashboard" ? "#0f172a" : "#64748b",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            Dashboard
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mainTab === "allUsers"}
+            id="user-mgmt-tab-all-users"
+            onClick={() => setMainTab("allUsers")}
+            style={{
+              padding: "10px 16px",
+              border: "none",
+              borderBottom: mainTab === "allUsers" ? "3px solid #FA8112" : "3px solid transparent",
+              marginBottom: -2,
+              background: "transparent",
+              fontWeight: 800,
+              fontSize: 14,
+              color: mainTab === "allUsers" ? "#0f172a" : "#64748b",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            All Users
+          </button>
         </div>
-      </div>
+      )}
 
+      {loading && <p style={{ margin: 0, color: "#64748b", fontWeight: 800 }}>Loading users…</p>}
+      {error && <p style={{ margin: 0, color: "#b91c1c", fontWeight: 900 }}>{error}</p>}
+
+      {!loading && !error && mainTab === "dashboard" && (
+        <div
+          role="tabpanel"
+          aria-labelledby="user-mgmt-tab-dashboard"
+          style={{
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
+            padding: "24px 20px",
+            background: "#f8fafc",
+            minHeight: 320,
+            boxSizing: "border-box",
+          }}
+        >
+          <div style={{ fontSize: 16, fontWeight: 900, color: "#14213D", marginBottom: 6 }}>User analytics</div>
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b", fontWeight: 600, lineHeight: 1.5 }}>
+            Chart widgets and user insights will appear here.
+          </p>
+        </div>
+      )}
+
+      {!loading && !error && mainTab === "allUsers" && (
+      <>
       <div
         style={{
           display: "grid",
@@ -644,16 +711,10 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
 
       <div style={{ marginBottom: 14 }} />
 
-      {loading && <p style={{ margin: 0, color: "#64748b", fontWeight: 800 }}>Loading users…</p>}
-      {error && <p style={{ margin: 0, color: "#b91c1c", fontWeight: 900 }}>{error}</p>}
-
-      {!loading && !error && (
-        <>
-          <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #e5e7eb" }}>
+          <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #e5e7eb" }} role="tabpanel" aria-labelledby="user-mgmt-tab-all-users">
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  <th style={thStyle}>User ID</th>
                   <th style={thStyle}>Name</th>
                   <th style={thStyle}>Email</th>
                   <th style={thStyle}>Role</th>
@@ -667,7 +728,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td style={tdStyle} colSpan={10}>
+                    <td style={tdStyle} colSpan={8}>
                       No users found.
                     </td>
                   </tr>
@@ -679,7 +740,6 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                     onMouseEnter={() => setHoveredRowId(u.userId)}
                     onMouseLeave={() => setHoveredRowId("")}
                   >
-                    <td style={tdStyle}>{u.userId}</td>
                     <td style={tdStyle}>{u.name || "—"}</td>
                     <td style={tdStyle}>{u.email || "—"}</td>
                     <td style={tdStyle}>
@@ -783,7 +843,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               </div>
             </div>
           )}
-        </>
+      </>
       )}
 
       {detailsUser && (

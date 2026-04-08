@@ -918,7 +918,7 @@ export default function AdminTicketDashboard() {
   }, [filteredAndSortedTickets]);
 
   return (
-    <AdminLayout activeSection="tickets" pageTitle="Ticket Management" description="Manage tickets, assign technicians, and track ticket progress.">
+    <AdminLayout activeSection="tickets">
       <section style={containerStyle}>
         <div style={headerStyle}>
           <div>
