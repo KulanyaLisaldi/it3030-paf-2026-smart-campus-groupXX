@@ -10,9 +10,11 @@ import com.example.server.repository.BookingRepo;
 import com.example.server.repository.ResourceRepo;
 import com.example.server.repository.UserRepo;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -86,6 +88,7 @@ public class BookingService {
     }
 
     public List<Booking> getMyBookings(String createdBy) {
+        rejectExpiredPendingBookings();
         return bookingRepo.findByCreatedByOrderByCreatedAtDesc(createdBy);
     }
 
@@ -97,6 +100,7 @@ public class BookingService {
         String userRaw,
         String approvalStateRaw
     ) {
+        rejectExpiredPendingBookings();
         String statusFilter = safeTrim(statusRaw).toUpperCase(Locale.ROOT);
         String dateFilter = safeTrim(bookingDateRaw);
         String resourceTypeFilter = safeTrim(resourceTypeRaw).toUpperCase(Locale.ROOT);
@@ -155,6 +159,7 @@ public class BookingService {
     }
 
     public Optional<Booking> cancelMyBooking(String bookingId, String createdBy, String reasonRaw) {
+        rejectExpiredPendingBookings();
         Optional<Booking> maybe = bookingRepo.findById(bookingId);
         if (maybe.isEmpty()) {
             return Optional.empty();
@@ -170,6 +175,9 @@ public class BookingService {
         String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
         if (!"PENDING".equals(status) && !"APPROVED".equals(status)) {
             throw new IllegalArgumentException("Only pending or approved bookings can be cancelled");
+        }
+        if (hasBookingStarted(booking)) {
+            throw new IllegalArgumentException("Past or started bookings cannot be cancelled");
         }
         booking.setStatus("CANCELLED");
         booking.setCancellationReason(reason);
@@ -249,6 +257,7 @@ public class BookingService {
     }
 
     public Optional<Booking> updateMyPendingBooking(String bookingId, String createdBy, UpdateMyBookingRequest request) {
+        rejectExpiredPendingBookings();
         Optional<Booking> maybe = bookingRepo.findById(bookingId);
         if (maybe.isEmpty()) {
             return Optional.empty();
@@ -260,6 +269,9 @@ public class BookingService {
         String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
         if (!"PENDING".equals(status)) {
             throw new IllegalArgumentException("Only pending bookings can be updated");
+        }
+        if (hasBookingStarted(booking)) {
+            throw new IllegalArgumentException("Only upcoming bookings can be updated");
         }
 
         String bookingDate = safeTrim(request.getBookingDate());
@@ -399,6 +411,44 @@ public class BookingService {
 
     private String safeTrim(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    @Scheduled(fixedDelay = 60000)
+    public void rejectExpiredPendingBookings() {
+        LocalDateTime now = LocalDateTime.now();
+        List<Booking> bookings = bookingRepo.findAllByOrderByCreatedAtDesc();
+        for (Booking booking : bookings) {
+            String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
+            if (!"PENDING".equals(status)) {
+                continue;
+            }
+            if (!hasBookingStarted(booking, now)) {
+                continue;
+            }
+            booking.setStatus("REJECTED");
+            booking.setReviewReason("Auto-rejected: booking time has passed without admin decision");
+            booking.setUpdatedAt(Instant.now());
+            bookingRepo.save(booking);
+        }
+    }
+
+    private boolean hasBookingStarted(Booking booking) {
+        return hasBookingStarted(booking, LocalDateTime.now());
+    }
+
+    private boolean hasBookingStarted(Booking booking, LocalDateTime now) {
+        String dateRaw = safeTrim(booking.getBookingDate());
+        String startRaw = safeTrim(booking.getStartTime());
+        if (dateRaw.isEmpty() || startRaw.isEmpty()) {
+            return false;
+        }
+        try {
+            LocalDate date = LocalDate.parse(dateRaw);
+            LocalTime start = LocalTime.parse(startRaw);
+            return !LocalDateTime.of(date, start).isAfter(now);
+        } catch (DateTimeParseException ex) {
+            return false;
+        }
     }
 
     private boolean matchesStatusFilter(String status, String filter) {

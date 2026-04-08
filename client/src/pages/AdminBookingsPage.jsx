@@ -1,11 +1,34 @@
 import React, { useEffect, useMemo, useState } from "react";
 import AdminLayout from "../components/admin/AdminLayout.jsx";
 import { cancelBookingByAdmin, deleteBookingByAdmin, getAdminBookings, approveBookingByAdmin, rejectBookingByAdmin } from "../api/bookings";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 const panelStyle = { backgroundColor: "#FFFFFF", borderRadius: "14px", border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.04)", padding: "14px" };
 const inputStyle = { width: "100%", height: 40, borderRadius: 10, border: "1px solid #d1d5db", padding: "0 10px", boxSizing: "border-box", fontSize: 14 };
 const buttonStyle = { height: 38, borderRadius: 9, border: "none", padding: "0 12px", fontWeight: 700, cursor: "pointer" };
 const actionControlStyle = { height: 32, width: 108, borderRadius: 8, fontSize: 12, boxSizing: "border-box" };
+const chartPalette = {
+  navy: "#14213D",
+  orange: "#FA8112",
+  amber: "#FCA311",
+  green: "#2e7d32",
+  red: "#d32f2f",
+  gray: "#6b7280",
+};
 
 function statusChip(statusRaw) {
   const status = String(statusRaw || "").toUpperCase();
@@ -56,6 +79,43 @@ function cancellationOrRejectionLabel(row) {
   return "Reason";
 }
 
+function countByStatus(rows) {
+  const counts = { total: rows.length, pending: 0, approved: 0, rejected: 0, cancelled: 0 };
+  rows.forEach((row) => {
+    const s = String(row?.status || "").toUpperCase();
+    if (s === "PENDING") counts.pending += 1;
+    if (s === "APPROVED") counts.approved += 1;
+    if (s === "REJECTED") counts.rejected += 1;
+    if (s === "CANCELLED") counts.cancelled += 1;
+  });
+  return counts;
+}
+
+function normalizeResourceType(value) {
+  const upper = String(value || "").toUpperCase().replace(/\s+/g, "_").trim();
+  if (!upper) return "UNKNOWN";
+  return upper;
+}
+
+function formatTrendLabel(date, mode) {
+  if (mode === "DAY") return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  if (mode === "WEEK") return `W${Math.ceil(date.getDate() / 7)} ${date.toLocaleDateString(undefined, { month: "short" })}`;
+  return date.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+}
+
+function formatHourLabel(startTime) {
+  const [hRaw] = String(startTime || "").split(":");
+  const h = Number(hRaw);
+  if (!Number.isFinite(h)) return "Unknown";
+  const suffix = h >= 12 ? "PM" : "AM";
+  const normalized = h % 12 || 12;
+  return `${normalized}:00 ${suffix}`;
+}
+
+function monthKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export default function AdminBookingsPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -71,6 +131,14 @@ export default function AdminBookingsPage() {
     user: "",
     approvalState: "ALL",
   });
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [trendMode, setTrendMode] = useState("DAY");
+  const [calendarDateFilter, setCalendarDateFilter] = useState("");
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [calendarDetailsDate, setCalendarDetailsDate] = useState("");
 
   const loadRows = async (nextFilters = filters) => {
     setLoading(true);
@@ -98,6 +166,182 @@ export default function AdminBookingsPage() {
     });
     return ["ALL", ...Array.from(set)];
   }, [rows]);
+
+  const statusCounts = useMemo(() => countByStatus(rows), [rows]);
+  const statusChartData = useMemo(
+    () => [
+      { name: "Pending", value: statusCounts.pending, color: chartPalette.navy },
+      { name: "Approved", value: statusCounts.approved, color: chartPalette.green },
+      { name: "Rejected", value: statusCounts.rejected, color: chartPalette.red },
+      { name: "Cancelled", value: statusCounts.cancelled, color: chartPalette.gray },
+    ],
+    [statusCounts]
+  );
+
+  const bookingsTrendData = useMemo(() => {
+    const now = new Date();
+    const keyMap = new Map();
+    if (trendMode === "DAY") {
+      for (let i = 13; i >= 0; i -= 1) {
+        const d = new Date(now);
+        d.setHours(0, 0, 0, 0);
+        d.setDate(now.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        keyMap.set(key, { label: formatTrendLabel(d, "DAY"), count: 0 });
+      }
+      rows.forEach((r) => {
+        const key = String(r?.bookingDate || "");
+        if (keyMap.has(key)) keyMap.get(key).count += 1;
+      });
+      return Array.from(keyMap.values());
+    }
+    if (trendMode === "WEEK") {
+      for (let i = 7; i >= 0; i -= 1) {
+        const d = new Date(now);
+        d.setHours(0, 0, 0, 0);
+        d.setDate(now.getDate() - i * 7);
+        const year = d.getFullYear();
+        const month = d.getMonth();
+        const week = Math.ceil(d.getDate() / 7);
+        const key = `${year}-${month + 1}-W${week}`;
+        keyMap.set(key, { label: formatTrendLabel(d, "WEEK"), count: 0 });
+      }
+      rows.forEach((r) => {
+        const d = new Date(`${r?.bookingDate || ""}T00:00:00`);
+        if (Number.isNaN(d.getTime())) return;
+        const key = `${d.getFullYear()}-${d.getMonth() + 1}-W${Math.ceil(d.getDate() / 7)}`;
+        if (keyMap.has(key)) keyMap.get(key).count += 1;
+      });
+      return Array.from(keyMap.values());
+    }
+    for (let i = 11; i >= 0; i -= 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+      keyMap.set(key, { label: formatTrendLabel(d, "MONTH"), count: 0 });
+    }
+    rows.forEach((r) => {
+      const d = new Date(`${r?.bookingDate || ""}T00:00:00`);
+      if (Number.isNaN(d.getTime())) return;
+      const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+      if (keyMap.has(key)) keyMap.get(key).count += 1;
+    });
+    return Array.from(keyMap.values());
+  }, [rows, trendMode]);
+
+  const resourceTypeChartData = useMemo(() => {
+    const tracked = ["LAB", "LECTURE_HALL", "MEETING_ROOM", "EQUIPMENT"];
+    const counts = Object.fromEntries(tracked.map((t) => [t, 0]));
+    rows.forEach((r) => {
+      const key = normalizeResourceType(r?.resourceType);
+      if (counts[key] != null) counts[key] += 1;
+    });
+    return tracked.map((key) => ({ type: key, count: counts[key] }));
+  }, [rows]);
+
+  const topResourcesChartData = useMemo(() => {
+    const map = new Map();
+    rows.forEach((r) => {
+      const name = String(r?.resourceName || "Unknown").trim() || "Unknown";
+      map.set(name, (map.get(name) || 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }, [rows]);
+
+  const decisionByTypeChartData = useMemo(() => {
+    const tracked = ["LAB", "LECTURE_HALL", "MEETING_ROOM", "EQUIPMENT"];
+    const seed = { approved: 0, rejected: 0, cancelled: 0, pending: 0 };
+    const map = new Map(tracked.map((t) => [t, { ...seed }]));
+    rows.forEach((r) => {
+      const type = normalizeResourceType(r?.resourceType);
+      if (!map.has(type)) map.set(type, { ...seed });
+      const status = String(r?.status || "").toUpperCase();
+      const obj = map.get(type);
+      if (status === "APPROVED") obj.approved += 1;
+      else if (status === "REJECTED") obj.rejected += 1;
+      else if (status === "CANCELLED") obj.cancelled += 1;
+      else obj.pending += 1;
+    });
+    return Array.from(map.entries()).map(([type, v]) => ({ type, ...v }));
+  }, [rows]);
+
+  const peakHoursChartData = useMemo(() => {
+    const map = new Map();
+    rows.forEach((r) => {
+      const label = formatHourLabel(r?.startTime);
+      map.set(label, (map.get(label) || 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([hour, count]) => ({ hour, count, sort: toSortHour(hour) }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ hour, count }) => ({ hour, count }));
+  }, [rows]);
+
+  const approvedDateSet = useMemo(() => {
+    const set = new Set();
+    rows.forEach((r) => {
+      if (String(r?.status || "").toUpperCase() !== "APPROVED") return;
+      const date = String(r?.bookingDate || "").trim();
+      if (date) set.add(date);
+    });
+    return set;
+  }, [rows]);
+
+  const approvedCountByDate = useMemo(() => {
+    const map = new Map();
+    rows.forEach((r) => {
+      if (String(r?.status || "").toUpperCase() !== "APPROVED") return;
+      const date = String(r?.bookingDate || "").trim();
+      if (!date) return;
+      map.set(date, (map.get(date) || 0) + 1);
+    });
+    return map;
+  }, [rows]);
+
+  const approvedRowsByDate = useMemo(() => {
+    const map = new Map();
+    rows.forEach((r) => {
+      if (String(r?.status || "").toUpperCase() !== "APPROVED") return;
+      const date = String(r?.bookingDate || "").trim();
+      if (!date) return;
+      const list = map.get(date) || [];
+      list.push(r);
+      map.set(date, list);
+    });
+    return map;
+  }, [rows]);
+
+  const calendarCells = useMemo(() => {
+    const monthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+    const startWeekDay = monthStart.getDay();
+    const gridStart = new Date(monthStart);
+    gridStart.setDate(monthStart.getDate() - startWeekDay);
+    const cells = [];
+    for (let i = 0; i < 42; i += 1) {
+      const d = new Date(gridStart);
+      d.setDate(gridStart.getDate() + i);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      cells.push({
+        iso,
+        day: d.getDate(),
+        inCurrentMonth: monthKey(d) === monthKey(calendarMonth),
+        approved: approvedDateSet.has(iso),
+        approvedCount: approvedCountByDate.get(iso) || 0,
+      });
+    }
+    return cells;
+  }, [calendarMonth, approvedDateSet, approvedCountByDate]);
+
+  function toSortHour(label) {
+    const m = String(label).match(/^(\d+):00\s(AM|PM)$/);
+    if (!m) return 999;
+    let h = Number(m[1]);
+    if (m[2] === "PM" && h !== 12) h += 12;
+    if (m[2] === "AM" && h === 12) h = 0;
+    return h;
+  }
 
   const openAction = (type, row) => setActionModal({ type, row, reason: "", error: "" });
   const closeAction = () => setActionModal({ type: "", row: null, reason: "", error: "" });
@@ -160,6 +404,197 @@ export default function AdminBookingsPage() {
   return (
     <AdminLayout activeSection="bookings" pageTitle="Booking Management" description="Review booking requests, approve/reject decisions, monitor conflicts, and manage booking lifecycle.">
       <section style={panelStyle}>
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 10 }}>
+            {[
+              { label: "Total Bookings", value: statusCounts.total },
+              { label: "Pending", value: statusCounts.pending },
+              { label: "Approved", value: statusCounts.approved },
+              { label: "Rejected", value: statusCounts.rejected },
+              { label: "Cancelled", value: statusCounts.cancelled },
+            ].map((card) => (
+              <div
+                key={card.label}
+                style={{
+                  background: "linear-gradient(160deg, #ffffff 0%, #f8fafc 65%, #eef2ff 100%)",
+                  border: "1px solid #dbe4ee",
+                  borderRadius: 14,
+                  padding: "12px 14px",
+                  minHeight: 76,
+                  boxShadow: "0 10px 20px rgba(15,23,42,0.12), 0 2px 4px rgba(15,23,42,0.08), inset 0 1px 0 rgba(255,255,255,0.9)",
+                  transform: "translateZ(0)",
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>{card.label}</p>
+                <p style={{ margin: "8px 0 0", fontSize: 28, fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{card.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: 10, borderBottom: "1px solid #e2e8f0", paddingBottom: 8 }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab("dashboard")}
+            style={{
+              ...buttonStyle,
+              height: 34,
+              background: "transparent",
+              borderRadius: 0,
+              borderBottom: activeTab === "dashboard" ? "2px solid #FA8112" : "2px solid transparent",
+              color: activeTab === "dashboard" ? "#0f172a" : "#64748b",
+              padding: "0 2px",
+            }}
+          >
+            Dashboard
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("calendar")}
+            style={{
+              ...buttonStyle,
+              height: 34,
+              background: "transparent",
+              borderRadius: 0,
+              borderBottom: activeTab === "calendar" ? "2px solid #FA8112" : "2px solid transparent",
+              color: activeTab === "calendar" ? "#0f172a" : "#64748b",
+              padding: "0 2px",
+            }}
+          >
+            Calendar View
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("details")}
+            style={{
+              ...buttonStyle,
+              height: 34,
+              background: "transparent",
+              borderRadius: 0,
+              borderBottom: activeTab === "details" ? "2px solid #FA8112" : "2px solid transparent",
+              color: activeTab === "details" ? "#0f172a" : "#64748b",
+              padding: "0 2px",
+            }}
+          >
+            Booking Details
+          </button>
+          </div>
+
+          {activeTab === "dashboard" && (
+            <div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Bookings by Status</h3>
+                  <div style={{ height: 260 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={statusChartData} dataKey="value" nameKey="name" innerRadius={58} outerRadius={94} paddingAngle={2}>
+                          {statusChartData.map((entry) => (
+                            <Cell key={entry.name} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Bookings Trend</h3>
+                    <select value={trendMode} onChange={(e) => setTrendMode(e.target.value)} style={{ ...inputStyle, width: 120, height: 32 }}>
+                      <option value="DAY">Day</option>
+                      <option value="WEEK">Week</option>
+                      <option value="MONTH">Month</option>
+                    </select>
+                  </div>
+                  <div style={{ height: 260 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={bookingsTrendData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="label" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="count" stroke={chartPalette.orange} strokeWidth={3} dot={{ r: 3 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Most Booked Resource Types</h3>
+                  <div style={{ height: 260 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={resourceTypeChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="type" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Bar dataKey="count" fill={chartPalette.navy} radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Top Booked Resources</h3>
+                  <div style={{ height: 260 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={topResourcesChartData} layout="vertical" margin={{ left: 30 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" allowDecimals={false} />
+                        <YAxis type="category" dataKey="name" width={130} />
+                        <Tooltip />
+                        <Bar dataKey="count" fill={chartPalette.amber} radius={[0, 6, 6, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Approval Decision by Resource Type</h3>
+                  <div style={{ height: 280 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={decisionByTypeChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="type" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="approved" stackId="a" fill={chartPalette.green} />
+                        <Bar dataKey="rejected" stackId="a" fill={chartPalette.red} />
+                        <Bar dataKey="cancelled" stackId="a" fill={chartPalette.gray} />
+                        <Bar dataKey="pending" stackId="a" fill={chartPalette.navy} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Peak Booking Hours</h3>
+                  <div style={{ height: 280 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={peakHoursChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="hour" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Bar dataKey="count" fill={chartPalette.orange} radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "details" && (
+            <>
+      <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 10 }}>
           <select value={filters.status} onChange={(e) => setFilters((s) => ({ ...s, status: e.target.value }))} style={inputStyle}>
             <option value="ALL">Status: All</option>
@@ -196,7 +631,7 @@ export default function AdminBookingsPage() {
         {error && <p style={{ margin: "10px 0 0", color: "#b91c1c", fontWeight: 700 }}>{error}</p>}
       </section>
 
-      <section style={{ ...panelStyle, marginTop: 12, padding: 0, overflowX: "auto" }}>
+      <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, marginTop: 12, padding: 0, overflowX: "auto", background: "#fff" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1160 }}>
           <thead>
             <tr style={{ background: "#f8fafc", color: "#334155", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -249,6 +684,104 @@ export default function AdminBookingsPage() {
           </tbody>
         </table>
       </section>
+            </>
+          )}
+
+          {activeTab === "calendar" && (
+            <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Calendar View</h3>
+                <input
+                  type="date"
+                  value={calendarDateFilter}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setCalendarDateFilter(value);
+                    if (value) {
+                      const [y, m] = value.split("-").map(Number);
+                      if (Number.isFinite(y) && Number.isFinite(m) && m >= 1 && m <= 12) {
+                        setCalendarMonth(new Date(y, m - 1, 1));
+                      }
+                    }
+                  }}
+                  style={{ ...inputStyle, width: 190, height: 34 }}
+                />
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, color: "#475569", fontSize: 13 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 999, background: "#22c55e", display: "inline-block" }} />
+                Approved booking dates
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 6 }}>
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                  <div key={d} style={{ textAlign: "center", fontWeight: 700, color: "#64748b", fontSize: 12, padding: "4px 0" }}>{d}</div>
+                ))}
+                {calendarCells.map((cell) => (
+                  <button
+                    key={cell.iso}
+                    type="button"
+                    onClick={() => {
+                      if (!cell.approved) return;
+                      setCalendarDetailsDate(cell.iso);
+                    }}
+                    style={{
+                      minHeight: 70,
+                      borderRadius: 10,
+                      border: cell.approved ? "1px solid #16a34a" : "1px solid #e2e8f0",
+                      background: cell.approved ? "linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%)" : "#fff",
+                      opacity: cell.inCurrentMonth ? 1 : 0.45,
+                      padding: 6,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      textAlign: "left",
+                      cursor: cell.approved ? "pointer" : "default",
+                    }}
+                  >
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>{cell.day}</span>
+                    {cell.approved && (
+                      <span style={{ alignSelf: "flex-start", fontSize: 11, fontWeight: 700, color: "#166534", background: "#bbf7d0", borderRadius: 999, padding: "2px 6px" }}>
+                        {cell.approvedCount} approved
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      </section>
+
+      {calendarDetailsDate && (
+        <div role="dialog" aria-modal="true" onClick={() => setCalendarDetailsDate("")} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", zIndex: 1320 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: "760px", backgroundColor: "#fff", borderRadius: "14px", border: "1px solid #e5e7eb", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)", padding: "18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+              <h3 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "#111827" }}>Approved Bookings on {fmtDate(calendarDetailsDate)}</h3>
+              <button type="button" onClick={() => setCalendarDetailsDate("")} style={{ ...buttonStyle, height: 34, background: "#fff", border: "1px solid #d1d5db", color: "#0f172a" }}>
+                Close
+              </button>
+            </div>
+            {(approvedRowsByDate.get(calendarDetailsDate) || []).length === 0 ? (
+              <p style={{ margin: 0, color: "#64748b" }}>No approved bookings found for this date.</p>
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                {(approvedRowsByDate.get(calendarDetailsDate) || []).map((row) => (
+                  <div key={row.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", background: "#f8fafc" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", fontSize: 14, color: "#334155" }}>
+                      <div><strong>Booked By:</strong> {row.userName || "—"}</div>
+                      <div><strong>Resource:</strong> {row.resourceName || "—"}</div>
+                      <div><strong>Type:</strong> {row.resourceType || "—"}</div>
+                      <div><strong>Time:</strong> {row.startTime || "—"} - {row.endTime || "—"}</div>
+                      <div style={{ gridColumn: "1 / -1" }}><strong>Purpose:</strong> {row.purpose || "—"}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {viewRow && (
         <div role="dialog" aria-modal="true" onClick={() => setViewRow(null)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", zIndex: 1300 }}>
