@@ -36,7 +36,7 @@ function canReject(status) {
 }
 function canCancel(status) {
   const s = String(status || "").toUpperCase();
-  return s === "PENDING" || s === "APPROVED";
+  return s === "APPROVED";
 }
 function canDelete(status) {
   return String(status || "").toUpperCase() === "CANCELLED";
@@ -225,7 +225,11 @@ export default function AdminBookingsPage() {
                     <button type="button" onClick={() => setViewRow(row)} style={{ ...buttonStyle, height: 32, background: "#fff", border: "1px solid #d1d5db", color: "#0f172a", fontSize: 12 }}>View</button>
                     <button type="button" disabled={!canApprove(row.status) || busyId === row.id} onClick={() => void handleApproveDirect(row)} style={{ ...buttonStyle, height: 32, background: canApprove(row.status) ? "#15803d" : "#d1d5db", color: "#fff", fontSize: 12, cursor: !canApprove(row.status) ? "not-allowed" : "pointer" }}>Approve</button>
                     <button type="button" disabled={!canReject(row.status) || busyId === row.id} onClick={() => openAction("reject", row)} style={{ ...buttonStyle, height: 32, background: canReject(row.status) ? "#dc2626" : "#d1d5db", color: "#fff", fontSize: 12, cursor: !canReject(row.status) ? "not-allowed" : "pointer" }}>Reject</button>
-                    <button type="button" disabled={!canCancel(row.status) || busyId === row.id} onClick={() => openAction("cancel", row)} style={{ ...buttonStyle, height: 32, background: canCancel(row.status) ? "#7c3aed" : "#d1d5db", color: "#fff", fontSize: 12, cursor: !canCancel(row.status) ? "not-allowed" : "pointer" }}>Cancel</button>
+                    {canCancel(row.status) && (
+                      <button type="button" disabled={busyId === row.id} onClick={() => openAction("cancel", row)} style={{ ...buttonStyle, height: 32, background: "#7c3aed", color: "#fff", fontSize: 12 }}>
+                        Cancel
+                      </button>
+                    )}
                     <button type="button" disabled={!canDelete(row.status) || busyId === row.id} onClick={() => openAction("delete", row)} style={{ ...buttonStyle, height: 32, background: canDelete(row.status) ? "#111827" : "#d1d5db", color: "#fff", fontSize: 12, cursor: !canDelete(row.status) ? "not-allowed" : "pointer" }}>Delete</button>
                   </div>
                 </td>
