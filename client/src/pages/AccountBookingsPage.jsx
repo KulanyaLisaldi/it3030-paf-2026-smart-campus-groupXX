@@ -137,6 +137,25 @@ function bookingEndDate(booking) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function deriveSlotKeysFromRange(slots, startTime, endTime) {
+  const startMin = toMinutes(startTime);
+  const endMin = toMinutes(endTime);
+  if (!Array.isArray(slots) || !slots.length || startMin == null || endMin == null || startMin >= endMin) return [];
+  const matched = slots.filter((slot) => {
+    const s = toMinutes(slot.startTime);
+    const e = toMinutes(slot.endTime);
+    if (s == null || e == null) return false;
+    return s >= startMin && e <= endMin;
+  });
+  const coveredMinutes = matched.reduce((acc, slot) => {
+    const s = toMinutes(slot.startTime);
+    const e = toMinutes(slot.endTime);
+    return acc + (e - s);
+  }, 0);
+  if (coveredMinutes !== endMin - startMin) return [];
+  return matched.map((slot) => slot.key);
+}
+
 export default function AccountBookingsPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -335,7 +354,7 @@ export default function AccountBookingsPage() {
     setEditBookingTarget(booking);
     setEditBookingDraft({ bookingDate: booking?.bookingDate || "", startTime: booking?.startTime || "", endTime: booking?.endTime || "", purpose: booking?.purpose || "", expectedAttendees: booking?.expectedAttendees == null ? "" : String(booking.expectedAttendees), additionalNotes: booking?.additionalNotes || "" });
     setEditBookingError("");
-    setEditSelectedSlotKeys([`${booking?.startTime || ""}-${booking?.endTime || ""}`]);
+    setEditSelectedSlotKeys([]);
   };
 
   useEffect(() => {
@@ -415,8 +434,14 @@ export default function AccountBookingsPage() {
   }, [editSlots, editSelectedSlotKeys]);
 
   useEffect(() => {
+    if (!editBookingTarget?.id || !editSlots.length) return;
+    if (editSelectedSlotKeys.length > 0) return;
+    const keys = deriveSlotKeysFromRange(editSlots, editBookingTarget.startTime, editBookingTarget.endTime);
+    if (keys.length) setEditSelectedSlotKeys(keys);
+  }, [editBookingTarget?.id, editBookingTarget?.startTime, editBookingTarget?.endTime, editSlots, editSelectedSlotKeys.length]);
+
+  useEffect(() => {
     if (!editSelectedOrderedSlots.length) {
-      setEditBookingDraft((d) => ({ ...d, startTime: "", endTime: "" }));
       return;
     }
     const startTime = editSelectedOrderedSlots[0].startTime;
