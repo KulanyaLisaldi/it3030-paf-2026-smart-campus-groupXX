@@ -2,6 +2,8 @@ package com.example.server.controller;
 
 import com.example.server.dto.booking.CreateBookingRequest;
 import com.example.server.dto.booking.CancelBookingRequest;
+import com.example.server.dto.booking.AdminBookingActionRequest;
+import com.example.server.dto.booking.AdminBookingRowResponse;
 import com.example.server.dto.booking.UpdateMyBookingRequest;
 import com.example.server.model.Booking;
 import com.example.server.service.BookingService;
@@ -17,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import java.util.List;
 import java.util.Map;
@@ -48,6 +52,58 @@ public class BookingController {
     @GetMapping("/my")
     public List<Booking> getMyBookings(Authentication authentication) {
         return bookingService.getMyBookings(authentication.getName());
+    }
+
+    @GetMapping("/admin")
+    public List<AdminBookingRowResponse> getAllBookingsForAdmin(
+        @RequestParam(value = "status", required = false) String status,
+        @RequestParam(value = "date", required = false) String date,
+        @RequestParam(value = "resourceType", required = false) String resourceType,
+        @RequestParam(value = "resource", required = false) String resource,
+        @RequestParam(value = "user", required = false) String user,
+        @RequestParam(value = "approvalState", required = false) String approvalState
+    ) {
+        return bookingService.getAllBookingsForAdmin(status, date, resourceType, resource, user, approvalState);
+    }
+
+    @RequestMapping(value = "/admin/{id}/approve", method = {RequestMethod.PATCH, RequestMethod.POST})
+    public ResponseEntity<?> approveBookingByAdmin(
+        @PathVariable("id") String id,
+        @Valid @RequestBody(required = false) AdminBookingActionRequest request
+    ) {
+        String reason = request == null ? "" : request.getReason();
+        return bookingService.approveBookingByAdmin(id, reason)
+            .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Booking approved successfully", "booking", updated)))
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found")));
+    }
+
+    @RequestMapping(value = "/admin/{id}/reject", method = {RequestMethod.PATCH, RequestMethod.POST})
+    public ResponseEntity<?> rejectBookingByAdmin(
+        @PathVariable("id") String id,
+        @Valid @RequestBody AdminBookingActionRequest request
+    ) {
+        return bookingService.rejectBookingByAdmin(id, request.getReason())
+            .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Booking rejected successfully", "booking", updated)))
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found")));
+    }
+
+    @RequestMapping(value = "/admin/{id}/cancel", method = {RequestMethod.PATCH, RequestMethod.POST})
+    public ResponseEntity<?> cancelBookingByAdmin(
+        @PathVariable("id") String id,
+        @Valid @RequestBody AdminBookingActionRequest request
+    ) {
+        return bookingService.cancelBookingByAdmin(id, request.getReason())
+            .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Booking cancelled successfully", "booking", updated)))
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found")));
+    }
+
+    @DeleteMapping("/admin/{id}")
+    public ResponseEntity<?> deleteCancelledBookingByAdmin(@PathVariable("id") String id) {
+        boolean deleted = bookingService.deleteCancelledBookingByAdmin(id);
+        if (!deleted) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found"));
+        }
+        return ResponseEntity.ok(Map.of("message", "Cancelled booking deleted successfully"));
     }
 
     @PatchMapping("/{id}")
