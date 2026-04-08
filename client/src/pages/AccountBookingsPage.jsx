@@ -6,7 +6,7 @@ import { getResourceById } from "../api/resources";
 import { rememberPostLoginPath } from "../utils/authRedirect";
 import AccountLayout from "../components/account/AccountLayout";
 
-const cardStyle = { backgroundColor: "#ffffff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #e5e7eb", padding: "28px 32px", maxWidth: "980px" };
+const cardStyle = { backgroundColor: "#ffffff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #e5e7eb", padding: "28px 32px", width: "100%" };
 const sectionHeading = { fontSize: "28px", fontWeight: 650, color: "#111827", margin: "0 0 8px 0", letterSpacing: "-0.02em" };
 const subtleNote = { fontSize: "13px", color: "#6b7280", marginBottom: "24px", lineHeight: 1.5 };
 const bookingCardStyle = { backgroundColor: "#ffffff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #e5e7eb", padding: "18px 20px" };
@@ -52,6 +52,14 @@ function canCancelBooking(booking) {
 }
 function canEditBooking(booking) {
   return String(booking?.status || "").toUpperCase() === "PENDING" && isUpcomingBooking(booking);
+}
+function matchesApprovalStateFilter(statusRaw, filterRaw) {
+  const status = String(statusRaw || "").toUpperCase();
+  const filter = String(filterRaw || "ALL").toUpperCase();
+  if (!filter || filter === "ALL") return true;
+  if (filter === "UNREVIEWED") return status === "PENDING";
+  if (filter === "REVIEWED") return status === "APPROVED" || status === "REJECTED" || status === "CANCELLED";
+  return status === filter;
 }
 function cancellationOrRejectionReason(booking) {
   const status = String(booking?.status || "").toUpperCase();
@@ -111,6 +119,14 @@ export default function AccountBookingsPage() {
   const [editSlotsLoading, setEditSlotsLoading] = useState(false);
   const [editBookedRanges, setEditBookedRanges] = useState([]);
   const [editSelectedSlotKeys, setEditSelectedSlotKeys] = useState([]);
+  const [activeBookingsTab, setActiveBookingsTab] = useState("upcoming");
+  const [filters, setFilters] = useState({
+    status: "ALL",
+    date: "",
+    resourceType: "ALL",
+    resource: "",
+    approvalState: "ALL",
+  });
 
   useEffect(() => {
     if (!getAuthToken()) {
@@ -203,6 +219,31 @@ export default function AccountBookingsPage() {
     }
     return { upcomingBookings: upcoming, historyBookings: history };
   }, [bookings]);
+
+  const resourceTypes = useMemo(() => {
+    const set = new Set();
+    bookings.forEach((b) => {
+      const t = String(b?.resourceType || "").trim().toUpperCase();
+      if (t) set.add(t);
+    });
+    return ["ALL", ...Array.from(set)];
+  }, [bookings]);
+
+  const filterBooking = (booking) => {
+    const status = String(booking?.status || "").toUpperCase();
+    const resourceType = String(booking?.resourceType || "").toUpperCase();
+    const resourceText = String(booking?.resourceName || booking?.resourceId || "").toLowerCase();
+    const resourceNeedle = String(filters.resource || "").toLowerCase().trim();
+    if (filters.status !== "ALL" && status !== String(filters.status || "").toUpperCase()) return false;
+    if (filters.date && String(booking?.bookingDate || "") !== filters.date) return false;
+    if (filters.resourceType !== "ALL" && resourceType !== String(filters.resourceType || "").toUpperCase()) return false;
+    if (resourceNeedle && !resourceText.includes(resourceNeedle)) return false;
+    if (!matchesApprovalStateFilter(status, filters.approvalState)) return false;
+    return true;
+  };
+
+  const filteredUpcomingBookings = useMemo(() => upcomingBookings.filter(filterBooking), [upcomingBookings, filters]);
+  const filteredHistoryBookings = useMemo(() => historyBookings.filter(filterBooking), [historyBookings, filters]);
 
   const openEditBooking = (booking) => {
     setEditBookingTarget(booking);
@@ -383,24 +424,95 @@ export default function AccountBookingsPage() {
       {!bookingsLoading && bookingsError && <div style={cardStyle}><p style={{ margin: 0, color: "#b91c1c", fontSize: "15px", fontWeight: 700 }}>{bookingsError}</p></div>}
       {!bookingsLoading && !bookingsError && bookings.length === 0 && <div style={cardStyle}><p style={{ margin: 0, color: "#6b7280", fontSize: "15px" }}>No bookings yet.</p></div>}
       {!bookingsLoading && !bookingsError && bookings.length > 0 && (
-        <div style={{ display: "grid", gap: "18px", maxWidth: "980px" }}>
-          <section>
-            <h2 style={{ margin: "0 0 10px 0", fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>Upcoming Bookings</h2>
-            {upcomingBookings.length === 0 ? (
-              <div style={cardStyle}><p style={{ margin: 0, color: "#6b7280", fontSize: "14px" }}>No upcoming bookings.</p></div>
-            ) : (
-              <div style={{ display: "grid", gap: "14px" }}>{upcomingBookings.map(renderBookingCard)}</div>
-            )}
+        <div style={{ ...cardStyle, padding: "14px 16px" }}>
+          <section style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, background: "#fff", marginBottom: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 10 }}>
+              <select value={filters.status} onChange={(e) => setFilters((s) => ({ ...s, status: e.target.value }))} style={{ ...inputEditable, height: 40 }}>
+                <option value="ALL">Status: All</option>
+                <option value="PENDING">Pending</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+              <input type="date" value={filters.date} onChange={(e) => setFilters((s) => ({ ...s, date: e.target.value }))} style={{ ...inputEditable, height: 40 }} />
+              <select value={filters.resourceType} onChange={(e) => setFilters((s) => ({ ...s, resourceType: e.target.value }))} style={{ ...inputEditable, height: 40 }}>
+                {resourceTypes.map((t) => <option key={t} value={t}>{t === "ALL" ? "Resource Type: All" : t}</option>)}
+              </select>
+              <input value={filters.resource} onChange={(e) => setFilters((s) => ({ ...s, resource: e.target.value }))} style={{ ...inputEditable, height: 40 }} placeholder="Resource name/id" />
+              <select value={filters.approvalState} onChange={(e) => setFilters((s) => ({ ...s, approvalState: e.target.value }))} style={{ ...inputEditable, height: 40 }}>
+                <option value="ALL">Approval State: All</option>
+                <option value="UNREVIEWED">Unreviewed</option>
+                <option value="REVIEWED">Reviewed</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </div>
+            <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setFilters({ status: "ALL", date: "", resourceType: "ALL", resource: "", approvalState: "ALL" })}
+                style={{ padding: "7px 12px", borderRadius: "8px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontWeight: 700, cursor: "pointer" }}
+              >
+                Reset
+              </button>
+            </div>
           </section>
 
-          <section>
-            <h2 style={{ margin: "0 0 10px 0", fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>Booking History</h2>
-            {historyBookings.length === 0 ? (
-              <div style={cardStyle}><p style={{ margin: 0, color: "#6b7280", fontSize: "14px" }}>No booking history yet.</p></div>
+          <div style={{ display: "flex", gap: 10, borderBottom: "1px solid #e5e7eb", marginBottom: 12, paddingBottom: 8 }}>
+            <button
+              type="button"
+              onClick={() => setActiveBookingsTab("upcoming")}
+              style={{
+                border: "1px solid",
+                borderColor: activeBookingsTab === "upcoming" ? "#fb923c" : "#e5e7eb",
+                background: activeBookingsTab === "upcoming" ? "linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%)" : "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)",
+                borderRadius: 10,
+                padding: "8px 12px",
+                fontSize: "15px",
+                fontWeight: 800,
+                color: activeBookingsTab === "upcoming" ? "#111827" : "#6b7280",
+                boxShadow: activeBookingsTab === "upcoming" ? "inset 0 0 0 1px rgba(251,146,60,0.15)" : "none",
+                cursor: "pointer",
+              }}
+            >
+              Upcoming Bookings ({filteredUpcomingBookings.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveBookingsTab("history")}
+              style={{
+                border: "1px solid",
+                borderColor: activeBookingsTab === "history" ? "#94a3b8" : "#e5e7eb",
+                background: activeBookingsTab === "history" ? "linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%)" : "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)",
+                borderRadius: 10,
+                padding: "8px 12px",
+                fontSize: "15px",
+                fontWeight: 800,
+                color: activeBookingsTab === "history" ? "#111827" : "#6b7280",
+                boxShadow: activeBookingsTab === "history" ? "inset 0 0 0 1px rgba(148,163,184,0.2)" : "none",
+                cursor: "pointer",
+              }}
+            >
+              Booking History ({filteredHistoryBookings.length})
+            </button>
+          </div>
+
+          {activeBookingsTab === "upcoming" && (
+            filteredUpcomingBookings.length === 0 ? (
+              <div style={{ ...cardStyle, padding: "16px 18px" }}><p style={{ margin: 0, color: "#6b7280", fontSize: "14px" }}>No upcoming bookings.</p></div>
             ) : (
-              <div style={{ display: "grid", gap: "14px" }}>{historyBookings.map(renderBookingCard)}</div>
-            )}
-          </section>
+              <div style={{ display: "grid", gap: "14px" }}>{filteredUpcomingBookings.map(renderBookingCard)}</div>
+            )
+          )}
+
+          {activeBookingsTab === "history" && (
+            filteredHistoryBookings.length === 0 ? (
+              <div style={{ ...cardStyle, padding: "16px 18px" }}><p style={{ margin: 0, color: "#6b7280", fontSize: "14px" }}>No booking history yet.</p></div>
+            ) : (
+              <div style={{ display: "grid", gap: "14px" }}>{filteredHistoryBookings.map(renderBookingCard)}</div>
+            )
+          )}
         </div>
       )}
       {detailBooking && (

@@ -112,6 +112,9 @@ function formatHourLabel(startTime) {
   return `${normalized}:00 ${suffix}`;
 }
 
+function monthKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
 
 export default function AdminBookingsPage() {
   const [rows, setRows] = useState([]);
@@ -130,6 +133,12 @@ export default function AdminBookingsPage() {
   });
   const [activeTab, setActiveTab] = useState("dashboard");
   const [trendMode, setTrendMode] = useState("DAY");
+  const [calendarDateFilter, setCalendarDateFilter] = useState("");
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [calendarDetailsDate, setCalendarDetailsDate] = useState("");
 
   const loadRows = async (nextFilters = filters) => {
     setLoading(true);
@@ -270,6 +279,61 @@ export default function AdminBookingsPage() {
       .map(({ hour, count }) => ({ hour, count }));
   }, [rows]);
 
+  const approvedDateSet = useMemo(() => {
+    const set = new Set();
+    rows.forEach((r) => {
+      if (String(r?.status || "").toUpperCase() !== "APPROVED") return;
+      const date = String(r?.bookingDate || "").trim();
+      if (date) set.add(date);
+    });
+    return set;
+  }, [rows]);
+
+  const approvedCountByDate = useMemo(() => {
+    const map = new Map();
+    rows.forEach((r) => {
+      if (String(r?.status || "").toUpperCase() !== "APPROVED") return;
+      const date = String(r?.bookingDate || "").trim();
+      if (!date) return;
+      map.set(date, (map.get(date) || 0) + 1);
+    });
+    return map;
+  }, [rows]);
+
+  const approvedRowsByDate = useMemo(() => {
+    const map = new Map();
+    rows.forEach((r) => {
+      if (String(r?.status || "").toUpperCase() !== "APPROVED") return;
+      const date = String(r?.bookingDate || "").trim();
+      if (!date) return;
+      const list = map.get(date) || [];
+      list.push(r);
+      map.set(date, list);
+    });
+    return map;
+  }, [rows]);
+
+  const calendarCells = useMemo(() => {
+    const monthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+    const startWeekDay = monthStart.getDay();
+    const gridStart = new Date(monthStart);
+    gridStart.setDate(monthStart.getDate() - startWeekDay);
+    const cells = [];
+    for (let i = 0; i < 42; i += 1) {
+      const d = new Date(gridStart);
+      d.setDate(gridStart.getDate() + i);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      cells.push({
+        iso,
+        day: d.getDate(),
+        inCurrentMonth: monthKey(d) === monthKey(calendarMonth),
+        approved: approvedDateSet.has(iso),
+        approvedCount: approvedCountByDate.get(iso) || 0,
+      });
+    }
+    return cells;
+  }, [calendarMonth, approvedDateSet, approvedCountByDate]);
+
   function toSortHour(label) {
     const m = String(label).match(/^(\d+):00\s(AM|PM)$/);
     if (!m) return 999;
@@ -382,6 +446,21 @@ export default function AdminBookingsPage() {
             }}
           >
             Dashboard
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("calendar")}
+            style={{
+              ...buttonStyle,
+              height: 34,
+              background: "transparent",
+              borderRadius: 0,
+              borderBottom: activeTab === "calendar" ? "2px solid #FA8112" : "2px solid transparent",
+              color: activeTab === "calendar" ? "#0f172a" : "#64748b",
+              padding: "0 2px",
+            }}
+          >
+            Calendar View
           </button>
           <button
             type="button"
@@ -607,8 +686,102 @@ export default function AdminBookingsPage() {
       </section>
             </>
           )}
+
+          {activeTab === "calendar" && (
+            <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Calendar View</h3>
+                <input
+                  type="date"
+                  value={calendarDateFilter}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setCalendarDateFilter(value);
+                    if (value) {
+                      const [y, m] = value.split("-").map(Number);
+                      if (Number.isFinite(y) && Number.isFinite(m) && m >= 1 && m <= 12) {
+                        setCalendarMonth(new Date(y, m - 1, 1));
+                      }
+                    }
+                  }}
+                  style={{ ...inputStyle, width: 190, height: 34 }}
+                />
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, color: "#475569", fontSize: 13 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 999, background: "#22c55e", display: "inline-block" }} />
+                Approved booking dates
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 6 }}>
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                  <div key={d} style={{ textAlign: "center", fontWeight: 700, color: "#64748b", fontSize: 12, padding: "4px 0" }}>{d}</div>
+                ))}
+                {calendarCells.map((cell) => (
+                  <button
+                    key={cell.iso}
+                    type="button"
+                    onClick={() => {
+                      if (!cell.approved) return;
+                      setCalendarDetailsDate(cell.iso);
+                    }}
+                    style={{
+                      minHeight: 70,
+                      borderRadius: 10,
+                      border: cell.approved ? "1px solid #16a34a" : "1px solid #e2e8f0",
+                      background: cell.approved ? "linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%)" : "#fff",
+                      opacity: cell.inCurrentMonth ? 1 : 0.45,
+                      padding: 6,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      textAlign: "left",
+                      cursor: cell.approved ? "pointer" : "default",
+                    }}
+                  >
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>{cell.day}</span>
+                    {cell.approved && (
+                      <span style={{ alignSelf: "flex-start", fontSize: 11, fontWeight: 700, color: "#166534", background: "#bbf7d0", borderRadius: 999, padding: "2px 6px" }}>
+                        {cell.approvedCount} approved
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </section>
+
+      {calendarDetailsDate && (
+        <div role="dialog" aria-modal="true" onClick={() => setCalendarDetailsDate("")} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", zIndex: 1320 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: "760px", backgroundColor: "#fff", borderRadius: "14px", border: "1px solid #e5e7eb", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)", padding: "18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+              <h3 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "#111827" }}>Approved Bookings on {fmtDate(calendarDetailsDate)}</h3>
+              <button type="button" onClick={() => setCalendarDetailsDate("")} style={{ ...buttonStyle, height: 34, background: "#fff", border: "1px solid #d1d5db", color: "#0f172a" }}>
+                Close
+              </button>
+            </div>
+            {(approvedRowsByDate.get(calendarDetailsDate) || []).length === 0 ? (
+              <p style={{ margin: 0, color: "#64748b" }}>No approved bookings found for this date.</p>
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                {(approvedRowsByDate.get(calendarDetailsDate) || []).map((row) => (
+                  <div key={row.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", background: "#f8fafc" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", fontSize: 14, color: "#334155" }}>
+                      <div><strong>Booked By:</strong> {row.userName || "—"}</div>
+                      <div><strong>Resource:</strong> {row.resourceName || "—"}</div>
+                      <div><strong>Type:</strong> {row.resourceType || "—"}</div>
+                      <div><strong>Time:</strong> {row.startTime || "—"} - {row.endTime || "—"}</div>
+                      <div style={{ gridColumn: "1 / -1" }}><strong>Purpose:</strong> {row.purpose || "—"}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {viewRow && (
         <div role="dialog" aria-modal="true" onClick={() => setViewRow(null)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", zIndex: 1300 }}>
