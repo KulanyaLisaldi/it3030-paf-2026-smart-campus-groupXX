@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getResources } from "../api/resources";
 import { getAuthToken } from "../api/http";
+import { resolveResourceImageUrl } from "../utils/resourceImageUrl";
 
 const pageStyle = { width: "100%", margin: 0, padding: 0, boxSizing: "border-box", overflowX: "hidden" };
 const contentWrapStyle = { width: "100%", margin: 0, padding: "24px 24px 44px", boxSizing: "border-box" };
@@ -99,22 +100,13 @@ function formatResourceType(type) {
     .join(" ");
 }
 
-function normalizeImageUrl(url) {
-  const value = String(url || "").trim();
-  if (!value) return "";
-  if (value.startsWith("blob:")) return "";
-  if (/^https?:\/\//i.test(value)) return value;
-  if (value.startsWith("/")) return value;
-  return `/${value.replace(/^\.?\/*/, "")}`;
-}
-
 function getResourceCardImage(resource) {
   if (!resource || typeof resource !== "object") return "";
   if (Array.isArray(resource.imageUrls) && resource.imageUrls.length > 0) {
-    const firstValid = resource.imageUrls.map((u) => normalizeImageUrl(u)).find(Boolean);
+    const firstValid = resource.imageUrls.map((u) => resolveResourceImageUrl(u)).find(Boolean);
     if (firstValid) return firstValid;
   }
-  return normalizeImageUrl(resource.imageUrl);
+  return resolveResourceImageUrl(resource.imageUrl);
 }
 
 const RESOURCE_TYPE_PARAM_VALUES = new Set(["LAB", "LECTURE_HALL", "MEETING_ROOM", "EQUIPMENT"]);
