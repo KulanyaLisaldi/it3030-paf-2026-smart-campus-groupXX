@@ -271,7 +271,7 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
           </div>
         </header>
         <main style={mainScrollStyle}>
-          <h1 style={{ margin: "0 0 8px 0", fontSize: "26px", fontWeight: 800, color: "#14213D" }}>{pageTitle}</h1>
+          {pageTitle ? <h1 style={{ margin: "0 0 8px 0", fontSize: "26px", fontWeight: 800, color: "#14213D" }}>{pageTitle}</h1> : null}
           {description ? <p style={{ margin: "0 0 28px 0", fontSize: "14px", color: "#64748b", maxWidth: "640px", lineHeight: 1.5 }}>{description}</p> : null}
           {children}
         </main>
