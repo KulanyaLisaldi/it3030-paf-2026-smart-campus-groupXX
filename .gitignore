@@ -8,4 +8,3 @@ client/node_modules/
 # ===============================
 server/target/
 .env
-server/uploads/

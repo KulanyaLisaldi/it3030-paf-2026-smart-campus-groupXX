@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createResource, deleteResource, getAdminResources, updateResource, updateResourceStatus } from "../../api/adminResources";
-import { resolveResourceImageUrl } from "../../utils/resourceImageUrl";
 
 const pageCardStyle = {
   maxWidth: "100%",
@@ -745,7 +744,7 @@ export default function AdminResourcesTable() {
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(110px, 1fr))", gap: 8, marginBottom: 8 }}>
                         {editFormData.imageUrls.map((src, idx) => (
                           <div key={`existing-${src}-${idx}`} style={{ position: "relative" }}>
-                            <img src={resolveResourceImageUrl(src)} alt="Resource" style={{ width: "100%", height: 96, objectFit: "cover", borderRadius: 10, border: "1px solid #e5e7eb" }} />
+                            <img src={src} alt="Resource" style={{ width: "100%", height: 96, objectFit: "cover", borderRadius: 10, border: "1px solid #e5e7eb" }} />
                             <button
                               type="button"
                               onClick={() => updateEditForm("imageUrls", editFormData.imageUrls.filter((_, i) => i !== idx))}
@@ -838,7 +837,7 @@ export default function AdminResourcesTable() {
                       ).filter(Boolean).slice(0, 3).map((src, idx) => (
                         <img
                           key={`${src}-${idx}`}
-                          src={resolveResourceImageUrl(src)}
+                          src={src}
                           alt={selectedResource?.name || "Resource"}
                           style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10, border: "1px solid #e5e7eb" }}
                         />

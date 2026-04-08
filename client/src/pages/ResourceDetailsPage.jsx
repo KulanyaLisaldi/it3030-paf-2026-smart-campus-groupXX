@@ -2,10 +2,18 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getAuthToken } from "../api/http";
 import { getResourceById } from "../api/resources";
-import { resolveResourceImageUrl } from "../utils/resourceImageUrl";
 
 const wrapStyle = { maxWidth: 900, margin: "0 auto", padding: "28px 20px 40px", boxSizing: "border-box" };
 const cardStyle = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: 18, boxShadow: "0 8px 24px rgba(15,23,42,0.06)" };
+
+function normalizeImageUrl(url) {
+  const value = String(url || "").trim();
+  if (!value) return "";
+  if (value.startsWith("blob:")) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("/")) return value;
+  return `/${value.replace(/^\.?\/*/, "")}`;
+}
 
 /** Uploaded images for a resource (matches ResourcesPage URL rules). */
 function getResourceDetailImageUrls(resource) {
@@ -18,7 +26,7 @@ function getResourceDetailImageUrls(resource) {
   const seen = new Set();
   const out = [];
   for (const u of raw) {
-    const n = resolveResourceImageUrl(u);
+    const n = normalizeImageUrl(u);
     if (!n || seen.has(n)) continue;
     seen.add(n);
     out.push(n);
