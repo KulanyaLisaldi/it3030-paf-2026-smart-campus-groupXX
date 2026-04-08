@@ -5,6 +5,7 @@ import { cancelBookingByAdmin, deleteBookingByAdmin, getAdminBookings, approveBo
 const panelStyle = { backgroundColor: "#FFFFFF", borderRadius: "14px", border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.04)", padding: "14px" };
 const inputStyle = { width: "100%", height: 40, borderRadius: 10, border: "1px solid #d1d5db", padding: "0 10px", boxSizing: "border-box", fontSize: 14 };
 const buttonStyle = { height: 38, borderRadius: 9, border: "none", padding: "0 12px", fontWeight: 700, cursor: "pointer" };
+const actionControlStyle = { height: 32, width: 108, borderRadius: 8, fontSize: 12, boxSizing: "border-box" };
 
 function statusChip(statusRaw) {
   const status = String(statusRaw || "").toUpperCase();
@@ -39,7 +40,8 @@ function canCancel(status) {
   return s === "APPROVED";
 }
 function canDelete(status) {
-  return String(status || "").toUpperCase() === "CANCELLED";
+  const s = String(status || "").toUpperCase();
+  return s === "REJECTED" || s === "CANCELLED";
 }
 function cancellationOrRejectionReason(row) {
   const status = String(row?.status || "").toUpperCase();
@@ -181,7 +183,6 @@ export default function AdminBookingsPage() {
           </select>
         </div>
         <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-          <button type="button" onClick={() => void loadRows(filters)} style={{ ...buttonStyle, background: "#FA8112", color: "#fff" }} disabled={loading}>{loading ? "Loading..." : "Refresh"}</button>
           <button
             type="button"
             onClick={() => {
@@ -219,16 +220,28 @@ export default function AdminBookingsPage() {
                 <td style={{ padding: "10px" }}><span style={{ ...statusChip(row.status), display: "inline-flex", padding: "4px 9px", borderRadius: 999, fontWeight: 800, fontSize: 11 }}>{row.status || "PENDING"}</span></td>
                 <td style={{ padding: "10px" }}>{fmtDateTime(row.createdAt)}</td>
                 <td style={{ padding: "10px" }}>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <button type="button" onClick={() => setViewRow(row)} style={{ ...buttonStyle, height: 32, background: "#fff", border: "1px solid #d1d5db", color: "#0f172a", fontSize: 12 }}>View</button>
-                    <button type="button" disabled={!canApprove(row.status) || busyId === row.id} onClick={() => void handleApproveDirect(row)} style={{ ...buttonStyle, height: 32, background: canApprove(row.status) ? "#15803d" : "#d1d5db", color: "#fff", fontSize: 12, cursor: !canApprove(row.status) ? "not-allowed" : "pointer" }}>Approve</button>
-                    <button type="button" disabled={!canReject(row.status) || busyId === row.id} onClick={() => openAction("reject", row)} style={{ ...buttonStyle, height: 32, background: canReject(row.status) ? "#dc2626" : "#d1d5db", color: "#fff", fontSize: 12, cursor: !canReject(row.status) ? "not-allowed" : "pointer" }}>Reject</button>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                    <button type="button" onClick={() => setViewRow(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#fff", border: "1px solid #d1d5db", color: "#0f172a", textAlign: "center" }}>View</button>
+                    {canApprove(row.status) && (
+                      <button type="button" disabled={busyId === row.id} onClick={() => void handleApproveDirect(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#16a34a", color: "#fff", textAlign: "center" }}>
+                        Approve
+                      </button>
+                    )}
+                    {canReject(row.status) && (
+                      <button type="button" disabled={busyId === row.id} onClick={() => openAction("reject", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#dc2626", color: "#fff", textAlign: "center" }}>
+                        Reject
+                      </button>
+                    )}
                     {canCancel(row.status) && (
-                      <button type="button" disabled={busyId === row.id} onClick={() => openAction("cancel", row)} style={{ ...buttonStyle, height: 32, background: "#7c3aed", color: "#fff", fontSize: 12 }}>
+                      <button type="button" disabled={busyId === row.id} onClick={() => openAction("cancel", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#111827", color: "#fff", textAlign: "center" }}>
                         Cancel
                       </button>
                     )}
-                    <button type="button" disabled={!canDelete(row.status) || busyId === row.id} onClick={() => openAction("delete", row)} style={{ ...buttonStyle, height: 32, background: canDelete(row.status) ? "#111827" : "#d1d5db", color: "#fff", fontSize: 12, cursor: !canDelete(row.status) ? "not-allowed" : "pointer" }}>Delete</button>
+                    {canDelete(row.status) && (
+                      <button type="button" disabled={busyId === row.id} onClick={() => openAction("delete", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#dc2626", color: "#fff", textAlign: "center" }}>
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

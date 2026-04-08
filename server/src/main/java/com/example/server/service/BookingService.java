@@ -220,8 +220,8 @@ public class BookingService {
         }
         Booking booking = maybe.get();
         String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
-        if (!"PENDING".equals(status) && !"APPROVED".equals(status)) {
-            throw new IllegalArgumentException("Only pending or approved bookings can be cancelled");
+        if (!"APPROVED".equals(status)) {
+            throw new IllegalArgumentException("Only approved bookings can be cancelled");
         }
         String reason = safeTrim(reasonRaw);
         if (reason.isEmpty()) {
@@ -241,8 +241,8 @@ public class BookingService {
         }
         Booking booking = maybe.get();
         String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
-        if (!"CANCELLED".equals(status)) {
-            throw new IllegalArgumentException("Only cancelled bookings can be deleted");
+        if (!"CANCELLED".equals(status) && !"REJECTED".equals(status)) {
+            throw new IllegalArgumentException("Only rejected or cancelled bookings can be deleted");
         }
         bookingRepo.deleteById(bookingId);
         return true;
