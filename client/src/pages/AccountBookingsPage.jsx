@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { cancelMyBooking, getBookedSlots, getMyBookings, updateMyBooking } from "../api/bookings";
+import QRCode from "qrcode";
+import { cancelMyBooking, getBookedSlots, getMyBookingQr, getMyBookings, updateMyBooking } from "../api/bookings";
 import { getAuthToken } from "../api/http";
 import { getResourceById } from "../api/resources";
 import { rememberPostLoginPath } from "../utils/authRedirect";
@@ -16,10 +17,48 @@ const inputEditable = { ...inputDisabled, backgroundColor: "#ffffff", color: "#1
 const labelStyle = { display: "block", fontSize: "13px", fontWeight: 600, color: "#111827", marginBottom: "6px" };
 const EDIT_SLOT_WINDOW_START = "08:00";
 const EDIT_SLOT_WINDOW_END = "18:00";
+const EDIT_SLOT_DURATION_MINUTES = 60;
 
 function toMinutes(hhmm) { const [h, m] = String(hhmm || "").split(":").map(Number); if (!Number.isFinite(h) || !Number.isFinite(m)) return null; return h * 60 + m; }
 function toHHMM(totalMinutes) { const h = Math.floor(totalMinutes / 60); const m = totalMinutes % 60; return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`; }
 function prettySlot(start, end) { return `${start} - ${end}`; }
+function parseClockToken(tokenRaw) {
+  const token = String(tokenRaw || "").trim().toLowerCase().replace(".", ":");
+  const m = token.match(/^(\d{1,2}):(\d{2})\s*(am|pm)?$/);
+  if (!m) return null;
+  let hour = Number(m[1]);
+  const minute = Number(m[2]);
+  const suffix = m[3] || "";
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || minute < 0 || minute > 59) return null;
+  if (suffix) {
+    if (hour < 0 || hour > 12) return null;
+    if (hour === 0) hour = 12;
+    if (suffix === "am") {
+      if (hour === 12) hour = 0;
+    } else if (hour !== 12) {
+      hour += 12;
+    }
+  } else if (hour < 0 || hour > 23) {
+    return null;
+  }
+  if (hour === 24 && minute === 0) return 24 * 60;
+  if (hour < 0 || hour > 23) return null;
+  return hour * 60 + minute;
+}
+function parseAvailabilityWindow(raw) {
+  const text = String(raw || "").trim();
+  const timeTokens = text.match(/\d{1,2}[:.]\d{2}\s*(?:am|pm)?/gi) || [];
+  if (timeTokens.length < 2) return { start: EDIT_SLOT_WINDOW_START, end: EDIT_SLOT_WINDOW_END };
+  const startToken = timeTokens[0];
+  const endToken = timeTokens[1];
+  const startMin = parseClockToken(startToken);
+  let endMin = parseClockToken(endToken);
+  if (endMin === 0 && /am/i.test(endToken)) endMin = 24 * 60;
+  if (startMin == null || endMin == null || startMin >= endMin) {
+    return { start: EDIT_SLOT_WINDOW_START, end: EDIT_SLOT_WINDOW_END };
+  }
+  return { start: toHHMM(startMin), end: toHHMM(endMin) };
+}
 function areContiguousSlots(slots, slotDurationMinutes) {
   if (!Array.isArray(slots) || slots.length <= 1) return true;
   const ordered = [...slots].sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
@@ -34,7 +73,7 @@ function areContiguousSlots(slots, slotDurationMinutes) {
 function formatBookingDate(value) { if (!value) return "—"; const d = new Date(value); if (Number.isNaN(d.getTime())) return value; return d.toLocaleDateString(); }
 function formatBookingDateTime(value) { if (!value) return "—"; const d = new Date(value); if (Number.isNaN(d.getTime())) return "—"; return d.toLocaleString(); }
 function durationHours(start, end) { const [sh, sm] = String(start || "").split(":").map(Number); const [eh, em] = String(end || "").split(":").map(Number); if (![sh, sm, eh, em].every(Number.isFinite)) return "—"; const minutes = eh * 60 + em - (sh * 60 + sm); if (minutes <= 0) return "—"; return `${(minutes / 60).toFixed(minutes % 60 === 0 ? 0 : 1)} h`; }
-function bookingStatusChip(statusRaw) { const status = String(statusRaw || "PENDING").toUpperCase(); if (status === "APPROVED") return { backgroundColor: "#dcfce7", color: "#166534" }; if (status === "REJECTED") return { backgroundColor: "#fee2e2", color: "#b91c1c" }; if (status === "CANCELLED") return { backgroundColor: "#e5e7eb", color: "#374151" }; return { backgroundColor: "#dbeafe", color: "#1d4ed8" }; }
+function bookingStatusChip(statusRaw) { const status = String(statusRaw || "PENDING").toUpperCase(); if (status === "CHECKED_IN") return { backgroundColor: "#ccfbf1", color: "#0f766e" }; if (status === "APPROVED") return { backgroundColor: "#dcfce7", color: "#166534" }; if (status === "REJECTED") return { backgroundColor: "#fee2e2", color: "#b91c1c" }; if (status === "CANCELLED") return { backgroundColor: "#e5e7eb", color: "#374151" }; return { backgroundColor: "#dbeafe", color: "#1d4ed8" }; }
 function bookingStartDate(booking) {
   const datePart = String(booking?.bookingDate || "");
   const startPart = String(booking?.startTime || "00:00");
@@ -105,9 +144,13 @@ export default function AccountBookingsPage() {
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsError, setBookingsError] = useState("");
   const [resourceImageById, setResourceImageById] = useState({});
+  const [resourceAvailabilityById, setResourceAvailabilityById] = useState({});
   const [detailBooking, setDetailBooking] = useState(null);
   const [detailResourceImage, setDetailResourceImage] = useState("");
   const [detailImageLoading, setDetailImageLoading] = useState(false);
+  const [detailQrImage, setDetailQrImage] = useState("");
+  const [detailQrLoading, setDetailQrLoading] = useState(false);
+  const [detailQrError, setDetailQrError] = useState("");
   const [cancelBusyId, setCancelBusyId] = useState("");
   const [cancelBookingTarget, setCancelBookingTarget] = useState(null);
   const [cancelReasonDraft, setCancelReasonDraft] = useState("");
@@ -160,9 +203,9 @@ export default function AccountBookingsPage() {
         missing.map(async (id) => {
           try {
             const resource = await getResourceById(id);
-            return [id, resourcePrimaryImage(resource)];
+            return [id, resourcePrimaryImage(resource), String(resource?.availability || resource?.availabilityText || "").trim()];
           } catch {
-            return [id, ""];
+            return [id, "", ""];
           }
         })
       );
@@ -170,6 +213,11 @@ export default function AccountBookingsPage() {
         setResourceImageById((prev) => {
           const next = { ...prev };
           for (const [id, image] of entries) next[id] = image;
+          return next;
+        });
+        setResourceAvailabilityById((prev) => {
+          const next = { ...prev };
+          for (const [id, , availability] of entries) next[id] = availability;
           return next;
         });
       }
@@ -202,6 +250,44 @@ export default function AccountBookingsPage() {
       cancelled = true;
     };
   }, [detailBooking?.resourceId]);
+
+  useEffect(() => {
+    if (!detailBooking?.id) {
+      setDetailQrImage("");
+      setDetailQrLoading(false);
+      setDetailQrError("");
+      return;
+    }
+    const status = String(detailBooking?.status || "").toUpperCase();
+    if (status !== "APPROVED" && status !== "CHECKED_IN") {
+      setDetailQrImage("");
+      setDetailQrLoading(false);
+      setDetailQrError("");
+      return;
+    }
+    let cancelled = false;
+    setDetailQrLoading(true);
+    setDetailQrError("");
+    void (async () => {
+      try {
+        const data = await getMyBookingQr(detailBooking.id);
+        const qrValue = String(data?.data?.qrValue || "").trim();
+        if (!qrValue) throw new Error("QR value unavailable");
+        const url = await QRCode.toDataURL(qrValue, { width: 240, margin: 1 });
+        if (!cancelled) setDetailQrImage(url);
+      } catch (e) {
+        if (!cancelled) {
+          setDetailQrImage("");
+          setDetailQrError(e?.message || "Could not load booking QR.");
+        }
+      } finally {
+        if (!cancelled) setDetailQrLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detailBooking?.id, detailBooking?.status]);
 
   const { upcomingBookings, historyBookings } = useMemo(() => {
     const now = new Date();
@@ -268,20 +354,45 @@ export default function AccountBookingsPage() {
     void load();
   }, [editBookingTarget?.id, editBookingTarget?.resourceId, editBookingDraft.bookingDate]);
 
+  const editAvailabilityWindow = useMemo(() => {
+    const resourceId = String(editBookingTarget?.resourceId || "").trim();
+    return parseAvailabilityWindow(resourceAvailabilityById[resourceId] || "");
+  }, [editBookingTarget?.resourceId, resourceAvailabilityById]);
+
+  useEffect(() => {
+    const resourceId = String(editBookingTarget?.resourceId || "").trim();
+    if (!resourceId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const resource = await getResourceById(resourceId);
+        const latestAvailability = String(resource?.availability || resource?.availabilityText || "").trim();
+        if (!cancelled) {
+          setResourceAvailabilityById((prev) => ({ ...prev, [resourceId]: latestAvailability }));
+        }
+      } catch {
+        // keep previously known value/fallback
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [editBookingTarget?.resourceId]);
+
   const editSlots = useMemo(() => {
-    const startMin = toMinutes(EDIT_SLOT_WINDOW_START);
-    const endMin = toMinutes(EDIT_SLOT_WINDOW_END);
+    const startMin = toMinutes(editAvailabilityWindow.start);
+    const endMin = toMinutes(editAvailabilityWindow.end);
     if (startMin == null || endMin == null || startMin >= endMin) return [];
     const slots = [];
     let cursor = startMin;
-    while (cursor + 120 <= endMin) {
+    while (cursor + EDIT_SLOT_DURATION_MINUTES <= endMin) {
       const startTime = toHHMM(cursor);
-      const endTime = toHHMM(cursor + 120);
+      const endTime = toHHMM(cursor + EDIT_SLOT_DURATION_MINUTES);
       slots.push({ key: `${startTime}-${endTime}`, startTime, endTime });
-      cursor += 120;
+      cursor += EDIT_SLOT_DURATION_MINUTES;
     }
     return slots;
-  }, []);
+  }, [editAvailabilityWindow]);
 
   const editSlotStateMap = useMemo(() => {
     const map = {};
@@ -373,7 +484,7 @@ export default function AccountBookingsPage() {
     setEditSelectedSlotKeys((prev) => {
       const nextKeys = prev.includes(slot.key) ? prev.filter((k) => k !== slot.key) : [...prev, slot.key];
       const nextSlots = editSlots.filter((s) => nextKeys.includes(s.key));
-      const contiguous = areContiguousSlots(nextSlots, 120);
+      const contiguous = areContiguousSlots(nextSlots, EDIT_SLOT_DURATION_MINUTES);
       if (!contiguous) {
         setEditBookingError("Please select only continuous time slots.");
         return prev;
@@ -413,6 +524,14 @@ export default function AccountBookingsPage() {
       </div>
     </article>
   );
+
+  const downloadQr = () => {
+    if (!detailQrImage || !detailBooking?.id) return;
+    const a = document.createElement("a");
+    a.href = detailQrImage;
+    a.download = `booking-qr-${detailBooking.id}.png`;
+    a.click();
+  };
 
   if (!getAuthToken()) return null;
 
@@ -524,13 +643,26 @@ export default function AccountBookingsPage() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: "14px" }}>
-              <div style={{ border: "1px solid #e5e7eb", borderRadius: "10px", overflow: "hidden", background: "#f8fafc", height: "170px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {detailImageLoading ? (
-                  <span style={{ color: "#64748b", fontSize: "13px", fontWeight: 600 }}>Loading image...</span>
-                ) : detailResourceImage ? (
-                  <img src={detailResourceImage} alt="Resource" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <span style={{ color: "#64748b", fontSize: "13px", fontWeight: 600 }}>No image available</span>
+              <div style={{ display: "grid", gap: "10px" }}>
+                <div style={{ border: "1px solid #e5e7eb", borderRadius: "10px", overflow: "hidden", background: "#f8fafc", height: "170px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {detailImageLoading ? (
+                    <span style={{ color: "#64748b", fontSize: "13px", fontWeight: 600 }}>Loading image...</span>
+                  ) : detailResourceImage ? (
+                    <img src={detailResourceImage} alt="Resource" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <span style={{ color: "#64748b", fontSize: "13px", fontWeight: 600 }}>No image available</span>
+                  )}
+                </div>
+                {(String(detailBooking?.status || "").toUpperCase() === "APPROVED" || String(detailBooking?.status || "").toUpperCase() === "CHECKED_IN") && (
+                  <div style={{ border: "1px solid #e5e7eb", borderRadius: "10px", background: "#fff", padding: "10px", display: "grid", gap: 8, justifyItems: "center" }}>
+                    <strong style={{ fontSize: 13, color: "#111827" }}>Booking QR</strong>
+                    {detailQrLoading && <span style={{ color: "#64748b", fontSize: 12 }}>Loading QR...</span>}
+                    {!detailQrLoading && detailQrImage && <img src={detailQrImage} alt="Booking QR" style={{ width: 140, height: 140, objectFit: "contain", border: "1px solid #e5e7eb", borderRadius: 8 }} />}
+                    {!detailQrLoading && !detailQrImage && <span style={{ color: "#64748b", fontSize: 12 }}>{detailQrError || "QR unavailable."}</span>}
+                    <button type="button" disabled={!detailQrImage} onClick={downloadQr} style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #d1d5db", background: detailQrImage ? "#fff" : "#f3f4f6", color: "#374151", fontWeight: 700, fontSize: "12px", cursor: detailQrImage ? "pointer" : "not-allowed" }}>
+                      Download QR
+                    </button>
+                  </div>
                 )}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 14px", fontSize: "14px", color: "#374151" }}>

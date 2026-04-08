@@ -62,3 +62,15 @@ export function cancelBookingByAdmin(bookingId, reason) {
 export function deleteBookingByAdmin(bookingId) {
   return apiDelete(`/api/bookings/admin/${encodeURIComponent(bookingId)}`);
 }
+
+export function getMyBookingQr(bookingId) {
+  return apiGet(`/api/bookings/${encodeURIComponent(bookingId)}/qr`);
+}
+
+export function validateBookingCheckIn(payload) {
+  return apiPost("/api/bookings/admin/checkin/validate", payload);
+}
+
+export function confirmBookingCheckIn(payload) {
+  return apiPost("/api/bookings/admin/checkin/confirm", payload);
+}

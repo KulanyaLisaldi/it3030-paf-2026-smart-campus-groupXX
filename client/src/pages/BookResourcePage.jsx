@@ -12,7 +12,7 @@ const inputStyle = { width: "100%", height: 44, padding: "0 12px", borderRadius:
 const textareaStyle = { ...inputStyle, height: 108, padding: "12px", resize: "vertical" };
 const buttonStyle = { height: 42, borderRadius: 10, padding: "0 14px", border: "none", fontWeight: 800, cursor: "pointer" };
 
-const SLOT_DURATION_HOURS = 2;
+const SLOT_DURATION_HOURS = 1;
 const DEFAULT_WINDOW_START = "08:00";
 const DEFAULT_WINDOW_END = "18:00";
 
@@ -40,6 +40,30 @@ function prettySlot(start, end) {
   return `${start} - ${end}`;
 }
 
+function parseClockToken(tokenRaw) {
+  const token = String(tokenRaw || "").trim().toLowerCase().replace(".", ":");
+  const m = token.match(/^(\d{1,2}):(\d{2})\s*(am|pm)?$/);
+  if (!m) return null;
+  let hour = Number(m[1]);
+  const minute = Number(m[2]);
+  const suffix = m[3] || "";
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || minute < 0 || minute > 59) return null;
+  if (suffix) {
+    if (hour < 0 || hour > 12) return null;
+    if (hour === 0) hour = 12;
+    if (suffix === "am") {
+      if (hour === 12) hour = 0;
+    } else if (hour !== 12) {
+      hour += 12;
+    }
+  } else if (hour < 0 || hour > 23) {
+    return null;
+  }
+  if (hour === 24 && minute === 0) return 24 * 60;
+  if (hour < 0 || hour > 23) return null;
+  return hour * 60 + minute;
+}
+
 function areContiguousSlots(slots, slotDurationMinutes) {
   if (!Array.isArray(slots) || slots.length <= 1) return true;
   const ordered = [...slots].sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
@@ -54,14 +78,15 @@ function areContiguousSlots(slots, slotDurationMinutes) {
 
 function parseAvailabilityWindow(raw) {
   const text = String(raw || "").trim();
-  const match = text.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
-  if (!match) return { start: DEFAULT_WINDOW_START, end: DEFAULT_WINDOW_END };
-  const start = match[1];
-  const end = match[2];
-  const s = toMinutes(start);
-  const e = toMinutes(end);
-  if (s == null || e == null || s >= e) return { start: DEFAULT_WINDOW_START, end: DEFAULT_WINDOW_END };
-  return { start, end };
+  const timeTokens = text.match(/\d{1,2}[:.]\d{2}\s*(?:am|pm)?/gi) || [];
+  if (timeTokens.length < 2) return { start: DEFAULT_WINDOW_START, end: DEFAULT_WINDOW_END };
+  const startToken = timeTokens[0];
+  const endToken = timeTokens[1];
+  const startMin = parseClockToken(startToken);
+  let endMin = parseClockToken(endToken);
+  if (endMin === 0 && /am/i.test(endToken)) endMin = 24 * 60;
+  if (startMin == null || endMin == null || startMin >= endMin) return { start: DEFAULT_WINDOW_START, end: DEFAULT_WINDOW_END };
+  return { start: toHHMM(startMin), end: toHHMM(endMin) };
 }
 
 function todayIsoDate() {
@@ -157,8 +182,11 @@ export default function BookResourcePage() {
     const effectiveStartMin = isToday ? Math.max(startMin, currentMinutes) : startMin;
     const slots = [];
     let cursor = effectiveStartMin;
-    const remainder = cursor % 120;
-    if (remainder !== 0) cursor += 120 - remainder;
+    const slotDurationMinutes = SLOT_DURATION_HOURS * 60;
+    // Align to the resource-window grid (not to absolute clock hour).
+    // Example: 08:30-10:30 with 1h slots => 08:30-09:30, 09:30-10:30.
+    const offsetFromWindowStart = (cursor - startMin) % slotDurationMinutes;
+    if (offsetFromWindowStart !== 0) cursor += slotDurationMinutes - offsetFromWindowStart;
     while (cursor + SLOT_DURATION_HOURS * 60 <= endMin) {
       const startTime = toHHMM(cursor);
       const endTime = toHHMM(cursor + SLOT_DURATION_HOURS * 60);

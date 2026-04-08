@@ -18,6 +18,7 @@ import AdminUsersPage from "./pages/AdminUsersPage.jsx";
 import AdminResourcesPage from "./pages/AdminResourcesPage.jsx";
 import AdminResourceDetailsPage from "./pages/AdminResourceDetailsPage.jsx";
 import AdminBookingsPage from "./pages/AdminBookingsPage.jsx";
+import AdminQrCheckInPage from "./pages/AdminQrCheckInPage.jsx";
 import AdminNotificationsPage from "./pages/AdminNotificationsPage.jsx";
 import AdminAnalyticsPage from "./pages/AdminAnalyticsPage.jsx";
 import AdminContactMessagesPage from "./pages/AdminContactMessagesPage.jsx";
@@ -62,6 +63,7 @@ function AppContent() {
         <Route path="/adminresources" element={<AdminResourcesPage />} />
         <Route path="/adminresources/:id" element={<AdminResourceDetailsPage />} />
         <Route path="/adminbookings" element={<AdminBookingsPage />} />
+        <Route path="/admin/qr-checkin" element={<AdminQrCheckInPage />} />
         <Route path="/adminnotifications" element={<AdminNotificationsPage />} />
         <Route path="/adminanalytics" element={<AdminAnalyticsPage />} />
         <Route path="/adminticket" element={<AdminTicketDashboard />} />
