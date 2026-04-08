@@ -68,6 +68,7 @@ function AppContent() {
         <Route path="/adminanalytics" element={<AdminAnalyticsPage />} />
         <Route path="/adminticket" element={<AdminTicketDashboard />} />
         <Route path="/account" element={<AccountPersonalPage />} />
+        <Route path="/account/bookings/history" element={<AccountBookingsPage />} />
         <Route path="/account/bookings" element={<AccountBookingsPage />} />
         <Route path="/account/contact-messages" element={<AccountContactMessagesPage />} />
         <Route path="/account/notifications" element={<AccountNotificationsPage />} />

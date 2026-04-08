@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { setAuthToken } from "../../api/http";
 import { persistCampusUser } from "../../utils/campusUserStorage";
 
 const pageWrap = {
@@ -33,7 +34,7 @@ const mainStyle = {
   boxSizing: "border-box",
 };
 
-const navItem = (active) => ({
+const navItemBase = {
   display: "block",
   width: "100%",
   textAlign: "left",
@@ -41,13 +42,25 @@ const navItem = (active) => ({
   margin: "2px 0",
   border: "none",
   borderRadius: "6px",
-  background: active ? "#ecfdf5" : "transparent",
-  borderLeft: active ? "3px solid #059669" : "3px solid transparent",
   color: "#111827",
   fontSize: "14px",
-  fontWeight: active ? 600 : 500,
   cursor: "pointer",
-});
+  transition: "background-color 0.15s ease",
+};
+
+const navItem = (active) =>
+  active
+    ? {
+        ...navItemBase,
+        background: "#fff7ed",
+        borderLeft: "3px solid #FA8112",
+        fontWeight: 600,
+      }
+    : {
+        ...navItemBase,
+        borderLeft: "3px solid transparent",
+        fontWeight: 500,
+      };
 
 const sectionBtn = (open) => ({
   display: "flex",
@@ -80,15 +93,6 @@ const footerBtnBase = {
   boxSizing: "border-box",
 };
 
-function IconBackArrow({ size = 18 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
-    </svg>
-  );
-}
-
 function IconLogout({ size = 18 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -99,31 +103,81 @@ function IconLogout({ size = 18 }) {
   );
 }
 
+const navSubItem = (active) => {
+  const base = navItem(active);
+  return { ...base, paddingLeft: "28px", fontSize: "13px" };
+};
+
+const bookingsToggleRow = (active) => ({
+  ...navItem(active),
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "8px",
+});
+
 export default function AccountLayout({ active = "personal", children }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const onBookingsHistory = location.pathname === "/account/bookings/history";
+  const onBookingsUpcoming = active === "bookings" && !onBookingsHistory;
   const [accountOpen, setAccountOpen] = useState(true);
   const [activitiesOpen, setActivitiesOpen] = useState(true);
+  const [bookingsOpen, setBookingsOpen] = useState(() => location.pathname.startsWith("/account/bookings"));
+
+  useEffect(() => {
+    if (location.pathname.startsWith("/account/bookings")) setBookingsOpen(true);
+  }, [location.pathname]);
 
   return (
     <div style={pageWrap}>
+      <style>{`
+        .account-sidebar-nav-area button.account-nav-row[data-nav-active="false"]:hover {
+          background-color: #ffedd5;
+        }
+      `}</style>
       <aside style={sidebarStyle}>
         <div style={{ padding: "20px 16px 16px", borderBottom: "1px solid #f3f4f6" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "linear-gradient(135deg, #FA8112, #F5E7C6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: "15px" }}>C</div>
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              width: "100%",
+              padding: 0,
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              textAlign: "left",
+              borderRadius: "8px",
+            }}
+            aria-label="CampusSync — go to home"
+          >
+            <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "linear-gradient(135deg, #FA8112, #F5E7C6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: "15px", flexShrink: 0 }}>C</div>
             <div>
               <div style={{ fontWeight: 700, fontSize: "16px", color: "#111827" }}>CampusSync</div>
               <div style={{ fontSize: "12px", color: "#9ca3af" }}>Account</div>
             </div>
-          </div>
+          </button>
         </div>
-        <div style={{ padding: "8px 8px 0", flex: 1, minHeight: 0, overflow: "hidden" }}>
+        <div className="account-sidebar-nav-area" style={{ padding: "8px 8px 0", flex: 1, minHeight: 0, overflow: "hidden" }}>
           <button type="button" style={sectionBtn(accountOpen)} onClick={() => setAccountOpen((o) => !o)} aria-expanded={accountOpen}>
             Account
             <span style={{ fontSize: "10px", color: "#9ca3af" }}>{accountOpen ? "▼" : "▶"}</span>
           </button>
           {accountOpen && (
             <div style={{ padding: "0 4px 8px" }}>
-              <button type="button" style={navItem(active === "personal")} onClick={() => navigate("/account")}>Personal info</button>
+              <button
+                type="button"
+                className="account-nav-row"
+                data-nav-active={active === "personal" ? "true" : "false"}
+                style={navItem(active === "personal")}
+                onClick={() => navigate("/account")}
+              >
+                Personal info
+              </button>
             </div>
           )}
           <button type="button" style={sectionBtn(activitiesOpen)} onClick={() => setActivitiesOpen((o) => !o)} aria-expanded={activitiesOpen}>
@@ -132,47 +186,84 @@ export default function AccountLayout({ active = "personal", children }) {
           </button>
           {activitiesOpen && (
             <div style={{ padding: "0 4px 8px" }}>
-              <button type="button" style={navItem(active === "tickets")} onClick={() => navigate("/my-tickets")}>My tickets</button>
-              <button type="button" style={navItem(active === "bookings")} onClick={() => navigate("/account/bookings")}>My bookings</button>
-              <button type="button" style={navItem(active === "contactMessages")} onClick={() => navigate("/account/contact-messages")}>My contact message</button>
-              <button type="button" style={navItem(active === "notifications")} onClick={() => navigate("/account/notifications")}>Notifications</button>
+              <button
+                type="button"
+                className="account-nav-row"
+                data-nav-active={active === "tickets" ? "true" : "false"}
+                style={navItem(active === "tickets")}
+                onClick={() => navigate("/my-tickets")}
+              >
+                My tickets
+              </button>
+              <button
+                type="button"
+                className="account-nav-row"
+                data-nav-active="false"
+                style={bookingsToggleRow(false)}
+                onClick={() => setBookingsOpen((o) => !o)}
+                aria-expanded={bookingsOpen}
+              >
+                <span>My bookings</span>
+                <span style={{ fontSize: "10px", color: "#9ca3af", flexShrink: 0 }} aria-hidden>
+                  {bookingsOpen ? "▼" : "▶"}
+                </span>
+              </button>
+              {bookingsOpen && (
+                <>
+                  <button
+                    type="button"
+                    className="account-nav-row"
+                    data-nav-active={onBookingsUpcoming ? "true" : "false"}
+                    style={navSubItem(onBookingsUpcoming)}
+                    onClick={() => navigate("/account/bookings")}
+                  >
+                    Upcoming bookings
+                  </button>
+                  <button
+                    type="button"
+                    className="account-nav-row"
+                    data-nav-active={onBookingsHistory ? "true" : "false"}
+                    style={navSubItem(onBookingsHistory)}
+                    onClick={() => navigate("/account/bookings/history")}
+                  >
+                    Booking history
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                className="account-nav-row"
+                data-nav-active={active === "contactMessages" ? "true" : "false"}
+                style={navItem(active === "contactMessages")}
+                onClick={() => navigate("/account/contact-messages")}
+              >
+                My contact message
+              </button>
+              <button
+                type="button"
+                className="account-nav-row"
+                data-nav-active={active === "notifications" ? "true" : "false"}
+                style={navItem(active === "notifications")}
+                onClick={() => navigate("/account/notifications")}
+              >
+                Notifications
+              </button>
             </div>
           )}
         </div>
         <div style={{ padding: "12px 16px 12px", borderTop: "1px solid #f3f4f6", display: "flex", flexDirection: "column", gap: "12px", alignItems: "stretch" }}>
-          <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-            <a
-              href="/"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate("/");
-              }}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                fontSize: "14px",
-                fontWeight: 500,
-                color: "#374151",
-                textDecoration: "none",
-              }}
-            >
-              <IconBackArrow />
-              <span style={{ textDecoration: "underline" }}>Back</span>
-            </a>
-          </div>
           <button
             type="button"
             onClick={() => {
               persistCampusUser(null);
-              localStorage.removeItem("smartCampusAuthToken");
+              setAuthToken(null);
               navigate("/", { replace: true });
             }}
             style={{
               ...footerBtnBase,
-              border: "1px solid #e5e7eb",
-              background: "#ffffff",
-              color: "#374151",
+              border: "1px solid #fecaca",
+              background: "#fee2e2",
+              color: "#991b1b",
             }}
           >
             <IconLogout />

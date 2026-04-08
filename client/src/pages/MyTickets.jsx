@@ -21,27 +21,6 @@ const cardStyle = {
 };
 
 
-const headerStripStyle = {
-  backgroundColor: "#FFFFFF",
-  color: "#222222",
-  borderRadius: "12px",
-  padding: "16px 16px",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "12px",
-  marginBottom: "18px",
-  border: "1px solid #F5E7C6",
-};
-
-const titleStyle = {
-  margin: 0,
-  fontSize: "24px",
-  fontWeight: 700,
-  letterSpacing: "-0.2px",
-  color: "#222222",
-};
-
 const chipBaseStyle = {
   display: "inline-flex",
   alignItems: "center",
@@ -306,10 +285,6 @@ export default function MyTickets() {
     <AccountLayout active="tickets">
       <div style={pageStyle}>
         <section style={cardStyle}>
-          <div style={headerStripStyle}>
-            <h1 style={titleStyle}>My Tickets</h1>
-          </div>
-
           {location.state?.createdSuccess && (
             <p style={{ color: "#2e7d32", marginTop: "10px", marginBottom: "8px" }}>
               Ticket submitted successfully.

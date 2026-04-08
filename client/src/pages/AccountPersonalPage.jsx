@@ -7,11 +7,12 @@ import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizePro
 import { rememberPostLoginPath } from "../utils/authRedirect";
 import AccountLayout from "../components/account/AccountLayout";
 
+/** Match account My tickets cards: light cream border */
 const cardStyle = {
   backgroundColor: "#ffffff",
   borderRadius: "12px",
-  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-  border: "1px solid #e5e7eb",
+  boxShadow: "0 10px 24px rgba(20, 33, 61, 0.06)",
+  border: "1px solid #F5E7C6",
   padding: "28px 32px",
   maxWidth: "720px",
 };
@@ -32,8 +33,6 @@ const inputDisabled = {
 const inputEditable = { ...inputDisabled, backgroundColor: "#ffffff", color: "#111827" };
 const labelStyle = { display: "block", fontSize: "13px", fontWeight: 600, color: "#111827", marginBottom: "6px" };
 const readOnlyBadgeStyle = { marginLeft: "8px", fontSize: "11px", fontWeight: 700, color: "#6b7280", letterSpacing: "0.02em", textTransform: "uppercase" };
-const sectionHeading = { fontSize: "28px", fontWeight: 650, color: "#111827", margin: "0 0 8px 0", letterSpacing: "-0.02em" };
-const subtleNote = { fontSize: "13px", color: "#6b7280", marginBottom: "24px", lineHeight: 1.5 };
 
 export default function AccountPersonalPage() {
   const navigate = useNavigate();
@@ -159,10 +158,8 @@ export default function AccountPersonalPage() {
 
   return (
     <AccountLayout active="personal">
-      <h1 style={sectionHeading}>Personal info</h1>
-      <p style={subtleNote}>Update your campus profile. Your email and name come from your account provider and cannot be changed here.</p>
       {loadError && <p style={{ color: "#b91c1c", marginBottom: "16px" }}>{loadError}</p>}
-      {!profile && !loadError && <p style={{ color: "#6b7280" }}>Loading…</p>}
+      {!profile && !loadError && <p style={{ color: "#6b7280", marginBottom: "16px" }}>Loading…</p>}
       {profile && (
         <>
           <div style={{ ...cardStyle, marginBottom: "20px" }}>
