@@ -5,21 +5,35 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from "../../api/notifications";
+import { getNotificationActionPath } from "../../utils/notificationDeepLink";
+import { getNotificationDisplayTitle } from "../../utils/notificationDisplayTitle";
 
-function prettyTime(iso) {
+function prettyTimeDetailed(iso) {
   if (!iso) return "";
   const t = new Date(iso).getTime();
   if (!Number.isFinite(t)) return "";
   const diffSec = Math.max(0, Math.floor((Date.now() - t) / 1000));
   if (diffSec < 60) return "just now";
   const min = Math.floor(diffSec / 60);
-  if (min < 60) return `${min}m ago`;
+  if (min < 60) return `${min} min${min === 1 ? "" : "s"} ago`;
   const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
+  const remMin = min % 60;
+  if (hr < 24) {
+    if (remMin === 0) return `${hr} hour${hr === 1 ? "" : "s"} ago`;
+    return `${hr} hour${hr === 1 ? "" : "s"} ${remMin} min${remMin === 1 ? "" : "s"} ago`;
+  }
   const day = Math.floor(hr / 24);
-  if (day < 7) return `${day}d ago`;
+  if (day < 7) return `${day} day${day === 1 ? "" : "s"} ago`;
   return new Date(iso).toLocaleString();
 }
+
+const viewFullLinkStyle = {
+  fontSize: 12,
+  fontWeight: 700,
+  color: "#FA8112",
+  flexShrink: 0,
+  marginLeft: 10,
+};
 
 export default function NotificationListView() {
   const navigate = useNavigate();
@@ -54,7 +68,7 @@ export default function NotificationListView() {
         // keep optimistic UI
       }
     }
-    if (n.targetPath) navigate(n.targetPath);
+    navigate(getNotificationActionPath(n));
   };
 
   const markAll = async () => {
@@ -102,21 +116,33 @@ export default function NotificationListView() {
             style={{
               width: "100%",
               border: "none",
-              borderTop: "1px solid #f8fafc",
+              borderTop: "1px solid #e8e8e8",
               background: n.read ? "#fff" : "#fff7ed",
               textAlign: "left",
-              padding: "12px 14px",
+              padding: "14px 14px 12px",
               cursor: "pointer",
               display: "grid",
-              gap: 4,
+              gap: 6,
+              fontFamily: "inherit",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: n.read ? 700 : 800, color: "#111827" }}>{n.title || "Notification"}</span>
+              <span style={{ fontSize: 14, fontWeight: n.read ? 700 : 800, color: "#111827", lineHeight: 1.35 }}>{getNotificationDisplayTitle(n)}</span>
               {!n.read && <span style={{ width: 8, height: 8, borderRadius: 999, background: "#ef4444" }} />}
             </div>
-            <span style={{ fontSize: 13, color: "#334155", lineHeight: 1.45 }}>{n.message || ""}</span>
-            <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 600 }}>{prettyTime(n.createdAt)}</span>
+            <span style={{ fontSize: 13, color: "#374151", lineHeight: 1.45 }}>{n.message || ""}</span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+                marginTop: 2,
+              }}
+            >
+              <span style={{ fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>{prettyTimeDetailed(n.createdAt)}</span>
+              <span style={viewFullLinkStyle}>View full notification</span>
+            </div>
           </button>
         ))}
     </div>
