@@ -21,6 +21,7 @@ import { getTicketDetails } from "../api/tickets";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import PasswordInput from "../components/PasswordInput.jsx";
 import TicketTechnicianChat from "../components/TicketTechnicianChat.jsx";
+import NotificationBell from "../components/notifications/NotificationBell.jsx";
 import { formatDurationSeconds, formatTicketInstant } from "../utils/slaFormat";
 import { appFontFamily as techFontUi } from "../utils/appFont";
 import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../utils/profilePhone";
@@ -821,22 +822,7 @@ function TechnicianAppShell({ children }) {
             borderBottom: "1px solid #e2e8f0",
           }}
         >
-          <button
-            type="button"
-            aria-label="Notifications"
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              border: "1px solid #e2e8f0",
-              background: "#fff",
-              color: "#0f172a",
-              cursor: "pointer",
-              fontSize: 18,
-            }}
-          >
-            🔔
-          </button>
+          <NotificationBell />
           <button
             type="button"
             ref={profileMenuTriggerRef}
@@ -2507,7 +2493,7 @@ function AdminTechnicianForm() {
         }}
       >
         <div style={{ color: "#222222", fontSize: "22px", fontWeight: 800, lineHeight: 1.1 }}>
-          {`Welcome back, ${techShellDisplayName(techUser)}`}
+          {`Welcome back, ${techShellDisplayName(user)}`}
         </div>
         <div style={{ color: "#6b7280", fontSize: "13px", fontWeight: 600, marginTop: "6px" }}>
           Ticket analytics dashboard with live operational metrics

@@ -25,17 +25,20 @@ public class AdminTicketService {
     private final TicketCommentRepo commentRepo;
     private final UserRepo userRepo;
     private final TicketNotificationEmailService ticketNotificationEmailService;
+    private final NotificationService notificationService;
 
     public AdminTicketService(
         TicketRepo ticketRepo,
         TicketCommentRepo commentRepo,
         UserRepo userRepo,
-        TicketNotificationEmailService ticketNotificationEmailService
+        TicketNotificationEmailService ticketNotificationEmailService,
+        NotificationService notificationService
     ) {
         this.ticketRepo = ticketRepo;
         this.commentRepo = commentRepo;
         this.userRepo = userRepo;
         this.ticketNotificationEmailService = ticketNotificationEmailService;
+        this.notificationService = notificationService;
     }
 
     public List<AdminTicketWithComments> getAllTicketsWithComments() {
@@ -66,6 +69,28 @@ public class AdminTicketService {
             List<TicketComment> comments = commentRepo.findByTicketIdOrderByCreatedAtDesc(ticketId);
             User technician = resolveUserByTechnicianRef(technicianId).orElse(null);
             ticketNotificationEmailService.notifyAssignment(saved, technician);
+            if (technician != null && technician.getId() != null) {
+                notificationService.createAndPush(
+                    technician.getId(),
+                    "TICKET_ASSIGNED",
+                    "Ticket assigned to you",
+                    "You were assigned ticket: " + safeTitle(saved),
+                    "TICKET",
+                    saved.getId(),
+                    "/technician/tickets"
+                );
+            }
+            resolveTicketOwnerId(saved).ifPresent(ownerId ->
+                notificationService.createAndPush(
+                    ownerId,
+                    "TICKET_STATUS_CHANGED",
+                    "Ticket accepted",
+                    "Your ticket was accepted and assigned to a technician.",
+                    "TICKET",
+                    saved.getId(),
+                    "/my-tickets"
+                )
+            );
             return new AdminTicketWithComments(saved, comments);
         });
     }
@@ -91,8 +116,36 @@ public class AdminTicketService {
             Ticket saved = ticketRepo.save(ticket);
             List<TicketComment> comments = commentRepo.findByTicketIdOrderByCreatedAtDesc(ticketId);
             ticketNotificationEmailService.notifyTicketRejected(saved, reason);
+            resolveTicketOwnerId(saved).ifPresent(ownerId ->
+                notificationService.createAndPush(
+                    ownerId,
+                    "TICKET_STATUS_CHANGED",
+                    "Ticket rejected",
+                    "Your ticket was rejected by admin.",
+                    "TICKET",
+                    saved.getId(),
+                    "/my-tickets"
+                )
+            );
             return new AdminTicketWithComments(saved, comments);
         });
+    }
+
+    private Optional<String> resolveTicketOwnerId(Ticket ticket) {
+        String ref = ticket == null ? "" : safeTrim(ticket.getCreatedBy());
+        if (ref.isEmpty()) return Optional.empty();
+        Optional<User> byId = userRepo.findById(ref);
+        if (byId.isPresent()) return Optional.ofNullable(byId.get().getId());
+        return userRepo.findByEmail(ref.toLowerCase(Locale.ROOT)).map(User::getId);
+    }
+
+    private static String safeTrim(String raw) {
+        return raw == null ? "" : raw.trim();
+    }
+
+    private static String safeTitle(Ticket ticket) {
+        String title = ticket == null ? "" : safeTrim(ticket.getIssueTitle());
+        return title.isEmpty() ? "Incident ticket" : title;
     }
 
     private Optional<User> resolveUserByTechnicianRef(String technicianId) {

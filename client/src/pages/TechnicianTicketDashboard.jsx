@@ -8,6 +8,7 @@ import { appFontFamily } from "../utils/appFont";
 import PasswordInput from "../components/PasswordInput.jsx";
 import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../utils/profilePhone";
 import campusSyncLogo from "../assets/campus-sync-logo.png";
+import NotificationBell from "../components/notifications/NotificationBell.jsx";
 
 /** YYYY-MM-DD in the user's local timezone (aligned with weekday labels on the chart). */
 function localCalendarDayKey(isoOrMs) {
@@ -975,22 +976,7 @@ function TechnicianAppShell({ children }) {
             borderBottom: "1px solid #e2e8f0",
           }}
         >
-          <button
-            type="button"
-            aria-label="Notifications"
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              border: "1px solid #e2e8f0",
-              background: "#fff",
-              color: "#0f172a",
-              cursor: "pointer",
-              fontSize: 18,
-            }}
-          >
-            🔔
-          </button>
+          <NotificationBell />
           <button
             type="button"
             ref={profileMenuTriggerRef}
