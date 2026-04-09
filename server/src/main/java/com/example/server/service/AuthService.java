@@ -321,6 +321,12 @@ public class AuthService {
     public Optional<AuthUserResponse> updatePhone(String userId, UpdateProfileRequest request) {
         return userRepo.findById(userId).map(user -> {
             user.setPhoneNumber(request.getPhoneNumber().trim());
+            if (request.getFirstName() != null) {
+                user.setFirstName(request.getFirstName().trim());
+            }
+            if (request.getLastName() != null) {
+                user.setLastName(request.getLastName().trim());
+            }
             return toUserResponse(userRepo.save(user));
         });
     }

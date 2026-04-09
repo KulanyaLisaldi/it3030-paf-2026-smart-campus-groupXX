@@ -1,5 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Label,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
   adminChangeUserRole,
   adminDeleteUser,
   adminResetTechnicianPassword,
@@ -148,6 +164,29 @@ function formatDate(value) {
   } catch {
     return "";
   }
+}
+
+function toDateSafe(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function dayKey(value) {
+  const d = toDateSafe(value);
+  if (!d) return null;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function monthKey(value) {
+  const d = toDateSafe(value);
+  if (!d) return null;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
 }
 
 function roleBadgeStyle(role) {
@@ -444,6 +483,105 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     return { totalUsers, admins, technicians, activeUsers, suspendedUsers, googleUsers };
   }, [users]);
 
+  const roleChartData = useMemo(() => {
+    const rows = Array.isArray(users) ? users : [];
+    const adminCount = rows.filter((u) => String(u.role || "").toUpperCase() === "ADMIN").length;
+    const technicianCount = rows.filter((u) => String(u.role || "").toUpperCase() === "TECHNICIAN").length;
+    const userCount = rows.filter((u) => {
+      const role = String(u.role || "").toUpperCase();
+      return role !== "ADMIN" && role !== "TECHNICIAN";
+    }).length;
+    return [
+      { name: "ADMIN", value: adminCount, color: "#1565c0" },
+      { name: "TECHNICIAN", value: technicianCount, color: "#2e7d32" },
+      { name: "USER", value: userCount, color: "#FA8112" },
+    ];
+  }, [users]);
+
+  const growthChartData = useMemo(() => {
+    const rows = Array.isArray(users) ? users : [];
+    const validDates = rows.map((u) => toDateSafe(u.createdDate)).filter(Boolean);
+    if (!validDates.length) return [];
+    const oldestMs = Math.min(...validDates.map((d) => d.getTime()));
+    const spanDays = Math.max(1, Math.round((Date.now() - oldestMs) / 86400000));
+    const byMonth = spanDays > 120;
+
+    const counts = {};
+    rows.forEach((u) => {
+      const key = byMonth ? monthKey(u.createdDate) : dayKey(u.createdDate);
+      if (!key) return;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+
+    const keys = Object.keys(counts).sort();
+    return keys.map((k) => ({
+      period: byMonth ? k : k.slice(5),
+      newUsers: counts[k],
+      fullKey: k,
+    }));
+  }, [users]);
+
+  const activeSuspendedChartData = useMemo(
+    () => [
+      { name: "Active", count: summary.activeUsers, color: "#388e3c" },
+      { name: "Suspended", count: summary.suspendedUsers, color: "#d32f2f" },
+    ],
+    [summary.activeUsers, summary.suspendedUsers]
+  );
+
+  const loginActivityChartData = useMemo(() => {
+    const rows = Array.isArray(users) ? users : [];
+    const days = [];
+    const map = {};
+    const today = new Date();
+    for (let i = 13; i >= 0; i -= 1) {
+      const d = new Date(today);
+      d.setHours(0, 0, 0, 0);
+      d.setDate(today.getDate() - i);
+      const key = dayKey(d);
+      if (!key) continue;
+      const item = {
+        key,
+        day: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+        logins: 0,
+        activeUsers: summary.activeUsers,
+      };
+      days.push(item);
+      map[key] = item;
+    }
+    rows.forEach((u) => {
+      const key = dayKey(u.lastLogin);
+      if (!key || !map[key]) return;
+      map[key].logins += 1;
+    });
+    return days;
+  }, [users, summary.activeUsers]);
+
+  const topActiveUsersChartData = useMemo(() => {
+    const now = Date.now();
+    const rows = Array.isArray(users) ? users : [];
+    return rows
+      .filter((u) => toDateSafe(u.lastLogin))
+      .map((u) => {
+        const last = toDateSafe(u.lastLogin);
+        const hoursSince = last ? Math.max(0, (now - last.getTime()) / 3600000) : 9999;
+        // Recency score: 100 when very recent, tapers down over ~7 days.
+        const score = Math.max(0, Math.round((1 - Math.min(hoursSince, 168) / 168) * 100));
+        const shortName =
+          String(u.name || u.email || "User")
+            .trim()
+            .split(" ")[0]
+            .slice(0, 14) || "User";
+        return {
+          user: shortName,
+          score,
+          lastLoginLabel: formatDate(u.lastLogin) || "—",
+        };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 7);
+  }, [users]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [search, roleFilter, providerFilter, statusFilter, refreshKey]);
@@ -513,7 +651,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               fontFamily: "inherit",
             }}
           >
-            Dashboard
+            Overview
           </button>
           <button
             type="button"
@@ -549,16 +687,140 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
           style={{
             border: `1px solid ${BORDER_LIGHT_ORANGE}`,
             borderRadius: 12,
-            padding: "24px 20px",
+            padding: "18px",
             background: "#f8fafc",
-            minHeight: 320,
             boxSizing: "border-box",
           }}
         >
-          <div style={{ fontSize: 16, fontWeight: 900, color: "#14213D", marginBottom: 6 }}>User analytics</div>
-          <p style={{ margin: 0, fontSize: 13, color: "#64748b", fontWeight: 600, lineHeight: 1.5 }}>
-            Chart widgets and user insights will appear here.
+          <div style={{ fontSize: 16, fontWeight: 900, color: "#14213D", marginBottom: 4 }}>User analytics overview</div>
+          <p style={{ margin: "0 0 14px 0", fontSize: 13, color: "#64748b", fontWeight: 600, lineHeight: 1.5 }}>
+            Role distribution, growth trend, account status split, and recent login activity.
           </p>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: 14,
+              alignItems: "stretch",
+            }}
+          >
+            <div style={{ border: `1px solid ${BORDER_LIGHT_ORANGE}`, borderRadius: 12, background: "#fff", padding: 12, minHeight: 290 }}>
+              <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", marginBottom: 8 }}>Users by role</div>
+              <div style={{ width: "100%", height: 230 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie data={roleChartData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={3}>
+                      {roleChartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                      <Label
+                        position="center"
+                        content={({ viewBox }) => {
+                          const cx = viewBox?.cx ?? 0;
+                          const cy = viewBox?.cy ?? 0;
+                          const totalText = String(summary.totalUsers);
+                          const totalFontSize = totalText.length >= 4 ? 24 : totalText.length === 3 ? 30 : 38;
+                          return (
+                            <g>
+                              <text
+                                x={cx}
+                                y={cy - 12}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                style={{ fill: "#64748b", fontSize: 12, fontWeight: 700 }}
+                              >
+                                Total
+                              </text>
+                              <text
+                                x={cx}
+                                y={cy + 16}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                style={{ fill: "#14213D", fontSize: totalFontSize, fontWeight: 900 }}
+                              >
+                                {totalText}
+                              </text>
+                            </g>
+                          );
+                        }}
+                      />
+                    </Pie>
+                    <Tooltip />
+                    <Legend verticalAlign="bottom" height={24} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div style={{ border: `1px solid ${BORDER_LIGHT_ORANGE}`, borderRadius: 12, background: "#fff", padding: 12, minHeight: 290 }}>
+              <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", marginBottom: 8 }}>User growth over time</div>
+              <div style={{ width: "100%", height: 230 }}>
+                <ResponsiveContainer>
+                  <LineChart data={growthChartData} margin={{ top: 8, right: 10, left: 0, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="period" tick={{ fontSize: 11 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="newUsers" stroke="#1565c0" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div style={{ border: `1px solid ${BORDER_LIGHT_ORANGE}`, borderRadius: 12, background: "#fff", padding: 12, minHeight: 290 }}>
+              <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", marginBottom: 8 }}>Active vs suspended users</div>
+              <div style={{ width: "100%", height: 230 }}>
+                <ResponsiveContainer>
+                  <BarChart data={activeSuspendedChartData} margin={{ top: 8, right: 10, left: 0, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                      {activeSuspendedChartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div style={{ border: `1px solid ${BORDER_LIGHT_ORANGE}`, borderRadius: 12, background: "#fff", padding: 12, minHeight: 290 }}>
+              <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", marginBottom: 8 }}>User activity / login frequency</div>
+              <div style={{ width: "100%", height: 230 }}>
+                <ResponsiveContainer>
+                  <BarChart data={loginActivityChartData} margin={{ top: 8, right: 10, left: 0, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="logins" name="Logins per day" fill="#FA8112" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="activeUsers" name="Active users" fill="#2e7d32" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div style={{ border: `1px solid ${BORDER_LIGHT_ORANGE}`, borderRadius: 12, background: "#fff", padding: 12, minHeight: 300 }}>
+              <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", marginBottom: 4 }}>Top active users (leaderboard)</div>
+              <p style={{ margin: "0 0 8px 0", color: "#64748b", fontSize: 12, fontWeight: 600 }}>
+                Ranked by recent login activity (more recent logins score higher).
+              </p>
+              <div style={{ width: "100%", height: 230 }}>
+                <ResponsiveContainer>
+                  <BarChart data={topActiveUsersChartData} layout="vertical" margin={{ top: 8, right: 12, left: 16, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} />
+                    <YAxis type="category" dataKey="user" width={90} tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(value) => [`${value}`, "Activity score"]} labelFormatter={(_, payload) => payload?.[0]?.payload?.lastLoginLabel || ""} />
+                    <Bar dataKey="score" fill="#14213D" radius={[0, 8, 8, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

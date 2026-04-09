@@ -98,7 +98,7 @@ export default function AdminUsersPage() {
   return (
     <AdminLayout activeSection="users" pageTitle={null} description={null}>
       <div style={{ fontFamily: appFontFamily }}>
-        <h1 style={{ margin: "0 0 8px 0", fontSize: "26px", fontWeight: 800, color: "#14213D" }}>User Management</h1>
+        <h1 style={{ margin: "0 0 16px 0", fontSize: "26px", fontWeight: 800, color: "#14213D" }}>User Management</h1>
         <AdminUsersTable
           refreshKey={usersTableRev}
           onAddTechnician={(role) => {
