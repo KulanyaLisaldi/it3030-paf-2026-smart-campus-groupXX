@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import AdminLayout from "../components/admin/AdminLayout.jsx";
 import { appFontFamily } from "../utils/appFont";
 import { cancelBookingByAdmin, deleteBookingByAdmin, getAdminBookings, approveBookingByAdmin, rejectBookingByAdmin } from "../api/bookings";
@@ -148,8 +148,8 @@ function monthKey(date) {
 }
 
 export default function AdminBookingsPage() {
-  const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -391,6 +391,27 @@ export default function AdminBookingsPage() {
   useEffect(() => {
     if (detailsPage > detailsTotalPages) setDetailsPage(detailsTotalPages);
   }, [detailsPage, detailsTotalPages]);
+
+  useEffect(() => {
+    const openId = (searchParams.get("openBooking") || "").trim();
+    if (!openId) return;
+    if (loading) return;
+    if (!rows.length) return;
+    const idx = rows.findIndex((r) => String(r?.id || "") === openId);
+    if (idx >= 0) {
+      setActiveTab("details");
+      const safePageSize = Math.max(1, Number(detailsPageSize) || 20);
+      setDetailsPage(Math.floor(idx / safePageSize) + 1);
+      setViewRow(rows[idx]);
+      requestAnimationFrame(() => {
+        document.getElementById(`admin-booking-row-${openId}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete("openBooking");
+    setSearchParams(next, { replace: true });
+  }, [loading, rows, searchParams, setSearchParams, detailsPageSize]);
+
   const paginatedDetailsRows = useMemo(() => {
     const safePageSize = Math.max(1, Number(detailsPageSize) || 20);
     const start = (detailsPage - 1) * safePageSize;
@@ -677,7 +698,7 @@ export default function AdminBookingsPage() {
               <tr><td colSpan={9} style={{ padding: 16, color: "#64748b" }}>No bookings found for the selected filters.</td></tr>
             )}
             {paginatedDetailsRows.map((row) => (
-              <tr key={row.id} style={{ borderBottom: "1px solid #FFDDB8" }}>
+              <tr key={row.id} id={row.id ? `admin-booking-row-${row.id}` : undefined} style={{ borderBottom: "1px solid #FFDDB8" }}>
                 <td style={{ padding: "10px", fontWeight: 700, color: "#0f172a" }}>{row.userName || "—"}</td>
                 <td style={{ padding: "10px" }}>{row.resourceName || "—"}</td>
                 <td style={{ padding: "10px" }}>{row.resourceType || "—"}</td>

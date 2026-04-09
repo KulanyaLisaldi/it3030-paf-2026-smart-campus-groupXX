@@ -98,9 +98,10 @@ public class TicketController {
     @PostMapping("/{id}/comments")
     public ResponseEntity<?> addTicketComment(
         @PathVariable("id") String id,
-        @Valid @RequestBody CreateTicketCommentRequest request
+        @Valid @RequestBody CreateTicketCommentRequest request,
+        Authentication authentication
     ) {
-        return ticketDetailsService.addComment(id, request)
+        return ticketDetailsService.addComment(id, request, authentication)
             .<ResponseEntity<?>>map(comment -> ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(Map.of("message", "Comment added successfully", "comment", comment))
