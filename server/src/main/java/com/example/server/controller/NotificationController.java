@@ -1,5 +1,6 @@
 package com.example.server.controller;
 
+import com.example.server.dto.notification.NotificationPageResponse;
 import com.example.server.model.Notification;
 import com.example.server.service.NotificationService;
 import org.springframework.http.HttpStatus;
@@ -31,6 +32,15 @@ public class NotificationController {
         @RequestParam(value = "limit", defaultValue = "50") int limit
     ) {
         return notificationService.listForUser(authentication.getName(), limit);
+    }
+
+    @GetMapping("/page")
+    public NotificationPageResponse listPage(
+        Authentication authentication,
+        @RequestParam(value = "page", defaultValue = "0") int page,
+        @RequestParam(value = "size", defaultValue = "15") int size
+    ) {
+        return notificationService.listForUserPage(authentication.getName(), page, size);
     }
 
     @GetMapping("/unread-count")

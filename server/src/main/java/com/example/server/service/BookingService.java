@@ -204,15 +204,20 @@ public class BookingService {
         if (hasBookingStarted(booking)) {
             throw new IllegalArgumentException("Past or started bookings cannot be cancelled");
         }
+        String priorStatus = status;
         booking.setStatus("CANCELLED");
         booking.setCancellationReason(reason);
         booking.setUpdatedAt(Instant.now());
         Booking saved = bookingRepo.save(booking);
+        String resourceLabel = safeTrim(saved.getResourceName());
+        String cancelMessage = "PENDING".equals(priorStatus)
+            ? "A user cancelled their pending booking for " + resourceLabel + "."
+            : "A user cancelled their approved booking for " + resourceLabel + ".";
         notificationService.createForRole(
             UserRole.ADMIN,
             "BOOKING_CANCELLED_BY_USER",
-            "Booking cancelled",
-            "A user cancelled booking " + safeTrim(saved.getResourceName()) + ".",
+            "Booking cancelled by user",
+            cancelMessage,
             "BOOKING",
             safeTrim(saved.getId()),
             "/adminbookings"
@@ -426,7 +431,19 @@ public class BookingService {
         booking.setAdditionalNotes(additionalNotes);
         booking.setStatus("PENDING");
         booking.setUpdatedAt(Instant.now());
-        return Optional.of(bookingRepo.save(booking));
+        Booking saved = bookingRepo.save(booking);
+        String resourceLabel = safeTrim(saved.getResourceName());
+        String slotSummary = safeTrim(saved.getBookingDate()) + " · " + safeTrim(saved.getStartTime()) + "–" + safeTrim(saved.getEndTime());
+        notificationService.createForRole(
+            UserRole.ADMIN,
+            "BOOKING_UPDATED_BY_USER",
+            "Pending booking updated",
+            "A user edited their pending booking for " + resourceLabel + " (" + slotSummary + ").",
+            "BOOKING",
+            safeTrim(saved.getId()),
+            "/adminbookings"
+        );
+        return Optional.of(saved);
     }
 
     public boolean isAvailable(String resourceId, String bookingDate, String startTime, String endTime) {

@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  getNotifications,
+  getNotificationsPage,
+  getUnreadNotificationCount,
   markAllNotificationsRead,
   markNotificationRead,
 } from "../../api/notifications";
 import { getNotificationActionPath } from "../../utils/notificationDeepLink";
 import { getNotificationDisplayTitle } from "../../utils/notificationDisplayTitle";
+
+const PAGE_SIZE = 15;
 
 function prettyTimeDetailed(iso) {
   if (!iso) return "";
@@ -35,35 +38,69 @@ const viewFullLinkStyle = {
   marginLeft: 10,
 };
 
+const pagerBtn = (disabled) => ({
+  border: "1px solid #e2e8f0",
+  background: disabled ? "#f1f5f9" : "#fff",
+  color: disabled ? "#94a3b8" : "#0f172a",
+  borderRadius: 8,
+  padding: "8px 14px",
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: disabled ? "not-allowed" : "pointer",
+});
+
 export default function NotificationListView() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [busyReadAll, setBusyReadAll] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    setLoading(true);
-    getNotifications(100)
-      .then((rows) => {
+    (async () => {
+      setLoading(true);
+      try {
+        const [data, countPayload] = await Promise.all([
+          getNotificationsPage(page, PAGE_SIZE),
+          getUnreadNotificationCount(),
+        ]);
         if (!mounted) return;
-        setItems(Array.isArray(rows) ? rows : []);
-      })
-      .finally(() => {
+        setItems(Array.isArray(data?.content) ? data.content : []);
+        setTotalPages(Number(data?.totalPages) || 0);
+        setTotalElements(Number(data?.totalElements) || 0);
+        setUnreadCount(Number(countPayload?.unreadCount) || 0);
+      } catch {
+        if (!mounted) return;
+        setItems([]);
+        setTotalPages(0);
+        setTotalElements(0);
+      } finally {
         if (mounted) setLoading(false);
-      });
+      }
+    })();
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [page]);
 
-  const unreadCount = items.filter((n) => !n.read).length;
+  useEffect(() => {
+    if (loading) return;
+    if (totalPages > 0 && page >= totalPages) {
+      setPage(Math.max(0, totalPages - 1));
+    }
+  }, [loading, totalPages, page]);
 
   const openNotification = async (n) => {
     if (!n.read) {
       setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
       try {
         await markNotificationRead(n.id);
+        const countPayload = await getUnreadNotificationCount();
+        setUnreadCount(Number(countPayload?.unreadCount) || 0);
       } catch {
         // keep optimistic UI
       }
@@ -77,10 +114,17 @@ export default function NotificationListView() {
     setItems((prev) => prev.map((x) => ({ ...x, read: true })));
     try {
       await markAllNotificationsRead();
+      const countPayload = await getUnreadNotificationCount();
+      setUnreadCount(Number(countPayload?.unreadCount) || 0);
     } finally {
       setBusyReadAll(false);
     }
   };
+
+  const rangeStart = totalElements === 0 ? 0 : page * PAGE_SIZE + 1;
+  const rangeEnd = totalElements === 0 ? 0 : Math.min(totalElements, page * PAGE_SIZE + items.length);
+  const canPrev = page > 0;
+  const canNext = totalPages > 0 && page < totalPages - 1;
 
   return (
     <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
@@ -145,6 +189,32 @@ export default function NotificationListView() {
             </div>
           </button>
         ))}
+      {!loading && totalElements > 0 && (
+        <div
+          style={{
+            padding: "12px 14px",
+            borderTop: "1px solid #f1f5f9",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            background: "#fafafa",
+          }}
+        >
+          <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>
+            Showing {rangeStart}–{rangeEnd} of {totalElements} · Page {page + 1} of {Math.max(1, totalPages)}
+          </span>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button type="button" style={pagerBtn(!canPrev)} disabled={!canPrev} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+              Previous
+            </button>
+            <button type="button" style={pagerBtn(!canNext)} disabled={!canNext} onClick={() => setPage((p) => p + 1)}>
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
