@@ -41,10 +41,6 @@ const chartCardStyle = {
   boxShadow: "0 8px 18px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.05)",
 };
 
-function toIsoDate(date) {
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-}
-
 function toDisplayHour(startTime) {
   const [rawHour] = String(startTime || "").split(":");
   const hour = Number(rawHour);
@@ -202,6 +198,108 @@ export default function AdminResourcesPage() {
       .slice(0, 8);
   }, [resources, bookings]);
 
+  const smartAvailabilityChartData = useMemo(() => {
+    const hourDemand = new Map();
+    bookings.forEach((booking) => {
+      const hourLabel = toDisplayHour(booking?.startTime);
+      if (!hourLabel) return;
+      hourDemand.set(hourLabel, (hourDemand.get(hourLabel) || 0) + 1);
+    });
+    return Array.from(hourDemand.entries())
+      .map(([hour, count]) => ({ hour, count, sort: toSortHour(hour) }))
+      .sort((a, b) => a.count - b.count || a.sort - b.sort)
+      .slice(0, 8)
+      .map(({ hour, count }) => ({ hour, count }));
+  }, [bookings]);
+
+  const demandPredictionChartData = useMemo(() => {
+    const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const rows = weekdays.map((day) => ({ day }));
+
+    const resourceCounts = new Map();
+    bookings.forEach((b) => {
+      const resource = String(b?.resourceName || "Unknown").trim() || "Unknown";
+      resourceCounts.set(resource, (resourceCounts.get(resource) || 0) + 1);
+    });
+    const topResources = Array.from(resourceCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([name]) => name);
+
+    const weeksCovered = new Set();
+    bookings.forEach((b) => {
+      const date = new Date(`${b?.bookingDate || ""}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return;
+      const oneJan = new Date(date.getFullYear(), 0, 1);
+      const dayOfYear = Math.floor((date - oneJan) / 86400000);
+      const week = Math.ceil((dayOfYear + oneJan.getDay() + 1) / 7);
+      weeksCovered.add(`${date.getFullYear()}-${week}`);
+    });
+    const divisor = Math.max(1, weeksCovered.size);
+
+    rows.forEach((row) => {
+      topResources.forEach((name) => {
+        row[name] = 0;
+      });
+    });
+    bookings.forEach((b) => {
+      const date = new Date(`${b?.bookingDate || ""}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return;
+      const resource = String(b?.resourceName || "Unknown").trim() || "Unknown";
+      if (!topResources.includes(resource)) return;
+      const weekday = (date.getDay() + 6) % 7;
+      rows[weekday][resource] += 1;
+    });
+    return {
+      rows: rows.map((row) => {
+        const next = { day: row.day };
+        topResources.forEach((name) => {
+          next[name] = Number((row[name] / divisor).toFixed(2));
+        });
+        return next;
+      }),
+      resources: topResources,
+    };
+  }, [bookings]);
+
+  const peakUsagePredictionChartData = useMemo(() => {
+    const map = new Map();
+    const uniqueDays = new Set();
+    bookings.forEach((b) => {
+      if (b?.bookingDate) uniqueDays.add(String(b.bookingDate));
+      const hourLabel = toDisplayHour(b?.startTime);
+      if (!hourLabel) return;
+      map.set(hourLabel, (map.get(hourLabel) || 0) + 1);
+    });
+    const daysDivisor = Math.max(1, uniqueDays.size);
+    return Array.from(map.entries())
+      .map(([hour, count]) => ({
+        hour,
+        avgBookings: Number((count / daysDivisor).toFixed(2)),
+        sort: toSortHour(hour),
+      }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ hour, avgBookings }) => ({ hour, avgBookings }));
+  }, [bookings]);
+
+  const smartAvailabilitySlotChartData = useMemo(() => {
+    const weekdayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const slotDemand = new Map();
+    bookings.forEach((b) => {
+      const date = new Date(`${b?.bookingDate || ""}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return;
+      const weekday = weekdayNames[(date.getDay() + 6) % 7];
+      const hourLabel = toDisplayHour(b?.startTime);
+      if (!hourLabel) return;
+      const slot = `${weekday} ${hourLabel}`;
+      slotDemand.set(slot, (slotDemand.get(slot) || 0) + 1);
+    });
+    return Array.from(slotDemand.entries())
+      .map(([slot, demand]) => ({ slot, demand }))
+      .sort((a, b) => a.demand - b.demand)
+      .slice(0, 8);
+  }, [bookings]);
+
   return (
     <AdminLayout activeSection="resources" pageTitle={null} description={null}>
       <div style={{ fontFamily: appFontFamily }}>
@@ -324,6 +422,73 @@ export default function AdminResourcesPage() {
                 )}
               </div>
             </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: 12,
+                border: "1px solid #FFDDB8",
+                borderRadius: 12,
+                padding: 14,
+                backgroundColor: "#fff",
+                boxShadow: "0 8px 18px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.05)",
+              }}
+            >
+              <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 900, color: "#0f172a" }}>Prediction-Based Decision Support</h2>
+              <p style={{ margin: "0 0 14px", color: "#64748b", fontSize: 13, lineHeight: 1.5 }}>
+                Time-based forecasts from historical bookings for demand planning, peak-hour management, and smart slot suggestions.
+              </p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+                <div style={chartCardStyle}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Resource Demand Prediction (Next Week)</h3>
+                  <div style={{ height: 260 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={demandPredictionChartData.rows}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#FFDDB8" />
+                        <XAxis dataKey="day" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        {demandPredictionChartData.resources.map((resourceName, index) => {
+                          const lineColors = ["#14213D", "#FCA311", "#16a34a", "#7c3aed"];
+                          return <Line key={resourceName} type="monotone" dataKey={resourceName} stroke={lineColors[index % lineColors.length]} strokeWidth={2.5} dot={{ r: 2 }} />;
+                        })}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div style={chartCardStyle}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Peak Usage Time Prediction</h3>
+                  <div style={{ height: 260 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={peakUsagePredictionChartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#FFDDB8" />
+                        <XAxis dataKey="hour" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="avgBookings" fill="#dc2626" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div style={chartCardStyle}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Smart Availability Suggestion</h3>
+                  <div style={{ height: 260 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={smartAvailabilitySlotChartData} layout="vertical" margin={{ left: 26 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#FFDDB8" />
+                        <XAxis type="number" />
+                        <YAxis type="category" dataKey="slot" width={105} />
+                        <Tooltip />
+                        <Bar dataKey="demand" fill="#16a34a" radius={[0, 6, 6, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
         )}
