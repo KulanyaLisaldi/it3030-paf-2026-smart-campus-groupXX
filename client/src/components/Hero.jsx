@@ -252,8 +252,8 @@ const Hero = () => {
           </div>
 
           <div className="mb-16">
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-[#14213D]">Top Resources</h2>
+            <div className="mb-5 relative flex items-center justify-end">
+              <h2 className="absolute left-1/2 -translate-x-1/2 text-2xl font-bold text-[#14213D]">Top Resources</h2>
               <button
                 type="button"
                 onClick={() => navigate('/resources')}
