@@ -276,8 +276,8 @@ function techShellNavRowStyle(active) {
     margin: "2px 8px",
     borderRadius: "10px",
     border: "none",
-    background: active ? "rgba(250, 129, 18, 0.22)" : "transparent",
-    color: active ? "#fb923c" : "#cbd5e1",
+    background: active ? "rgba(250, 129, 18, 0.14)" : "transparent",
+    color: active ? "#c2410c" : "#475569",
     fontSize: "14px",
     fontWeight: 600,
     cursor: "pointer",
@@ -308,7 +308,7 @@ const techShellSectionLabelStyle = {
   fontSize: "10px",
   fontWeight: 700,
   letterSpacing: "0.12em",
-  color: "#94a3b8",
+  color: "#64748b",
   padding: "0 16px",
   marginTop: "20px",
   marginBottom: "8px",
@@ -476,12 +476,12 @@ function TechnicianAppShell({ children }) {
           top: 0,
           height: "100vh",
           transition: "width 0.2s ease, min-width 0.2s ease",
-          background: "linear-gradient(180deg, #14213D 0%, #1a2d4d 100%)",
-          color: "#e2e8f0",
+          backgroundColor: "#FFFFFF",
+          color: "#334155",
           display: "flex",
           flexDirection: "column",
           boxSizing: "border-box",
-          borderRight: "1px solid rgba(148, 163, 184, 0.12)",
+          borderRight: "1px solid #e5e7eb",
           overflow: "hidden",
         }}
       >
@@ -492,7 +492,7 @@ function TechnicianAppShell({ children }) {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              borderBottom: "1px solid rgba(148, 163, 184, 0.12)",
+              borderBottom: "1px solid #e5e7eb",
             }}
           >
             <button
@@ -503,13 +503,13 @@ function TechnicianAppShell({ children }) {
                 width: 40,
                 height: 40,
                 borderRadius: 10,
-                background: "rgba(148, 163, 184, 0.12)",
-                border: "1px solid rgba(255, 255, 255, 0.35)",
+                background: "#f1f5f9",
+                border: "1px solid #e2e8f0",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#e2e8f0",
+                color: "#334155",
                 flexShrink: 0,
                 boxSizing: "border-box",
               }}
@@ -539,13 +539,13 @@ function TechnicianAppShell({ children }) {
                 width: 40,
                 height: 40,
                 borderRadius: 10,
-                background: "rgba(148, 163, 184, 0.12)",
-                border: "none",
+                background: "#f1f5f9",
+                border: "1px solid #e2e8f0",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#e2e8f0",
+                color: "#334155",
                 flexShrink: 0,
               }}
             >
@@ -827,7 +827,6 @@ function TechnicianWorkspace() {
   const location = useLocation();
   const [userRev, setUserRev] = useState(0);
   const techUser = useMemo(() => readCampusUser(), [userRev]);
-  const name = (techUser?.firstName || techUser?.email || "Technician").trim();
 
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const avatarFileRef = useRef(null);
@@ -1175,12 +1174,7 @@ function TechnicianWorkspace() {
             boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
           }}
         >
-          <p style={{ margin: 0, lineHeight: 1.45 }}>
-            <span style={{ fontSize: "clamp(17px, 2.1vw, 22px)", fontWeight: 800, color: "#14213D" }}>
-              Welcome back, {name}.
-            </span>
-          </p>
-          <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+          <div style={{ marginTop: 0, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: "12px", fontWeight: 700, color: "#6b7280" }}>Availability:</span>
             <span
               style={{

@@ -85,8 +85,8 @@ function techSidebarNavRowStyle(active) {
     margin: "2px 8px",
     borderRadius: "10px",
     border: "none",
-    background: active ? "rgba(250, 129, 18, 0.22)" : "transparent",
-    color: active ? "#fb923c" : "#cbd5e1",
+    background: active ? "rgba(250, 129, 18, 0.14)" : "transparent",
+    color: active ? "#c2410c" : "#475569",
     fontSize: "14px",
     fontWeight: 600,
     cursor: "pointer",
@@ -108,7 +108,7 @@ const techSectionLabelStyle = {
   fontSize: "10px",
   fontWeight: 700,
   letterSpacing: "0.12em",
-  color: "#94a3b8",
+  color: "#64748b",
   padding: "0 16px",
   marginTop: "20px",
   marginBottom: "8px",
@@ -373,12 +373,12 @@ function TechnicianAppShell({ children }) {
           top: 0,
           height: "100vh",
           transition: "width 0.2s ease, min-width 0.2s ease",
-          background: "linear-gradient(180deg, #14213D 0%, #1a2d4d 100%)",
-          color: "#e2e8f0",
+          backgroundColor: "#FFFFFF",
+          color: "#334155",
           display: "flex",
           flexDirection: "column",
           boxSizing: "border-box",
-          borderRight: "1px solid rgba(148, 163, 184, 0.12)",
+          borderRight: "1px solid #e5e7eb",
           overflow: "hidden",
         }}
       >
@@ -389,7 +389,7 @@ function TechnicianAppShell({ children }) {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              borderBottom: "1px solid rgba(148, 163, 184, 0.12)",
+              borderBottom: "1px solid #e5e7eb",
             }}
           >
             <button
@@ -400,13 +400,13 @@ function TechnicianAppShell({ children }) {
                 width: 40,
                 height: 40,
                 borderRadius: 10,
-                background: "rgba(148, 163, 184, 0.12)",
-                border: "1px solid rgba(255, 255, 255, 0.35)",
+                background: "#f1f5f9",
+                border: "1px solid #e2e8f0",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#e2e8f0",
+                color: "#334155",
                 flexShrink: 0,
                 boxSizing: "border-box",
               }}
@@ -436,13 +436,13 @@ function TechnicianAppShell({ children }) {
                 width: 40,
                 height: 40,
                 borderRadius: 10,
-                background: "rgba(148, 163, 184, 0.12)",
-                border: "none",
+                background: "#f1f5f9",
+                border: "1px solid #e2e8f0",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#e2e8f0",
+                color: "#334155",
                 flexShrink: 0,
               }}
             >
@@ -984,7 +984,6 @@ export default function TechnicianTicketDashboard() {
 
   const campusUser = useMemo(() => readCampusUser(), []);
   const isTechnician = String(campusUser?.role || "").toUpperCase() === "TECHNICIAN";
-  const welcomeName = technicianWelcomeName(campusUser);
 
   useEffect(() => {
     if (!getAuthToken()) {
@@ -1180,23 +1179,6 @@ export default function TechnicianTicketDashboard() {
               width: "100%",
             }}
           >
-            <div
-              style={{
-                padding: "16px 18px",
-                backgroundColor: "#FFFFFF",
-                border: "1px solid #E8E4DC",
-                borderLeft: "4px solid #FA8112",
-                borderRadius: "12px",
-                boxShadow: "0 2px 8px rgba(20, 33, 61, 0.04)",
-              }}
-            >
-              <p style={{ margin: 0, lineHeight: 1.45 }}>
-                <span style={{ fontSize: "clamp(17px, 2.1vw, 22px)", fontWeight: 800, color: "#14213D" }}>
-                  Welcome back, {welcomeName}.
-                </span>
-              </p>
-            </div>
-
             <div
               style={{
                 display: "grid",
