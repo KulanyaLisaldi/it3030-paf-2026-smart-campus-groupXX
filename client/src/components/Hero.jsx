@@ -31,6 +31,10 @@ const HERO_SLIDES = [
 
 const AUTO_ADVANCE_MS = 6000;
 
+/** Inter (tailwind `font-sans`) — shared by Explore + Top Resources headings */
+const HOME_SECTION_TITLE_CLASS =
+  'font-sans text-2xl font-bold tracking-tight text-[#14213D] antialiased md:text-3xl';
+
 const arrowBtnClass =
   'absolute top-1/2 z-[5] flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/40 bg-black/35 text-xl font-bold text-white shadow-md backdrop-blur-sm transition-colors hover:bg-black/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white md:h-12 md:w-12';
 
@@ -221,9 +225,46 @@ const Hero = () => {
 
       <section className="bg-bg-primary px-4 py-12 md:py-16">
         <div className="mx-auto mb-16 max-w-[1400px]">
+          <header className="mb-8 text-center md:mb-10">
+            <h2 id="explore-feature-types-heading" className={HOME_SECTION_TITLE_CLASS}>
+              Explore Feature Types
+            </h2>
+          </header>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:items-stretch">
+            {FEATURE_CARDS.map((card) => (
+              <Link
+                key={card.to}
+                to={card.to}
+                className="group relative flex min-h-[280px] overflow-hidden rounded-xl shadow-lg outline-none ring-offset-2 ring-offset-[#FAF3E1] transition-shadow hover:shadow-xl focus-visible:ring-2 focus-visible:ring-[#FA8112] md:min-h-[300px]"
+              >
+                <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+                  <span
+                    className="absolute inset-[-4px] bg-cover bg-center transition-transform duration-500 ease-out group-hover:scale-[1.02]"
+                    style={{
+                      backgroundImage: `url(${card.image})`,
+                      filter: 'blur(1.5px)',
+                    }}
+                  />
+                </span>
+                <div
+                  className="absolute inset-0 bg-gradient-to-t from-[#0f172a]/78 via-[#0f172a]/12 to-transparent"
+                  aria-hidden
+                />
+                <div className="relative z-[1] mt-auto flex w-full flex-col justify-end p-6 text-left text-white">
+                  <h3 className="mb-2 text-xl font-bold drop-shadow-sm">{card.title}</h3>
+                  <p className="text-sm font-medium leading-snug text-white/95 drop-shadow-sm md:text-[15px]">
+                    {card.description}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="mx-auto mb-16 max-w-[1400px]">
           <div className="mb-16">
-            <div className="mb-5 relative flex items-center justify-end">
-              <h2 className="absolute left-1/2 -translate-x-1/2 text-2xl font-bold text-[#14213D]">Top Resources</h2>
+            <div className="relative mb-8 flex items-center justify-end md:mb-10">
+              <h2 className={`absolute left-1/2 -translate-x-1/2 ${HOME_SECTION_TITLE_CLASS}`}>Top Resources</h2>
               <button
                 type="button"
                 onClick={() => navigate('/resources')}
@@ -277,38 +318,6 @@ const Hero = () => {
                 ))}
               </div>
             )}
-          </div>
-        </div>
-
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-16 grid grid-cols-1 gap-6 md:grid-cols-3 md:items-stretch">
-            {FEATURE_CARDS.map((card) => (
-              <Link
-                key={card.to}
-                to={card.to}
-                className="group relative flex min-h-[280px] overflow-hidden rounded-xl shadow-lg outline-none ring-offset-2 ring-offset-[#FAF3E1] transition-shadow hover:shadow-xl focus-visible:ring-2 focus-visible:ring-[#FA8112] md:min-h-[300px]"
-              >
-                <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-                  <span
-                    className="absolute inset-[-4px] bg-cover bg-center transition-transform duration-500 ease-out group-hover:scale-[1.02]"
-                    style={{
-                      backgroundImage: `url(${card.image})`,
-                      filter: 'blur(1.5px)',
-                    }}
-                  />
-                </span>
-                <div
-                  className="absolute inset-0 bg-gradient-to-t from-[#0f172a]/78 via-[#0f172a]/12 to-transparent"
-                  aria-hidden
-                />
-                <div className="relative z-[1] mt-auto flex w-full flex-col justify-end p-6 text-left text-white">
-                  <h3 className="mb-2 text-xl font-bold drop-shadow-sm">{card.title}</h3>
-                  <p className="text-sm font-medium leading-snug text-white/95 drop-shadow-sm md:text-[15px]">
-                    {card.description}
-                  </p>
-                </div>
-              </Link>
-            ))}
           </div>
         </div>
 
