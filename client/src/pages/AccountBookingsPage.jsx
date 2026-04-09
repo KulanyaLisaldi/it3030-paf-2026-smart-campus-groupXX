@@ -355,7 +355,7 @@ export default function AccountBookingsPage() {
     const history = [];
     for (const booking of bookings) {
       const status = String(booking?.status || "").toUpperCase();
-      if (status === "REJECTED" || status === "CANCELLED") {
+      if (status === "REJECTED" || status === "CANCELLED" || status === "CHECKED_IN") {
         history.push(booking);
         continue;
       }
@@ -562,6 +562,7 @@ export default function AccountBookingsPage() {
 
   const renderBookingCard = (booking) => (
     <article
+      className="bookings-3d-card"
       key={booking.id || `${booking.resourceId}-${booking.bookingDate}-${booking.startTime}`}
       style={{
         ...bookingCardStyle,
@@ -624,6 +625,15 @@ export default function AccountBookingsPage() {
   return (
     <AccountLayout active="bookings">
       <style>{`
+        .bookings-3d-card {
+          box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.05);
+          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .bookings-3d-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 14px 28px rgba(15, 23, 42, 0.14), 0 6px 12px rgba(15, 23, 42, 0.08);
+          border-color: #f7c992;
+        }
         .bookings-filter-select {
           appearance: none;
           -webkit-appearance: none;

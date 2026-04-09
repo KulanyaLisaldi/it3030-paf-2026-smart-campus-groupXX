@@ -27,6 +27,9 @@ export default function AdminQrCheckInPage() {
   const [manualBookingId, setManualBookingId] = useState("");
   const [verification, setVerification] = useState(null);
   const [verifyPayload, setVerifyPayload] = useState({ bookingId: "", qrValue: "" });
+  const isAlreadyCheckedIn =
+    String(verification?.checkInStatus || "").toUpperCase() === "CHECKED_IN" ||
+    String(verification?.bookingStatus || "").toUpperCase() === "CHECKED_IN";
 
   const stopScanner = async () => {
     if (!scannerRef.current) return;
@@ -169,8 +172,18 @@ export default function AdminQrCheckInPage() {
               )}
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button type="button" disabled={!verification?.valid || confirmBusy} onClick={() => void confirmCheckIn()} style={{ ...buttonStyle, background: verification?.valid ? "#16a34a" : "#94a3b8", color: "#fff" }}>
-                {confirmBusy ? "Confirming..." : "Confirm Check-In"}
+              <button
+                type="button"
+                disabled={!verification?.valid || confirmBusy || isAlreadyCheckedIn}
+                onClick={() => void confirmCheckIn()}
+                style={{
+                  ...buttonStyle,
+                  background: isAlreadyCheckedIn ? "#16a34a" : verification?.valid ? "#16a34a" : "#94a3b8",
+                  color: "#fff",
+                  cursor: !verification?.valid || confirmBusy || isAlreadyCheckedIn ? "not-allowed" : "pointer",
+                }}
+              >
+                {confirmBusy ? "Confirming..." : isAlreadyCheckedIn ? "Checked-In" : "Confirm Check-In"}
               </button>
               <button type="button" onClick={() => { setVerification(null); setScannerError(""); setVerifyPayload({ bookingId: "", qrValue: "" }); }} style={{ ...buttonStyle, background: "#fff", border: "1px solid #FFDDB8", color: "#0f172a" }}>
                 Clear Result

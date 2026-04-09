@@ -22,7 +22,14 @@ import {
 
 const panelStyle = { backgroundColor: "#FFFFFF", borderRadius: "14px", border: "1px solid #FFDDB8", boxShadow: "0 2px 8px rgba(15,23,42,0.04)", padding: "14px" };
 const dashboardChartsGridStyle = { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", columnGap: 12, rowGap: 36 };
-const dashboardChartCardStyle = { border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff", minHeight: 300 };
+const dashboardChartCardStyle = {
+  border: "1px solid #FFDDB8",
+  borderRadius: 12,
+  padding: 12,
+  background: "#fff",
+  minHeight: 300,
+  boxShadow: "0 8px 18px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.05)",
+};
 
 /** Stat cards: cream border + colored left bar (aligned with admin resource metric cards). */
 const bookingStatCardBaseStyle = {
@@ -158,6 +165,8 @@ export default function AdminBookingsPage() {
     approvalState: "ALL",
   });
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [detailsPage, setDetailsPage] = useState(1);
+  const [detailsPageSize, setDetailsPageSize] = useState(20);
   const [trendMode, setTrendMode] = useState("DAY");
   const [calendarDateFilter, setCalendarDateFilter] = useState("");
   const [calendarMonth, setCalendarMonth] = useState(() => {
@@ -182,6 +191,9 @@ export default function AdminBookingsPage() {
 
   useEffect(() => {
     void loadRows(filters);
+  }, [filters]);
+  useEffect(() => {
+    setDetailsPage(1);
   }, [filters]);
   useEffect(() => {
     const tab = (new URLSearchParams(location.search).get("tab") || "overview").toLowerCase();
@@ -371,6 +383,19 @@ export default function AdminBookingsPage() {
     }
     return cells;
   }, [calendarMonth, approvedDateSet, approvedCountByDate]);
+
+  const detailsTotalPages = useMemo(() => {
+    const safePageSize = Math.max(1, Number(detailsPageSize) || 20);
+    return Math.max(1, Math.ceil(rows.length / safePageSize));
+  }, [rows.length, detailsPageSize]);
+  useEffect(() => {
+    if (detailsPage > detailsTotalPages) setDetailsPage(detailsTotalPages);
+  }, [detailsPage, detailsTotalPages]);
+  const paginatedDetailsRows = useMemo(() => {
+    const safePageSize = Math.max(1, Number(detailsPageSize) || 20);
+    const start = (detailsPage - 1) * safePageSize;
+    return rows.slice(start, start + safePageSize);
+  }, [rows, detailsPage, detailsPageSize]);
 
   function toSortHour(label) {
     const m = String(label).match(/^(\d+):00\s(AM|PM)$/);
@@ -637,8 +662,9 @@ export default function AdminBookingsPage() {
         {error && <p style={{ margin: "10px 0 0", color: "#b91c1c", fontWeight: 700 }}>{error}</p>}
       </section>
 
-      <section style={{ border: "1px solid #FFDDB8", borderRadius: 12, marginTop: 12, padding: 0, overflowX: "auto", background: "#fff" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1160 }}>
+      <section style={{ border: "1px solid #FFDDB8", borderRadius: 12, marginTop: 12, padding: 0, background: "#fff", overflow: "hidden" }}>
+        <div style={{ width: "100%", overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
+        <table style={{ width: "max-content", minWidth: 1160, borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#f8fafc", color: "#334155", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em" }}>
               {["Booked By", "Resource Name", "Resource Type", "Date", "Start Time", "End Time", "Status", "Requested On", "Actions"].map((h) => (
@@ -650,7 +676,7 @@ export default function AdminBookingsPage() {
             {!loading && rows.length === 0 && (
               <tr><td colSpan={9} style={{ padding: 16, color: "#64748b" }}>No bookings found for the selected filters.</td></tr>
             )}
-            {rows.map((row) => (
+            {paginatedDetailsRows.map((row) => (
               <tr key={row.id} style={{ borderBottom: "1px solid #FFDDB8" }}>
                 <td style={{ padding: "10px", fontWeight: 700, color: "#0f172a" }}>{row.userName || "—"}</td>
                 <td style={{ padding: "10px" }}>{row.resourceName || "—"}</td>
@@ -689,6 +715,45 @@ export default function AdminBookingsPage() {
             ))}
           </tbody>
         </table>
+        </div>
+        <div style={{ borderTop: "1px solid #F5E7C6", padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 13, color: "#475569", fontWeight: 600 }}>
+            Showing {rows.length === 0 ? 0 : (detailsPage - 1) * detailsPageSize + 1}-{Math.min(detailsPage * detailsPageSize, rows.length)} of {rows.length}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <label style={{ fontSize: 13, color: "#475569", fontWeight: 600 }}>Rows</label>
+            <select
+              value={detailsPageSize}
+              onChange={(e) => {
+                setDetailsPageSize(Number(e.target.value) || 20);
+                setDetailsPage(1);
+              }}
+              style={{ ...inputStyle, width: 82, height: 32, padding: "0 8px" }}
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <button
+              type="button"
+              disabled={detailsPage <= 1}
+              onClick={() => setDetailsPage((p) => Math.max(1, p - 1))}
+              style={{ ...buttonStyle, height: 32, background: detailsPage <= 1 ? "#f3f4f6" : "#fff", color: "#0f172a", border: "1px solid #FFDDB8", cursor: detailsPage <= 1 ? "not-allowed" : "pointer" }}
+            >
+              Prev
+            </button>
+            <span style={{ fontSize: 13, color: "#334155", fontWeight: 700 }}>Page {detailsPage} / {detailsTotalPages}</span>
+            <button
+              type="button"
+              disabled={detailsPage >= detailsTotalPages}
+              onClick={() => setDetailsPage((p) => Math.min(detailsTotalPages, p + 1))}
+              style={{ ...buttonStyle, height: 32, background: detailsPage >= detailsTotalPages ? "#f3f4f6" : "#fff", color: "#0f172a", border: "1px solid #FFDDB8", cursor: detailsPage >= detailsTotalPages ? "not-allowed" : "pointer" }}
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </section>
             </>
           )}
