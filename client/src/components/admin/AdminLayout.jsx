@@ -5,6 +5,7 @@ import { changeMyPassword, removeProfileAvatar, updateProfilePhone, uploadProfil
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../../utils/campusUserStorage";
 import PasswordInput from "../PasswordInput.jsx";
 import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../../utils/profilePhone";
+import campusSyncLogo from "../../assets/campus-sync-logo.png";
 
 const shellStyle = {
   height: "100vh",
@@ -16,19 +17,19 @@ const shellStyle = {
 const sidebarStyle = {
   width: "272px",
   minWidth: "272px",
-  background: "linear-gradient(180deg, #14213D 0%, #1a2d4d 100%)",
-  color: "#e2e8f0",
+  backgroundColor: "#FFFFFF",
+  color: "#334155",
   display: "flex",
   flexDirection: "column",
   height: "100vh",
   boxSizing: "border-box",
-  borderRight: "1px solid rgba(148, 163, 184, 0.12)",
+  borderRight: "1px solid #e5e7eb",
   overflow: "hidden",
 };
 const mainColumnStyle = { flex: 1, display: "flex", flexDirection: "column", height: "100vh", minWidth: 0, overflow: "hidden" };
 const topBarStyle = { flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", padding: "14px 24px", backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0" };
 const mainScrollStyle = { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "28px 28px 40px", boxSizing: "border-box" };
-const sectionLabelStyle = { fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", color: "#94a3b8", padding: "0 16px", marginTop: "20px", marginBottom: "8px" };
+const sectionLabelStyle = { fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", color: "#64748b", padding: "0 16px", marginTop: "20px", marginBottom: "8px" };
 const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "2px solid #F5E7C6", fontSize: "15px", outline: "none", boxSizing: "border-box", backgroundColor: "#FFFFFF", color: "#222222" };
 const labelStyle = { display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" };
 const PASSWORD_POLICY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
@@ -49,8 +50,8 @@ function navRowStyle(active) {
     margin: "2px 8px",
     borderRadius: "10px",
     border: "none",
-    background: active ? "rgba(250, 129, 18, 0.2)" : "transparent",
-    color: active ? "#fb923c" : "#cbd5e1",
+    background: active ? "rgba(250, 129, 18, 0.14)" : "transparent",
+    color: active ? "#c2410c" : "#475569",
     fontSize: "14px",
     fontWeight: 600,
     cursor: "pointer",
@@ -60,14 +61,12 @@ function navRowStyle(active) {
 }
 
 const routesBySection = {
-  dashboard: "/admin",
   resources: "/adminresources",
   bookings: "/adminbookings",
   tickets: "/adminticket",
   users: "/adminusers",
   contactMessages: "/admincontactmessages",
   notifications: "/adminnotifications",
-  analytics: "/adminanalytics",
 };
 
 export default function AdminLayout({ activeSection, pageTitle, description, children }) {
@@ -204,17 +203,131 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
   return (
     <div style={shellStyle}>
       <aside style={{ ...sidebarStyle, width: sidebarCollapsed ? "92px" : "272px", minWidth: sidebarCollapsed ? "92px" : "272px", transition: "width 0.2s ease, min-width 0.2s ease" }}>
-        <div style={{ padding: "22px 18px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
-          <div />
-          <button type="button" onClick={() => setSidebarCollapsed((v) => !v)} aria-label={sidebarCollapsed ? "Open menu" : "Close menu"} style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(148, 163, 184, 0.12)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#e2e8f0", flexShrink: 0 }}>
-            <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>≡</span>
-          </button>
-        </div>
+        {sidebarCollapsed ? (
+          <div
+            style={{
+              padding: "14px 10px 16px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "10px",
+              borderBottom: "1px solid #e5e7eb",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              aria-label="CampusSync home"
+              style={{
+                width: "100%",
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <img
+                src={campusSyncLogo}
+                alt="CampusSync"
+                style={{
+                  display: "block",
+                  height: 36,
+                  width: "auto",
+                  maxWidth: 72,
+                  objectFit: "contain",
+                }}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(false)}
+              aria-label="Open menu"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "#f1f5f9",
+                border: "1px solid #e2e8f0",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#334155",
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>≡</span>
+            </button>
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: "18px 16px 16px",
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              borderBottom: "1px solid #e5e7eb",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              aria-label="CampusSync home"
+              style={{
+                flex: "1 1 auto",
+                minWidth: 0,
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-start",
+              }}
+            >
+              <img
+                src={campusSyncLogo}
+                alt="CampusSync"
+                style={{
+                  display: "block",
+                  height: "clamp(38px, 3.8vw, 44px)",
+                  width: "auto",
+                  maxWidth: "100%",
+                  objectFit: "contain",
+                }}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(true)}
+              aria-label="Close menu"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "#f1f5f9",
+                border: "1px solid #e2e8f0",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#334155",
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>≡</span>
+            </button>
+          </div>
+        )}
         <nav style={{ flex: 1, padding: "4px 0" }} aria-label="Admin sections">
           {!sidebarCollapsed && <div style={sectionLabelStyle}>MENU</div>}
           {!sidebarCollapsed && (
             <>
-              <button type="button" style={navRowStyle(activeSection === "dashboard")} onClick={() => navigate(routesBySection.dashboard)}>Dashboard</button>
               <button type="button" style={navRowStyle(activeSection === "resources")} onClick={() => navigate(routesBySection.resources)}>Resource Management</button>
               <button type="button" style={navRowStyle(activeSection === "bookings")} onClick={() => navigate(routesBySection.bookings)}>Booking Management</button>
               <button type="button" style={navRowStyle(activeSection === "tickets")} onClick={() => navigate(routesBySection.tickets)}>Ticket Management</button>
@@ -227,7 +340,6 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                 Contact Messages Management
               </button>
               <button type="button" style={navRowStyle(activeSection === "notifications")} onClick={() => navigate(routesBySection.notifications)}>Notification</button>
-              <button type="button" style={navRowStyle(activeSection === "analytics")} onClick={() => navigate(routesBySection.analytics)}>Analytics & Report</button>
             </>
           )}
         </nav>

@@ -36,16 +36,14 @@ const Footer = () => {
           <div className="col-span-1 md:col-span-1">
             <h3 className="text-lg font-semibold mb-4" style={{ color: '#FFFFFF' }}>About</h3>
             <h4 className="text-xl font-bold mb-2" style={{ color: '#FFFFFF' }}>CampusSync Operations Hub</h4>
-            <p style={{ color: '#F5E7C6' }}>"Book labs/rooms and track maintenance tickets."</p>
-            <button
-              type="button"
-              onClick={() => navigate('/about')}
-              style={{ ...footerLinkStyle, background: 'none', border: 'none', padding: 0, marginTop: '12px', font: 'inherit', textAlign: 'left' }}
+            <Link
+              to="/about"
+              style={{ ...footerLinkStyle, display: 'inline-block', marginTop: '12px' }}
               onMouseEnter={(e) => handleLinkHover(e, true)}
               onMouseLeave={(e) => handleLinkHover(e, false)}
             >
-              About CampusSync →
-            </button>
+              About Us
+            </Link>
           </div>
 
           {/* Quick Links */}
@@ -100,14 +98,14 @@ const Footer = () => {
             <h3 className="text-lg font-semibold mb-4" style={{ color: '#FFFFFF' }}>Support</h3>
             <ul className="space-y-2">
               <li>
-                <a 
-                  href="#" 
+                <Link
+                  to="/faq"
                   style={footerLinkStyle}
                   onMouseEnter={(e) => handleLinkHover(e, true)}
                   onMouseLeave={(e) => handleLinkHover(e, false)}
                 >
                   Help / FAQs
-                </a>
+                </Link>
               </li>
               <li>
                 <a 
@@ -131,24 +129,24 @@ const Footer = () => {
             <h3 className="text-lg font-semibold mb-4" style={{ color: '#FFFFFF' }}>Legal</h3>
             <ul className="space-y-2">
               <li>
-                <a 
-                  href="#" 
+                <Link
+                  to="/privacy-policy"
                   style={footerLinkStyle}
                   onMouseEnter={(e) => handleLinkHover(e, true)}
                   onMouseLeave={(e) => handleLinkHover(e, false)}
                 >
                   Privacy Policy
-                </a>
+                </Link>
               </li>
               <li>
-                <a 
-                  href="#" 
+                <Link
+                  to="/terms-of-use"
                   style={footerLinkStyle}
                   onMouseEnter={(e) => handleLinkHover(e, true)}
                   onMouseLeave={(e) => handleLinkHover(e, false)}
                 >
                   Terms of Use
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../components/admin/AdminLayout.jsx";
+import { appFontFamily } from "../utils/appFont";
 import { cancelBookingByAdmin, deleteBookingByAdmin, getAdminBookings, approveBookingByAdmin, rejectBookingByAdmin } from "../api/bookings";
 import {
   Bar,
@@ -18,15 +19,33 @@ import {
   YAxis,
 } from "recharts";
 
-const panelStyle = { backgroundColor: "#FFFFFF", borderRadius: "14px", border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.04)", padding: "14px" };
-const inputStyle = { width: "100%", height: 40, borderRadius: 10, border: "1px solid #d1d5db", padding: "0 10px", boxSizing: "border-box", fontSize: 14 };
+const panelStyle = { backgroundColor: "#FFFFFF", borderRadius: "14px", border: "1px solid #FFDDB8", boxShadow: "0 2px 8px rgba(15,23,42,0.04)", padding: "14px" };
+
+/** Stat cards: cream border + colored left bar (aligned with admin resource metric cards). */
+const bookingStatCardBaseStyle = {
+  backgroundColor: "#FFFFFF",
+  border: "1px solid #F5E7C6",
+  borderRadius: "12px",
+  padding: "12px",
+  minHeight: 76,
+  boxShadow: "0 6px 14px rgba(20, 33, 61, 0.05)",
+};
+const bookingStatLabelStyle = {
+  margin: 0,
+  fontSize: "11px",
+  fontWeight: 700,
+  color: "#6b7280",
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
+const bookingStatValueStyle = { margin: "8px 0 0", fontSize: "26px", fontWeight: 800, color: "#14213D", lineHeight: 1 };
+const inputStyle = { width: "100%", height: 40, borderRadius: 10, border: "1px solid #FFDDB8", padding: "0 10px", boxSizing: "border-box", fontSize: 14 };
 const buttonStyle = { height: 38, borderRadius: 9, border: "none", padding: "0 12px", fontWeight: 700, cursor: "pointer" };
 const actionControlStyle = { height: 32, width: 108, borderRadius: 8, fontSize: 12, boxSizing: "border-box" };
 const chartPalette = {
   navy: "#14213D",
   orange: "#FA8112",
   amber: "#FCA311",
-  green: "#2e7d32",
   red: "#d32f2f",
   gray: "#6b7280",
 };
@@ -34,7 +53,7 @@ const chartPalette = {
 function statusChip(statusRaw) {
   const status = String(statusRaw || "").toUpperCase();
   if (status === "CHECKED_IN") return { background: "#ccfbf1", color: "#0f766e" };
-  if (status === "APPROVED") return { background: "#dcfce7", color: "#166534" };
+  if (status === "APPROVED") return { background: "#ffedd5", color: "#9a3412" };
   if (status === "REJECTED") return { background: "#fee2e2", color: "#b91c1c" };
   if (status === "CANCELLED") return { background: "#e5e7eb", color: "#374151" };
   return { background: "#dbeafe", color: "#1d4ed8" };
@@ -174,7 +193,7 @@ export default function AdminBookingsPage() {
   const statusChartData = useMemo(
     () => [
       { name: "Pending", value: statusCounts.pending, color: chartPalette.navy },
-      { name: "Approved", value: statusCounts.approved, color: chartPalette.green },
+      { name: "Approved", value: statusCounts.approved, color: chartPalette.orange },
       { name: "Rejected", value: statusCounts.rejected, color: chartPalette.red },
       { name: "Cancelled", value: statusCounts.cancelled, color: chartPalette.gray },
     ],
@@ -405,36 +424,36 @@ export default function AdminBookingsPage() {
   };
 
   return (
-    <AdminLayout activeSection="bookings" pageTitle="Booking Management" description="Review booking requests, approve/reject decisions, monitor conflicts, and manage booking lifecycle.">
-      <section style={panelStyle}>
+    <AdminLayout activeSection="bookings" pageTitle={null} description={null}>
+      <div style={{ fontFamily: appFontFamily }}>
+        <h1 style={{ margin: "0 0 8px 0", fontSize: "26px", fontWeight: 800, color: "#14213D" }}>Booking Management</h1>
+        <p style={{ margin: "0 0 28px 0", fontSize: "14px", color: "#64748b", maxWidth: "640px", lineHeight: 1.5 }}>
+          Review booking requests, approve/reject decisions, monitor conflicts, and manage booking lifecycle.
+        </p>
+        <section style={panelStyle}>
         <div style={{ display: "grid", gap: 12 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 10 }}>
             {[
-              { label: "Total Bookings", value: statusCounts.total },
-              { label: "Pending", value: statusCounts.pending },
-              { label: "Approved", value: statusCounts.approved },
-              { label: "Rejected", value: statusCounts.rejected },
-              { label: "Cancelled", value: statusCounts.cancelled },
+              { label: "Total Bookings", value: statusCounts.total, accent: "#14213D" },
+              { label: "Pending", value: statusCounts.pending, accent: "#FA8112" },
+              { label: "Approved", value: statusCounts.approved, accent: "#FA8112" },
+              { label: "Rejected", value: statusCounts.rejected, accent: "#d32f2f" },
+              { label: "Cancelled", value: statusCounts.cancelled, accent: "#FCA311" },
             ].map((card) => (
               <div
                 key={card.label}
                 style={{
-                  background: "linear-gradient(160deg, #ffffff 0%, #f8fafc 65%, #eef2ff 100%)",
-                  border: "1px solid #dbe4ee",
-                  borderRadius: 14,
-                  padding: "12px 14px",
-                  minHeight: 76,
-                  boxShadow: "0 10px 20px rgba(15,23,42,0.12), 0 2px 4px rgba(15,23,42,0.08), inset 0 1px 0 rgba(255,255,255,0.9)",
-                  transform: "translateZ(0)",
+                  ...bookingStatCardBaseStyle,
+                  borderLeft: `6px solid ${card.accent}`,
                 }}
               >
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>{card.label}</p>
-                <p style={{ margin: "8px 0 0", fontSize: 28, fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{card.value}</p>
+                <p style={bookingStatLabelStyle}>{card.label}</p>
+                <p style={bookingStatValueStyle}>{card.value}</p>
               </div>
             ))}
           </div>
 
-          <div style={{ display: "flex", gap: 10, borderBottom: "1px solid #e2e8f0", paddingBottom: 8 }}>
+          <div style={{ display: "flex", gap: 10, borderBottom: "1px solid #FFDDB8", paddingBottom: 8 }}>
           <button
             type="button"
             onClick={() => setActiveTab("dashboard")}
@@ -500,7 +519,7 @@ export default function AdminBookingsPage() {
           {activeTab === "dashboard" && (
             <div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                <div style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
                   <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Bookings by Status</h3>
                   <div style={{ height: 260 }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -517,7 +536,7 @@ export default function AdminBookingsPage() {
                   </div>
                 </div>
 
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                <div style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                     <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Bookings Trend</h3>
                     <select value={trendMode} onChange={(e) => setTrendMode(e.target.value)} style={{ ...inputStyle, width: 120, height: 32 }}>
@@ -529,7 +548,7 @@ export default function AdminBookingsPage() {
                   <div style={{ height: 260 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={bookingsTrendData}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#FFDDB8" />
                         <XAxis dataKey="label" />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
@@ -541,12 +560,12 @@ export default function AdminBookingsPage() {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                <div style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
                   <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Most Booked Resource Types</h3>
                   <div style={{ height: 260 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={resourceTypeChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#FFDDB8" />
                         <XAxis dataKey="type" />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
@@ -556,12 +575,12 @@ export default function AdminBookingsPage() {
                   </div>
                 </div>
 
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                <div style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
                   <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Top Booked Resources</h3>
                   <div style={{ height: 260 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={topResourcesChartData} layout="vertical" margin={{ left: 30 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#FFDDB8" />
                         <XAxis type="number" allowDecimals={false} />
                         <YAxis type="category" dataKey="name" width={130} />
                         <Tooltip />
@@ -573,17 +592,17 @@ export default function AdminBookingsPage() {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                <div style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
                   <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Approval Decision by Resource Type</h3>
                   <div style={{ height: 280 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={decisionByTypeChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#FFDDB8" />
                         <XAxis dataKey="type" />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="approved" stackId="a" fill={chartPalette.green} />
+                        <Bar dataKey="approved" stackId="a" fill={chartPalette.orange} />
                         <Bar dataKey="rejected" stackId="a" fill={chartPalette.red} />
                         <Bar dataKey="cancelled" stackId="a" fill={chartPalette.gray} />
                         <Bar dataKey="pending" stackId="a" fill={chartPalette.navy} />
@@ -592,12 +611,12 @@ export default function AdminBookingsPage() {
                   </div>
                 </div>
 
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+                <div style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
                   <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Peak Booking Hours</h3>
                   <div style={{ height: 280 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={peakHoursChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#FFDDB8" />
                         <XAxis dataKey="hour" />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
@@ -612,7 +631,7 @@ export default function AdminBookingsPage() {
 
           {activeTab === "details" && (
             <>
-      <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+      <section style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 10 }}>
           <select value={filters.status} onChange={(e) => setFilters((s) => ({ ...s, status: e.target.value }))} style={inputStyle}>
             <option value="ALL">Status: All</option>
@@ -643,7 +662,7 @@ export default function AdminBookingsPage() {
             onClick={() => {
               setFilters({ status: "ALL", date: "", resourceType: "ALL", resource: "", user: "", approvalState: "ALL" });
             }}
-            style={{ ...buttonStyle, background: "#fff", color: "#0f172a", border: "1px solid #d1d5db" }}
+            style={{ ...buttonStyle, background: "#fff", color: "#0f172a", border: "1px solid #FFDDB8" }}
           >
             Reset
           </button>
@@ -651,12 +670,12 @@ export default function AdminBookingsPage() {
         {error && <p style={{ margin: "10px 0 0", color: "#b91c1c", fontWeight: 700 }}>{error}</p>}
       </section>
 
-      <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, marginTop: 12, padding: 0, overflowX: "auto", background: "#fff" }}>
+      <section style={{ border: "1px solid #FFDDB8", borderRadius: 12, marginTop: 12, padding: 0, overflowX: "auto", background: "#fff" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1160 }}>
           <thead>
             <tr style={{ background: "#f8fafc", color: "#334155", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em" }}>
               {["Booked By", "Resource Name", "Resource Type", "Date", "Start Time", "End Time", "Status", "Requested On", "Actions"].map((h) => (
-                <th key={h} style={{ textAlign: "left", padding: "12px 10px", borderBottom: "1px solid #e2e8f0" }}>{h}</th>
+                <th key={h} style={{ textAlign: "left", padding: "12px 10px", backgroundColor: "#FAF3E1", color: "#374151", fontWeight: 800, fontSize: "13px", borderBottom: "1px solid #F5E7C6" }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -665,7 +684,7 @@ export default function AdminBookingsPage() {
               <tr><td colSpan={9} style={{ padding: 16, color: "#64748b" }}>No bookings found for the selected filters.</td></tr>
             )}
             {rows.map((row) => (
-              <tr key={row.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+              <tr key={row.id} style={{ borderBottom: "1px solid #FFDDB8" }}>
                 <td style={{ padding: "10px", fontWeight: 700, color: "#0f172a" }}>{row.userName || "—"}</td>
                 <td style={{ padding: "10px" }}>{row.resourceName || "—"}</td>
                 <td style={{ padding: "10px" }}>{row.resourceType || "—"}</td>
@@ -676,9 +695,9 @@ export default function AdminBookingsPage() {
                 <td style={{ padding: "10px" }}>{fmtDateTime(row.createdAt)}</td>
                 <td style={{ padding: "10px" }}>
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                    <button type="button" onClick={() => setViewRow(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#fff", border: "1px solid #d1d5db", color: "#0f172a", textAlign: "center" }}>View</button>
+                    <button type="button" onClick={() => setViewRow(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#fff", border: "1px solid #FFDDB8", color: "#0f172a", textAlign: "center" }}>View</button>
                     {canApprove(row.status) && (
-                      <button type="button" disabled={busyId === row.id} onClick={() => void handleApproveDirect(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#16a34a", color: "#fff", textAlign: "center" }}>
+                      <button type="button" disabled={busyId === row.id} onClick={() => void handleApproveDirect(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#FA8112", color: "#fff", textAlign: "center" }}>
                         Approve
                       </button>
                     )}
@@ -708,7 +727,7 @@ export default function AdminBookingsPage() {
           )}
 
           {activeTab === "calendar" && (
-            <section style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+            <section style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>Calendar View</h3>
                 <input
@@ -729,7 +748,7 @@ export default function AdminBookingsPage() {
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, color: "#475569", fontSize: 13 }}>
-                <span style={{ width: 10, height: 10, borderRadius: 999, background: "#22c55e", display: "inline-block" }} />
+                <span style={{ width: 10, height: 10, borderRadius: 999, background: "#FA8112", display: "inline-block" }} />
                 Approved booking dates
               </div>
 
@@ -748,8 +767,8 @@ export default function AdminBookingsPage() {
                     style={{
                       minHeight: 70,
                       borderRadius: 10,
-                      border: cell.approved ? "1px solid #16a34a" : "1px solid #e2e8f0",
-                      background: cell.approved ? "linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%)" : "#fff",
+                      border: "1px solid #FFDDB8",
+                      background: cell.approved ? "linear-gradient(180deg, #fffbeb 0%, #ffedd5 100%)" : "#fff",
                       opacity: cell.inCurrentMonth ? 1 : 0.45,
                       padding: 6,
                       display: "flex",
@@ -761,7 +780,7 @@ export default function AdminBookingsPage() {
                   >
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>{cell.day}</span>
                     {cell.approved && (
-                      <span style={{ alignSelf: "flex-start", fontSize: 11, fontWeight: 700, color: "#166534", background: "#bbf7d0", borderRadius: 999, padding: "2px 6px" }}>
+                      <span style={{ alignSelf: "flex-start", fontSize: 11, fontWeight: 700, color: "#9a3412", background: "#fed7aa", borderRadius: 999, padding: "2px 6px" }}>
                         {cell.approvedCount} approved
                       </span>
                     )}
@@ -775,10 +794,10 @@ export default function AdminBookingsPage() {
 
       {calendarDetailsDate && (
         <div role="dialog" aria-modal="true" onClick={() => setCalendarDetailsDate("")} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", zIndex: 1320 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: "760px", backgroundColor: "#fff", borderRadius: "14px", border: "1px solid #e5e7eb", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)", padding: "18px" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: "760px", backgroundColor: "#fff", borderRadius: "14px", border: "1px solid #FFDDB8", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)", padding: "18px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
               <h3 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "#111827" }}>Approved Bookings on {fmtDate(calendarDetailsDate)}</h3>
-              <button type="button" onClick={() => setCalendarDetailsDate("")} style={{ ...buttonStyle, height: 34, background: "#fff", border: "1px solid #d1d5db", color: "#0f172a" }}>
+              <button type="button" onClick={() => setCalendarDetailsDate("")} style={{ ...buttonStyle, height: 34, background: "#fff", border: "1px solid #FFDDB8", color: "#0f172a" }}>
                 Close
               </button>
             </div>
@@ -787,7 +806,7 @@ export default function AdminBookingsPage() {
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
                 {(approvedRowsByDate.get(calendarDetailsDate) || []).map((row) => (
-                  <div key={row.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", background: "#f8fafc" }}>
+                  <div key={row.id} style={{ border: "1px solid #FFDDB8", borderRadius: 10, padding: "10px 12px", background: "#f8fafc" }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", fontSize: 14, color: "#334155" }}>
                       <div><strong>Booked By:</strong> {row.userName || "—"}</div>
                       <div><strong>Resource:</strong> {row.resourceName || "—"}</div>
@@ -805,7 +824,7 @@ export default function AdminBookingsPage() {
 
       {viewRow && (
         <div role="dialog" aria-modal="true" onClick={() => setViewRow(null)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", zIndex: 1300 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: "760px", backgroundColor: "#fff", borderRadius: "14px", border: "1px solid #e5e7eb", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)", padding: "18px" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: "760px", backgroundColor: "#fff", borderRadius: "14px", border: "1px solid #FFDDB8", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)", padding: "18px" }}>
             <h3 style={{ margin: "0 0 10px", fontSize: 21, fontWeight: 800, color: "#111827" }}>Booking Details</h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 14px", color: "#334155", fontSize: 14 }}>
               <div><strong>Booking ID:</strong> {viewRow.id || "—"}</div>
@@ -823,7 +842,7 @@ export default function AdminBookingsPage() {
               <div style={{ gridColumn: "1 / -1" }}><strong>Additional Notes:</strong> {viewRow.additionalNotes || "—"}</div>
             </div>
             <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end" }}>
-              <button type="button" onClick={() => setViewRow(null)} style={{ ...buttonStyle, background: "#fff", border: "1px solid #d1d5db", color: "#0f172a" }}>Close</button>
+              <button type="button" onClick={() => setViewRow(null)} style={{ ...buttonStyle, background: "#fff", border: "1px solid #FFDDB8", color: "#0f172a" }}>Close</button>
             </div>
           </div>
         </div>
@@ -831,7 +850,7 @@ export default function AdminBookingsPage() {
 
       {actionModal.row && (
         <div role="dialog" aria-modal="true" onClick={() => (busyId ? null : closeAction())} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", zIndex: 1350 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, background: "#fff", borderRadius: 14, border: "1px solid #e5e7eb", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)", padding: 18 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, background: "#fff", borderRadius: 14, border: "1px solid #FFDDB8", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)", padding: 18 }}>
             <h3 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 800, color: "#111827", textTransform: "capitalize" }}>{actionModal.type} Booking</h3>
             <p style={{ margin: "0 0 10px", color: "#334155", fontSize: 14 }}>
               {actionModal.type === "reject" && "Reject this booking request? Please provide a reason."}
@@ -848,18 +867,19 @@ export default function AdminBookingsPage() {
                   maxLength={500}
                   value={actionModal.reason}
                   onChange={(e) => setActionModal((s) => ({ ...s, reason: e.target.value, error: "" }))}
-                  style={{ width: "100%", borderRadius: 10, border: "1px solid #d1d5db", padding: "10px 12px", boxSizing: "border-box", resize: "vertical", fontSize: 14 }}
+                  style={{ width: "100%", borderRadius: 10, border: "1px solid #FFDDB8", padding: "10px 12px", boxSizing: "border-box", resize: "vertical", fontSize: 14 }}
                 />
               </>
             )}
             {actionModal.error && <p style={{ margin: "8px 0 0", color: "#b91c1c", fontWeight: 700, fontSize: 13 }}>{actionModal.error}</p>}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-              <button type="button" onClick={closeAction} disabled={!!busyId} style={{ ...buttonStyle, background: "#fff", border: "1px solid #d1d5db", color: "#0f172a" }}>Close</button>
+              <button type="button" onClick={closeAction} disabled={!!busyId} style={{ ...buttonStyle, background: "#fff", border: "1px solid #FFDDB8", color: "#0f172a" }}>Close</button>
               <button type="button" onClick={handleConfirmAction} disabled={busyId === actionModal.row.id} style={{ ...buttonStyle, background: "#FA8112", color: "#fff" }}>{busyId === actionModal.row.id ? "Saving..." : "Confirm"}</button>
             </div>
           </div>
         </div>
       )}
+      </div>
     </AdminLayout>
   );
 }

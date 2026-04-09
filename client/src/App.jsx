@@ -24,6 +24,9 @@ import AdminAnalyticsPage from "./pages/AdminAnalyticsPage.jsx";
 import AdminContactMessagesPage from "./pages/AdminContactMessagesPage.jsx";
 import ContactUs from "./pages/ContactUs.jsx";
 import AboutUs from "./pages/AboutUs.jsx";
+import FaqPage from "./pages/FaqPage.jsx";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage.jsx";
+import TermsOfUsePage from "./pages/TermsOfUsePage.jsx";
 import AccountPersonalPage from "./pages/AccountPersonalPage.jsx";
 import AccountBookingsPage from "./pages/AccountBookingsPage.jsx";
 import AccountContactMessagesPage from "./pages/AccountContactMessagesPage.jsx";
@@ -50,6 +53,9 @@ function AppContent() {
         <Route path="/book-resource" element={<BookResourcePage />} />
         <Route path="/contact" element={<ContactUs />} />
         <Route path="/about" element={<AboutUs />} />
+        <Route path="/faq" element={<FaqPage />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms-of-use" element={<TermsOfUsePage />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/technician" element={<TechnicianDashboard />} />

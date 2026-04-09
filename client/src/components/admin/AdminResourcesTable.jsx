@@ -5,13 +5,21 @@ const pageCardStyle = {
   maxWidth: "100%",
   backgroundColor: "#FFFFFF",
   borderRadius: "16px",
-  border: "1px solid #e2e8f0",
+  border: "1px solid #FFDDB8",
   boxShadow: "0 12px 40px rgba(15, 23, 42, 0.08)",
   padding: "18px",
   boxSizing: "border-box",
 };
 const tableStyle = { width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "13px" };
-const thStyle = { textAlign: "left", padding: "10px", fontWeight: 900, color: "#0f172a", borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap" };
+const thStyle = {
+  textAlign: "left",
+  padding: "10px",
+  fontWeight: 900,
+  color: "#374151",
+  backgroundColor: "#FAF3E1",
+  borderBottom: "1px solid #F5E7C6",
+  whiteSpace: "nowrap",
+};
 const tdStyle = { padding: "10px", borderBottom: "1px solid #eef2f7", color: "#334155", verticalAlign: "top" };
 const inputStyle = {
   width: "100%",
@@ -23,15 +31,22 @@ const inputStyle = {
   color: "#0f172a",
   boxSizing: "border-box",
 };
+/** Filter row only — matches page / table light orange border. */
+const filterInputStyle = { ...inputStyle, border: "1px solid #FFDDB8" };
+
+const RESOURCE_TABLE_PAGE_SIZE = 10;
 const labelStyle = { display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 };
 const summaryGridStyle = { display: "grid", gridTemplateColumns: "repeat(5, minmax(140px, 1fr))", gap: "12px", marginBottom: "14px" };
-const summaryCardStyle = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #e2e8f0",
+/** Matches admin ticket dashboard metric cards: light border + left accent strip. */
+const summaryCardBaseStyle = {
+  backgroundColor: "#FFFFFF",
+  border: "1px solid #F5E7C6",
   borderRadius: "12px",
   padding: "12px",
-  boxShadow: "0 6px 20px rgba(15,23,42,0.04)",
+  boxShadow: "0 6px 14px rgba(20, 33, 61, 0.05)",
 };
+const summaryLabelStyle = { fontSize: "11px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" };
+const summaryValueStyle = { fontSize: "26px", fontWeight: 800, color: "#14213D", marginTop: 4 };
 const primaryActionBtnStyle = {
   border: "none",
   background: "#FA8112",
@@ -60,8 +75,8 @@ function statusToggleStyle(active, disabled) {
     width: 46,
     height: 26,
     borderRadius: 999,
-    border: active ? "1px solid #86efac" : "1px solid #fecaca",
-    background: active ? "#dcfce7" : "#fee2e2",
+    border: active ? "1px solid #FFDDB8" : "1px solid #fecaca",
+    background: active ? "#FFF4E6" : "#fee2e2",
     padding: 2,
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.7 : 1,
@@ -78,7 +93,7 @@ const statusToggleKnobStyle = {
   height: 20,
   borderRadius: "50%",
   background: "#fff",
-  border: "1px solid #e5e7eb",
+  border: "1px solid #FFDDB8",
   boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
 };
 
@@ -253,6 +268,7 @@ export default function AdminResourcesTable() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [minCapacityFilter, setMinCapacityFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
+  const [resourceTablePage, setResourceTablePage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -290,6 +306,22 @@ export default function AdminResourcesTable() {
       return true;
     });
   }, [resources, search, minCapacityFilter, locationFilter]);
+
+  useEffect(() => {
+    setResourceTablePage(1);
+  }, [search, typeFilter, statusFilter, minCapacityFilter, locationFilter]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(filtered.length / RESOURCE_TABLE_PAGE_SIZE));
+    setResourceTablePage((p) => Math.min(p, totalPages));
+  }, [filtered.length]);
+
+  const resourceTableTotalPages = Math.max(1, Math.ceil(filtered.length / RESOURCE_TABLE_PAGE_SIZE));
+  const resourceTableCurrentPage = Math.min(resourceTablePage, resourceTableTotalPages);
+  const paginatedResources = useMemo(() => {
+    const start = (resourceTableCurrentPage - 1) * RESOURCE_TABLE_PAGE_SIZE;
+    return filtered.slice(start, start + RESOURCE_TABLE_PAGE_SIZE);
+  }, [filtered, resourceTableCurrentPage]);
 
   const summary = useMemo(() => {
     const total = resources.length;
@@ -531,51 +563,51 @@ export default function AdminResourcesTable() {
       </div>
 
       <div style={summaryGridStyle}>
-        <div style={summaryCardStyle}>
-          <div style={{ fontSize: "11px", fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Total Resources</div>
-          <div style={{ fontSize: "26px", fontWeight: 900, color: "#0f172a", marginTop: 4 }}>{summary.total}</div>
+        <div style={{ ...summaryCardBaseStyle, borderLeft: "6px solid #14213D" }}>
+          <div style={summaryLabelStyle}>Total Resources</div>
+          <div style={summaryValueStyle}>{summary.total}</div>
         </div>
-        <div style={summaryCardStyle}>
-          <div style={{ fontSize: "11px", fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Active Resources</div>
-          <div style={{ fontSize: "26px", fontWeight: 900, color: "#166534", marginTop: 4 }}>{summary.active}</div>
+        <div style={{ ...summaryCardBaseStyle, borderLeft: "6px solid #2e7d32" }}>
+          <div style={summaryLabelStyle}>Active Resources</div>
+          <div style={summaryValueStyle}>{summary.active}</div>
         </div>
-        <div style={summaryCardStyle}>
-          <div style={{ fontSize: "11px", fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Out of Service Resources</div>
-          <div style={{ fontSize: "26px", fontWeight: 900, color: "#991b1b", marginTop: 4 }}>{summary.outOfService}</div>
+        <div style={{ ...summaryCardBaseStyle, borderLeft: "6px solid #d32f2f" }}>
+          <div style={summaryLabelStyle}>Out of Service Resources</div>
+          <div style={summaryValueStyle}>{summary.outOfService}</div>
         </div>
-        <div style={summaryCardStyle}>
-          <div style={{ fontSize: "11px", fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Total Rooms</div>
-          <div style={{ fontSize: "26px", fontWeight: 900, color: "#0f172a", marginTop: 4 }}>{summary.totalRooms}</div>
+        <div style={{ ...summaryCardBaseStyle, borderLeft: "6px solid #FA8112" }}>
+          <div style={summaryLabelStyle}>Total Rooms</div>
+          <div style={summaryValueStyle}>{summary.totalRooms}</div>
         </div>
-        <div style={summaryCardStyle}>
-          <div style={{ fontSize: "11px", fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Total Equipment</div>
-          <div style={{ fontSize: "26px", fontWeight: 900, color: "#0f172a", marginTop: 4 }}>{summary.totalEquipment}</div>
+        <div style={{ ...summaryCardBaseStyle, borderLeft: "6px solid #FCA311" }}>
+          <div style={summaryLabelStyle}>Total Equipment</div>
+          <div style={summaryValueStyle}>{summary.totalEquipment}</div>
         </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 160px 140px 1fr", gap: 12, marginBottom: 14 }}>
-        <input value={search} onChange={(e) => setSearch(e.target.value)} style={inputStyle} placeholder="Search code, name, type, location" />
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={inputStyle}>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} style={filterInputStyle} placeholder="Search code, name, type, location" />
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={filterInputStyle}>
           <option value="ALL">All Types</option>
           <option value="LECTURE_HALL">Lecture Hall</option>
           <option value="LAB">Lab</option>
           <option value="MEETING_ROOM">Meeting Room</option>
           <option value="EQUIPMENT">Equipment</option>
         </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={inputStyle}>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={filterInputStyle}>
           <option value="ALL">All Status</option>
           <option value="ACTIVE">ACTIVE</option>
           <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
         </select>
-        <input value={minCapacityFilter} onChange={(e) => setMinCapacityFilter(e.target.value.replace(/[^\d]/g, ""))} style={inputStyle} placeholder="Min capacity" />
-        <input value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} style={inputStyle} placeholder="Filter by location" />
+        <input value={minCapacityFilter} onChange={(e) => setMinCapacityFilter(e.target.value.replace(/[^\d]/g, ""))} style={filterInputStyle} placeholder="Min capacity" />
+        <input value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} style={filterInputStyle} placeholder="Filter by location" />
       </div>
 
       {loading && <p style={{ margin: 0, color: "#64748b", fontWeight: 800 }}>Loading resources...</p>}
       {!loading && error && <p style={{ margin: "0 0 10px 0", color: "#b45309", fontWeight: 800 }}>{error}</p>}
 
       {!loading && (
-        <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #e5e7eb" }}>
+        <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #FFDDB8" }}>
           <table style={tableStyle}>
             <thead>
               <tr>
@@ -595,7 +627,7 @@ export default function AdminResourcesTable() {
                   <td style={tdStyle} colSpan={8}>No resources found.</td>
                 </tr>
               )}
-              {filtered.map((r) => (
+              {paginatedResources.map((r) => (
                 <tr key={r.id || r.code}>
                   <td style={tdStyle}>{r.code || r.resourceCode || "—"}</td>
                   <td style={tdStyle}>{r.name || r.resourceName || "—"}</td>
@@ -633,6 +665,70 @@ export default function AdminResourcesTable() {
               ))}
             </tbody>
           </table>
+          {filtered.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "12px",
+                padding: "12px 14px",
+                borderTop: "1px solid #FFDDB8",
+                backgroundColor: "#FAF3E1",
+              }}
+            >
+              <span style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>
+                Showing{" "}
+                {`${(resourceTableCurrentPage - 1) * RESOURCE_TABLE_PAGE_SIZE + 1}–${Math.min(
+                  resourceTableCurrentPage * RESOURCE_TABLE_PAGE_SIZE,
+                  filtered.length
+                )}`}{" "}
+                of {filtered.length}
+              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => setResourceTablePage((p) => Math.max(1, p - 1))}
+                  disabled={resourceTableCurrentPage <= 1}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: "8px",
+                    border: "none",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    backgroundColor: resourceTableCurrentPage <= 1 ? "#e5e7eb" : "#14213D",
+                    color: "#FFFFFF",
+                    cursor: resourceTableCurrentPage <= 1 ? "not-allowed" : "pointer",
+                    opacity: resourceTableCurrentPage <= 1 ? 0.65 : 1,
+                  }}
+                >
+                  Previous
+                </button>
+                <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: 700 }}>
+                  Page {resourceTableCurrentPage} of {resourceTableTotalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setResourceTablePage((p) => Math.min(resourceTableTotalPages, p + 1))}
+                  disabled={resourceTableCurrentPage >= resourceTableTotalPages}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: "8px",
+                    border: "none",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    backgroundColor: resourceTableCurrentPage >= resourceTableTotalPages ? "#e5e7eb" : "#14213D",
+                    color: "#FFFFFF",
+                    cursor: resourceTableCurrentPage >= resourceTableTotalPages ? "not-allowed" : "pointer",
+                    opacity: resourceTableCurrentPage >= resourceTableTotalPages ? 0.65 : 1,
+                  }}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -643,31 +739,31 @@ export default function AdminResourcesTable() {
           style={{ position: "fixed", inset: 0, zIndex: 1002, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px", overflowY: "auto" }}
           onMouseDown={(e) => { if (e.target === e.currentTarget) setAddModalOpen(false); }}
         >
-          <div style={{ width: "100%", maxWidth: "860px", maxHeight: "calc(100vh - 36px)", margin: "auto 0", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+          <div style={{ width: "100%", maxWidth: "860px", maxHeight: "calc(100vh - 36px)", margin: "auto 0", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #FFDDB8", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "1px solid #FFDDB8", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexShrink: 0 }}>
               <div>
                 <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Add Resource</div>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Create a new facility or asset entry.</div>
               </div>
-              <button type="button" onClick={() => setAddModalOpen(false)} aria-label="Close" style={{ width: 36, height: 36, borderRadius: "999px", border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, fontSize: "20px", lineHeight: 1, cursor: "pointer", color: "#0f172a" }}>×</button>
+              <button type="button" onClick={() => setAddModalOpen(false)} aria-label="Close" style={{ width: 36, height: 36, borderRadius: "999px", border: "1px solid #FFDDB8", background: "#fff", fontWeight: 900, fontSize: "20px", lineHeight: 1, cursor: "pointer", color: "#0f172a" }}>×</button>
             </div>
 
             <form onSubmit={handleCreateResource} style={{ padding: "18px 22px 22px", display: "grid", gap: "16px", overflowY: "auto" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
                   <label style={labelStyle}>Resource Code</label>
-                  <input value={formData.resourceCode} onChange={(e) => updateForm("resourceCode", e.target.value)} style={inputStyle} placeholder="LAB-C-204" required />
+                  <input value={formData.resourceCode} onChange={(e) => updateForm("resourceCode", e.target.value)} style={filterInputStyle} placeholder="LAB-C-204" required />
                 </div>
                 <div>
                   <label style={labelStyle}>Resource Name</label>
-                  <input value={formData.resourceName} onChange={(e) => updateForm("resourceName", e.target.value)} style={inputStyle} placeholder="Computer Lab C204" required />
+                  <input value={formData.resourceName} onChange={(e) => updateForm("resourceName", e.target.value)} style={filterInputStyle} placeholder="Computer Lab C204" required />
                 </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
                   <label style={labelStyle}>Resource Type</label>
-                  <select value={formData.resourceType} onChange={(e) => updateForm("resourceType", e.target.value)} style={inputStyle}>
+                  <select value={formData.resourceType} onChange={(e) => updateForm("resourceType", e.target.value)} style={filterInputStyle}>
                     <option value="LECTURE_HALL">Lecture Hall</option>
                     <option value="LAB">Lab</option>
                     <option value="MEETING_ROOM">Meeting Room</option>
@@ -676,18 +772,18 @@ export default function AdminResourcesTable() {
                 </div>
                 <div>
                   <label style={labelStyle}>Capacity</label>
-                  <input value={formData.capacity} onChange={(e) => updateForm("capacity", e.target.value.replace(/[^\d]/g, ""))} style={inputStyle} placeholder="40" required />
+                  <input value={formData.capacity} onChange={(e) => updateForm("capacity", e.target.value.replace(/[^\d]/g, ""))} style={filterInputStyle} placeholder="40" required />
                 </div>
               </div>
 
               <div>
                 <label style={labelStyle}>Location</label>
-                <input value={formData.location} onChange={(e) => updateForm("location", e.target.value)} style={inputStyle} placeholder="Engineering Block C - Floor 2" required />
+                <input value={formData.location} onChange={(e) => updateForm("location", e.target.value)} style={filterInputStyle} placeholder="Engineering Block C - Floor 2" required />
               </div>
 
               <div>
                 <label style={labelStyle}>Description</label>
-                <textarea value={formData.description} onChange={(e) => updateForm("description", e.target.value)} style={{ ...inputStyle, minHeight: "88px", resize: "vertical" }} placeholder="Short description of the resource" />
+                <textarea value={formData.description} onChange={(e) => updateForm("description", e.target.value)} style={{ ...filterInputStyle, minHeight: "88px", resize: "vertical" }} placeholder="Short description of the resource" />
               </div>
 
               <div>
@@ -696,7 +792,7 @@ export default function AdminResourcesTable() {
                   type="file"
                   accept="image/*"
                   multiple
-                  style={{ ...inputStyle, height: "auto", padding: "10px" }}
+                  style={{ ...filterInputStyle, height: "auto", padding: "10px" }}
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
                     if (files.length === 0) return;
@@ -719,14 +815,14 @@ export default function AdminResourcesTable() {
                   <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(120px, 1fr))", gap: 8 }}>
                     {formData.resourceImagePreviews.map((src, idx) => (
                       <div key={`${src}-${idx}`} style={{ position: "relative" }}>
-                        <img src={src} alt="Resource preview" style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 10, border: "1px solid #e5e7eb" }} />
+                        <img src={src} alt="Resource preview" style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 10, border: "1px solid #FFDDB8" }} />
                         <button
                           type="button"
                           onClick={() => {
                             updateForm("resourceImageFiles", formData.resourceImageFiles.filter((_, i) => i !== idx));
                             updateForm("resourceImagePreviews", formData.resourceImagePreviews.filter((_, i) => i !== idx));
                           }}
-                          style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: "50%", border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
+                          style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: "50%", border: "1px solid #FFDDB8", background: "#fff", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
                           aria-label="Remove image"
                         >
                           ×
@@ -740,15 +836,15 @@ export default function AdminResourcesTable() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
                   <label style={labelStyle}>Availability Start</label>
-                  <input type="time" value={formData.availabilityStart} onChange={(e) => updateForm("availabilityStart", e.target.value)} style={inputStyle} />
+                  <input type="time" value={formData.availabilityStart} onChange={(e) => updateForm("availabilityStart", e.target.value)} style={filterInputStyle} />
                 </div>
                 <div>
                   <label style={labelStyle}>Availability End</label>
-                  <input type="time" value={formData.availabilityEnd} onChange={(e) => updateForm("availabilityEnd", e.target.value)} style={inputStyle} />
+                  <input type="time" value={formData.availabilityEnd} onChange={(e) => updateForm("availabilityEnd", e.target.value)} style={filterInputStyle} />
                 </div>
                 <div>
                   <label style={labelStyle}>Status</label>
-                  <select value={formData.status} onChange={(e) => updateForm("status", e.target.value)} style={inputStyle}>
+                  <select value={formData.status} onChange={(e) => updateForm("status", e.target.value)} style={filterInputStyle}>
                     <option value="ACTIVE">ACTIVE</option>
                     <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
                   </select>
