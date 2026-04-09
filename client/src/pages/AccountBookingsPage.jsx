@@ -9,7 +9,6 @@ import AccountLayout from "../components/account/AccountLayout";
 
 const cardStyle = { backgroundColor: "#ffffff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #e5e7eb", padding: "28px 32px", width: "100%" };
 const sectionHeading = { fontSize: "28px", fontWeight: 650, color: "#111827", margin: "0 0 8px 0", letterSpacing: "-0.02em" };
-const subtleNote = { fontSize: "13px", color: "#6b7280", marginBottom: "24px", lineHeight: 1.5 };
 const bookingCardStyle = { backgroundColor: "#ffffff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #e5e7eb", padding: "18px 20px", width: "100%", margin: "0" };
 const bookingChipStyle = { display: "inline-flex", alignItems: "center", padding: "5px 10px", borderRadius: "999px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.03em", textTransform: "uppercase" };
 const bookingFieldLabelStyle = { fontSize: "10px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" };
@@ -715,8 +714,7 @@ export default function AccountBookingsPage() {
           border-color: #fb923c;
         }
       `}</style>
-      <h1 style={sectionHeading}>{bookingsView === "history" ? "Booking history" : "Upcoming bookings"}</h1>
-      <p style={subtleNote}>You can view only your own bookings and cancel pending/approved requests.</p>
+      <h1 style={{ ...sectionHeading, marginBottom: "22px" }}>{bookingsView === "history" ? "Booking history" : "Upcoming bookings"}</h1>
       {bookingsLoading && <div style={cardStyle}><p style={{ margin: 0, color: "#6b7280", fontSize: "15px" }}>Loading bookings...</p></div>}
       {!bookingsLoading && bookingsError && <div style={cardStyle}><p style={{ margin: 0, color: "#b91c1c", fontSize: "15px", fontWeight: 700 }}>{bookingsError}</p></div>}
       {!bookingsLoading && !bookingsError && bookings.length === 0 && <div style={cardStyle}><p style={{ margin: 0, color: "#6b7280", fontSize: "15px" }}>No bookings yet.</p></div>}
