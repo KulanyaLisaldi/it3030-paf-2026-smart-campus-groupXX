@@ -7,6 +7,7 @@ import { persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import { appFontFamily } from "../utils/appFont";
 import PasswordInput from "../components/PasswordInput.jsx";
 import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../utils/profilePhone";
+import campusSyncLogo from "../assets/campus-sync-logo.png";
 
 /** YYYY-MM-DD in the user's local timezone (aligned with weekday labels on the chart). */
 function localCalendarDayKey(isoOrMs) {
@@ -365,8 +366,8 @@ function TechnicianAppShell({ children }) {
     >
       <aside
         style={{
-          width: sidebarCollapsed ? "56px" : "272px",
-          minWidth: sidebarCollapsed ? "56px" : "272px",
+          width: sidebarCollapsed ? "92px" : "272px",
+          minWidth: sidebarCollapsed ? "92px" : "272px",
           flexShrink: 0,
           alignSelf: "stretch",
           position: "sticky",
@@ -385,13 +386,41 @@ function TechnicianAppShell({ children }) {
         {sidebarCollapsed ? (
           <div
             style={{
-              padding: "14px 8px",
+              padding: "14px 10px 16px",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
+              gap: "10px",
               borderBottom: "1px solid #e5e7eb",
             }}
           >
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              aria-label="CampusSync home"
+              style={{
+                width: "100%",
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <img
+                src={campusSyncLogo}
+                alt="CampusSync"
+                style={{
+                  display: "block",
+                  height: 36,
+                  width: "auto",
+                  maxWidth: 72,
+                  objectFit: "contain",
+                }}
+              />
+            </button>
             <button
               type="button"
               onClick={() => setSidebarCollapsed(false)}
@@ -417,14 +446,42 @@ function TechnicianAppShell({ children }) {
         ) : (
           <div
             style={{
-              padding: "22px 18px 18px",
+              padding: "18px 16px 16px",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               gap: "12px",
+              borderBottom: "1px solid #e5e7eb",
             }}
           >
-            <div />
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              aria-label="CampusSync home"
+              style={{
+                flex: "1 1 auto",
+                minWidth: 0,
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-start",
+              }}
+            >
+              <img
+                src={campusSyncLogo}
+                alt="CampusSync"
+                style={{
+                  display: "block",
+                  height: "clamp(38px, 3.8vw, 44px)",
+                  width: "auto",
+                  maxWidth: "100%",
+                  objectFit: "contain",
+                }}
+              />
+            </button>
             <button
               type="button"
               onClick={(e) => {

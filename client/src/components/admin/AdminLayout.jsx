@@ -5,6 +5,7 @@ import { changeMyPassword, removeProfileAvatar, updateProfilePhone, uploadProfil
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../../utils/campusUserStorage";
 import PasswordInput from "../PasswordInput.jsx";
 import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../../utils/profilePhone";
+import campusSyncLogo from "../../assets/campus-sync-logo.png";
 
 const shellStyle = {
   height: "100vh",
@@ -202,12 +203,127 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
   return (
     <div style={shellStyle}>
       <aside style={{ ...sidebarStyle, width: sidebarCollapsed ? "92px" : "272px", minWidth: sidebarCollapsed ? "92px" : "272px", transition: "width 0.2s ease, min-width 0.2s ease" }}>
-        <div style={{ padding: "22px 18px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", borderBottom: "1px solid #e5e7eb" }}>
-          <div />
-          <button type="button" onClick={() => setSidebarCollapsed((v) => !v)} aria-label={sidebarCollapsed ? "Open menu" : "Close menu"} style={{ width: 40, height: 40, borderRadius: 10, background: "#f1f5f9", border: "1px solid #e2e8f0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#334155", flexShrink: 0 }}>
-            <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>≡</span>
-          </button>
-        </div>
+        {sidebarCollapsed ? (
+          <div
+            style={{
+              padding: "14px 10px 16px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "10px",
+              borderBottom: "1px solid #e5e7eb",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              aria-label="CampusSync home"
+              style={{
+                width: "100%",
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <img
+                src={campusSyncLogo}
+                alt="CampusSync"
+                style={{
+                  display: "block",
+                  height: 36,
+                  width: "auto",
+                  maxWidth: 72,
+                  objectFit: "contain",
+                }}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(false)}
+              aria-label="Open menu"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "#f1f5f9",
+                border: "1px solid #e2e8f0",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#334155",
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>≡</span>
+            </button>
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: "18px 16px 16px",
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              borderBottom: "1px solid #e5e7eb",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              aria-label="CampusSync home"
+              style={{
+                flex: "1 1 auto",
+                minWidth: 0,
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-start",
+              }}
+            >
+              <img
+                src={campusSyncLogo}
+                alt="CampusSync"
+                style={{
+                  display: "block",
+                  height: "clamp(38px, 3.8vw, 44px)",
+                  width: "auto",
+                  maxWidth: "100%",
+                  objectFit: "contain",
+                }}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(true)}
+              aria-label="Close menu"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "#f1f5f9",
+                border: "1px solid #e2e8f0",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#334155",
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontSize: 18, fontWeight: 900, lineHeight: 1 }}>≡</span>
+            </button>
+          </div>
+        )}
         <nav style={{ flex: 1, padding: "4px 0" }} aria-label="Admin sections">
           {!sidebarCollapsed && <div style={sectionLabelStyle}>MENU</div>}
           {!sidebarCollapsed && (
