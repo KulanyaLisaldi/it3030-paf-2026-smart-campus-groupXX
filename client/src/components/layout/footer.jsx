@@ -98,14 +98,14 @@ const Footer = () => {
             <h3 className="text-lg font-semibold mb-4" style={{ color: '#FFFFFF' }}>Support</h3>
             <ul className="space-y-2">
               <li>
-                <a 
-                  href="#" 
+                <Link
+                  to="/faq"
                   style={footerLinkStyle}
                   onMouseEnter={(e) => handleLinkHover(e, true)}
                   onMouseLeave={(e) => handleLinkHover(e, false)}
                 >
                   Help / FAQs
-                </a>
+                </Link>
               </li>
               <li>
                 <a 
