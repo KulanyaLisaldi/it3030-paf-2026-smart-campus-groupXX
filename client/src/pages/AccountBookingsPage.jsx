@@ -24,7 +24,7 @@ const filterBarGrid = {
 };
 const bookingsGridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
   gap: "14px",
   alignItems: "start",
 };
@@ -355,7 +355,7 @@ export default function AccountBookingsPage() {
     const history = [];
     for (const booking of bookings) {
       const status = String(booking?.status || "").toUpperCase();
-      if (status === "REJECTED" || status === "CANCELLED") {
+      if (status === "REJECTED" || status === "CANCELLED" || status === "CHECKED_IN") {
         history.push(booking);
         continue;
       }
@@ -561,12 +561,21 @@ export default function AccountBookingsPage() {
   };
 
   const renderBookingCard = (booking) => (
-    <article key={booking.id || `${booking.resourceId}-${booking.bookingDate}-${booking.startTime}`} style={{ ...bookingCardStyle, border: "1px solid #F5E7C6" }}>
+    <article
+      className="bookings-3d-card"
+      key={booking.id || `${booking.resourceId}-${booking.bookingDate}-${booking.startTime}`}
+      style={{
+        ...bookingCardStyle,
+        border: "1px solid #F5E7C6",
+        width: "100%",
+        boxSizing: "border-box",
+      }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "flex-start", flexWrap: "wrap", marginBottom: "10px" }}>
         <h3 style={{ margin: "0 0 3px 0", fontSize: "17px", fontWeight: 800, color: "#111827" }}>{booking.resourceName || "Resource"}</h3>
         <span style={{ ...bookingChipStyle, ...bookingStatusChip(booking.status) }}>{booking.status || "PENDING"}</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 170px", gap: "12px 14px", alignItems: "center" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) 150px", gap: "12px 12px", alignItems: "center" }}>
         <div style={{ display: "grid", gap: "12px" }}>
           <div>
             <div style={bookingFieldLabelStyle}>Resource Type</div>
@@ -587,7 +596,7 @@ export default function AccountBookingsPage() {
             <div style={bookingFieldValueStyle}>{booking.status || "PENDING"}</div>
           </div>
         </div>
-        <div style={{ width: "170px", height: "112px", borderRadius: "10px", overflow: "hidden", border: "1px solid #e5e7eb", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", justifySelf: "end" }}>
+        <div style={{ width: "150px", height: "96px", borderRadius: "10px", overflow: "hidden", border: "1px solid #e5e7eb", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", justifySelf: "end" }}>
           {resourceImageById[booking.resourceId] ? (
             <img src={resourceImageById[booking.resourceId]} alt="Resource" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
@@ -616,6 +625,15 @@ export default function AccountBookingsPage() {
   return (
     <AccountLayout active="bookings">
       <style>{`
+        .bookings-3d-card {
+          box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.05);
+          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .bookings-3d-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 14px 28px rgba(15, 23, 42, 0.14), 0 6px 12px rgba(15, 23, 42, 0.08);
+          border-color: #f7c992;
+        }
         .bookings-filter-select {
           appearance: none;
           -webkit-appearance: none;
