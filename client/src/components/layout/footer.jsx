@@ -129,14 +129,14 @@ const Footer = () => {
             <h3 className="text-lg font-semibold mb-4" style={{ color: '#FFFFFF' }}>Legal</h3>
             <ul className="space-y-2">
               <li>
-                <a 
-                  href="#" 
+                <Link
+                  to="/privacy-policy"
                   style={footerLinkStyle}
                   onMouseEnter={(e) => handleLinkHover(e, true)}
                   onMouseLeave={(e) => handleLinkHover(e, false)}
                 >
                   Privacy Policy
-                </a>
+                </Link>
               </li>
               <li>
                 <a 
