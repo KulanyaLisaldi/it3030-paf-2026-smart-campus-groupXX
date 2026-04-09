@@ -252,13 +252,32 @@ export default function ResourcesPage() {
           <img src="/resource hero.jpeg" alt="Campus resources overview" style={heroImgStyle} />
           <div style={heroOverlayStyle}>
             <div style={{ width: "100%", maxWidth: 1240, margin: "0 auto" }}>
-              <h1 style={{ margin: 0, color: "#FFFFFF", fontSize: "clamp(28px, 5vw, 42px)", fontWeight: 900, lineHeight: 1.15 }}>
+              <h1
+                style={{
+                  margin: 0,
+                  color: "#FFFFFF",
+                  fontSize: "clamp(30px, 5vw, 44px)",
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                  letterSpacing: "-0.02em",
+                }}
+              >
                 Discover <span style={{ color: "#FA8112" }}>Campus Resources</span>
               </h1>
-              <p style={{ margin: "12px 0 0", color: "rgba(255,255,255,0.95)", fontSize: "clamp(14px, 2vw, 17px)", maxWidth: 760, lineHeight: 1.6 }}>
+              <p
+                style={{
+                  margin: "12px 0 0",
+                  color: "rgba(255,255,255,0.95)",
+                  fontSize: "clamp(14px, 2vw, 17px)",
+                  fontWeight: 500,
+                  maxWidth: 760,
+                  lineHeight: 1.65,
+                  letterSpacing: "-0.01em",
+                }}
+              >
                 "Great campuses are not built only with buildings, but with spaces that empower ideas, collaboration, and discovery."
               </p>
-              <p style={{ margin: "8px 0 0", color: "rgba(255,255,255,0.9)", fontSize: 14, maxWidth: 680 }}>
+              <p style={{ margin: "8px 0 0", color: "rgba(255,255,255,0.9)", fontSize: 14, fontWeight: 500, maxWidth: 680, lineHeight: 1.5 }}>
                 Choose a category below to instantly filter resources and find what you need.
               </p>
             </div>
@@ -313,7 +332,19 @@ export default function ResourcesPage() {
                       padding: "10px",
                     }}
                   >
-                    <div style={{ color: "#ffffff", fontSize: 18, fontWeight: 900, textAlign: "center", textShadow: "0 2px 10px rgba(0,0,0,0.45)" }}>{item.title}</div>
+                    <div
+                      style={{
+                        color: "#ffffff",
+                        fontSize: 18,
+                        fontWeight: 700,
+                        lineHeight: 1.35,
+                        letterSpacing: "-0.02em",
+                        textAlign: "center",
+                        textShadow: "0 2px 10px rgba(0,0,0,0.45)",
+                      }}
+                    >
+                      {item.title}
+                    </div>
                     <div style={{ color: "rgba(255,255,255,0.95)", fontSize: 12, fontWeight: 600, textAlign: "center", textShadow: "0 1px 8px rgba(0,0,0,0.45)" }}>{item.subtitle}</div>
                   </div>
                 </button>
@@ -359,7 +390,7 @@ export default function ResourcesPage() {
           )}
 
           {!loading && filtered.length > 0 && (
-            <div style={{ marginTop: 16, display: "grid", gap: 18 }}>
+            <div style={{ marginTop: 16, display: "grid", gap: 30 }}>
               {orderedTypeKeys.map((typeKey) => (
                 <section
                   key={typeKey}
@@ -368,9 +399,10 @@ export default function ResourcesPage() {
                   }}
                   aria-label={`${formatResourceType(typeKey)} resources`}
                 >
-                  <div style={{ marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-                    <h2 style={{ margin: 0, color: "#14213D", fontSize: 18, fontWeight: 900 }}>{formatResourceType(typeKey)}</h2>
-                    <span style={{ color: "#64748b", fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>{resourcesByType[typeKey].length} item(s)</span>
+                  <div style={{ marginBottom: 12 }}>
+                    <h2 style={{ margin: 0, color: "#14213D", fontSize: 18, fontWeight: 700, lineHeight: 1.35, letterSpacing: "-0.02em" }}>
+                      {formatResourceType(typeKey)}
+                    </h2>
                   </div>
                   <div style={{ ...cardGridStyle, marginTop: 0 }}>
                     {resourcesByType[typeKey].map((r) => (
@@ -396,7 +428,18 @@ export default function ResourcesPage() {
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
                           <div>
-                            <h3 style={{ margin: 0, color: "#0f172a", fontSize: 18, fontWeight: 900 }}>{r.name || r.resourceName || "—"}</h3>
+                            <h3
+                              style={{
+                                margin: 0,
+                                color: "#14213D",
+                                fontSize: 18,
+                                fontWeight: 700,
+                                lineHeight: 1.35,
+                                letterSpacing: "-0.02em",
+                              }}
+                            >
+                              {r.name || r.resourceName || "—"}
+                            </h3>
                           </div>
                           <span style={statusBadge(r.status)}>{r.status || "—"}</span>
                         </div>
@@ -411,7 +454,7 @@ export default function ResourcesPage() {
                         <div style={{ display: "flex", gap: 10, marginTop: "auto", paddingTop: 14 }}>
                           <button
                             type="button"
-                            style={{ flex: 1, height: 42, padding: "0 12px", borderRadius: 10, border: "1px solid #dbe4ee", background: "#fff", fontWeight: 800, cursor: "pointer", color: "#0f172a" }}
+                            style={{ flex: 1, height: 42, padding: "0 12px", borderRadius: 10, border: "1px solid #dbe4ee", background: "#fff", fontWeight: 600, fontSize: 16, cursor: "pointer", color: "#0f172a" }}
                             onClick={() => navigate(`/resources/${encodeURIComponent(r.id || "")}`)}
                             disabled={!r.id}
                           >
@@ -428,7 +471,8 @@ export default function ResourcesPage() {
                             border: "none",
                             background: String(r.status || "").toUpperCase() === "OUT_OF_SERVICE" ? "#cbd5e1" : "#FA8112",
                             color: "#fff",
-                            fontWeight: 800,
+                            fontWeight: 600,
+                            fontSize: 16,
                             cursor: String(r.status || "").toUpperCase() === "OUT_OF_SERVICE" ? "not-allowed" : "pointer",
                           }}
                             onClick={() => handleBook(r)}
