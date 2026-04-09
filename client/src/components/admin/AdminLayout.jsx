@@ -73,6 +73,7 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [resourceMenuOpen, setResourceMenuOpen] = useState(activeSection === "resources");
   const [bookingMenuOpen, setBookingMenuOpen] = useState(activeSection === "bookings");
   const [userRev, setUserRev] = useState(0);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -111,6 +112,9 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
     document.addEventListener("mousedown", onDocMouseDown);
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, []);
+  useEffect(() => {
+    if (activeSection === "resources") setResourceMenuOpen(true);
+  }, [activeSection]);
   useEffect(() => {
     if (activeSection === "bookings") setBookingMenuOpen(true);
   }, [activeSection]);
@@ -344,7 +348,46 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
           {!sidebarCollapsed && <div style={sectionLabelStyle}>MENU</div>}
           {!sidebarCollapsed && (
             <>
-              <button type="button" style={navRowStyle(activeSection === "resources")} onClick={() => navigate(routesBySection.resources)}>Resource Management</button>
+              <div style={{ margin: "2px 8px" }}>
+                <button
+                  type="button"
+                  style={{ ...navRowStyle(false), margin: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                  onClick={() => setResourceMenuOpen((open) => !open)}
+                >
+                  <span>Resource Management</span>
+                  <span style={{ fontSize: 12, color: "#9ca3af" }}>{resourceMenuOpen ? "▼" : "▶"}</span>
+                </button>
+                {resourceMenuOpen && (
+                  <div style={{ marginTop: 4, marginLeft: 10, display: "grid", gap: 2 }}>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/adminresources?tab=overview")}
+                      style={{
+                        ...navRowStyle(activeSection === "resources" && location.pathname === "/adminresources" && new URLSearchParams(location.search).get("tab") !== "details"),
+                        margin: 0,
+                        padding: "8px 12px",
+                        fontSize: 13,
+                        color: "#334155",
+                      }}
+                    >
+                      Overview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/adminresources?tab=details")}
+                      style={{
+                        ...navRowStyle(activeSection === "resources" && location.pathname === "/adminresources" && new URLSearchParams(location.search).get("tab") === "details"),
+                        margin: 0,
+                        padding: "8px 12px",
+                        fontSize: 13,
+                        color: "#334155",
+                      }}
+                    >
+                      Resource Details
+                    </button>
+                  </div>
+                )}
+              </div>
               <div style={{ margin: "2px 8px" }}>
                 <button
                   type="button"

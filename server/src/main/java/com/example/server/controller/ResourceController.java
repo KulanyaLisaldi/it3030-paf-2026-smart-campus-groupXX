@@ -1,6 +1,7 @@
 package com.example.server.controller;
 
 import com.example.server.dto.resource.CreateResourceRequest;
+import com.example.server.dto.resource.TopResourceResponse;
 import com.example.server.dto.resource.UpdateResourceRequest;
 import com.example.server.dto.resource.UpdateResourceStatusRequest;
 import com.example.server.model.Resource;
@@ -74,6 +75,13 @@ public class ResourceController {
         @RequestParam(value = "status", required = false) String status
     ) {
         return resourceService.list(type, minCapacity, location, status);
+    }
+
+    @GetMapping("/top-used")
+    public List<TopResourceResponse> topUsed(
+        @RequestParam(value = "limit", required = false, defaultValue = "4") Integer limit
+    ) {
+        return resourceService.getTopUsedResources(limit == null ? 4 : limit);
     }
 
     @GetMapping("/{id}")
