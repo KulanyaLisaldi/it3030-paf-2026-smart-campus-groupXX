@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getAuthToken } from "../../api/http";
 import { changeMyPassword, removeProfileAvatar, updateProfilePhone, uploadProfileAvatar, verifyMyPasswordChange } from "../../api/auth";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../../utils/campusUserStorage";
@@ -71,7 +71,9 @@ const routesBySection = {
 
 export default function AdminLayout({ activeSection, pageTitle, description, children }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [bookingMenuOpen, setBookingMenuOpen] = useState(activeSection === "bookings");
   const [userRev, setUserRev] = useState(0);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -109,6 +111,9 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
     document.addEventListener("mousedown", onDocMouseDown);
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, []);
+  useEffect(() => {
+    if (activeSection === "bookings") setBookingMenuOpen(true);
+  }, [activeSection]);
   useEffect(() => {
     if (!profileModalOpen) return;
     setProfileFirstNameDraft((adminUser?.firstName || "").trim());
@@ -340,7 +345,72 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
           {!sidebarCollapsed && (
             <>
               <button type="button" style={navRowStyle(activeSection === "resources")} onClick={() => navigate(routesBySection.resources)}>Resource Management</button>
-              <button type="button" style={navRowStyle(activeSection === "bookings")} onClick={() => navigate(routesBySection.bookings)}>Booking Management</button>
+              <div style={{ margin: "2px 8px" }}>
+                <button
+                  type="button"
+                  style={{ ...navRowStyle(false), margin: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                  onClick={() => setBookingMenuOpen((open) => !open)}
+                >
+                  <span>Booking Management</span>
+                  <span style={{ fontSize: 12, color: "#9ca3af" }}>{bookingMenuOpen ? "▼" : "▶"}</span>
+                </button>
+                {bookingMenuOpen && (
+                  <div style={{ marginTop: 4, marginLeft: 10, display: "grid", gap: 2 }}>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/adminbookings?tab=overview")}
+                      style={{
+                        ...navRowStyle(activeSection === "bookings" && location.pathname === "/adminbookings" && new URLSearchParams(location.search).get("tab") !== "calendar" && new URLSearchParams(location.search).get("tab") !== "details"),
+                        margin: 0,
+                        padding: "8px 12px",
+                        fontSize: 13,
+                        color: "#334155",
+                      }}
+                    >
+                      Overview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/adminbookings?tab=calendar")}
+                      style={{
+                        ...navRowStyle(activeSection === "bookings" && location.pathname === "/adminbookings" && new URLSearchParams(location.search).get("tab") === "calendar"),
+                        margin: 0,
+                        padding: "8px 12px",
+                        fontSize: 13,
+                        color: "#334155",
+                      }}
+                    >
+                      Calendar View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/adminbookings?tab=details")}
+                      style={{
+                        ...navRowStyle(activeSection === "bookings" && location.pathname === "/adminbookings" && new URLSearchParams(location.search).get("tab") === "details"),
+                        margin: 0,
+                        padding: "8px 12px",
+                        fontSize: 13,
+                        color: "#334155",
+                      }}
+                    >
+                      Booking Details
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/admin/qr-checkin")}
+                      style={{
+                        ...navRowStyle(location.pathname === "/admin/qr-checkin"),
+                        margin: 0,
+                        padding: "8px 12px",
+                        fontSize: 13,
+                        color: "#334155",
+                      }}
+                    >
+                      QR Check-In
+                    </button>
+                  </div>
+                )}
+              </div>
               <button type="button" style={navRowStyle(activeSection === "tickets")} onClick={() => navigate(routesBySection.tickets)}>Ticket Management</button>
               <button type="button" style={navRowStyle(activeSection === "users")} onClick={() => navigate(routesBySection.users)}>User Management</button>
               <button

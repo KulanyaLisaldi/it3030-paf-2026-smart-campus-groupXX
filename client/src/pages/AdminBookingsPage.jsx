@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import AdminLayout from "../components/admin/AdminLayout.jsx";
 import { appFontFamily } from "../utils/appFont";
 import { cancelBookingByAdmin, deleteBookingByAdmin, getAdminBookings, approveBookingByAdmin, rejectBookingByAdmin } from "../api/bookings";
@@ -142,6 +142,7 @@ function monthKey(date) {
 
 export default function AdminBookingsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -182,6 +183,18 @@ export default function AdminBookingsPage() {
   useEffect(() => {
     void loadRows(filters);
   }, [filters]);
+  useEffect(() => {
+    const tab = (new URLSearchParams(location.search).get("tab") || "overview").toLowerCase();
+    if (tab === "calendar") {
+      setActiveTab("calendar");
+      return;
+    }
+    if (tab === "details") {
+      setActiveTab("details");
+      return;
+    }
+    setActiveTab("dashboard");
+  }, [location.search]);
 
   const resourceTypes = useMemo(() => {
     const set = new Set();
@@ -435,7 +448,7 @@ export default function AdminBookingsPage() {
         </p>
         <section style={panelStyle}>
         <div style={{ display: "grid", gap: 12 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 10, marginBottom: 38 }}>
             {[
               { label: "Total Bookings", value: statusCounts.total, accent: "#14213D" },
               { label: "Pending", value: statusCounts.pending, accent: "#FA8112" },
@@ -454,69 +467,6 @@ export default function AdminBookingsPage() {
                 <p style={bookingStatValueStyle}>{card.value}</p>
               </div>
             ))}
-          </div>
-
-          <div style={{ display: "flex", gap: 10, borderBottom: "1px solid #FFDDB8", paddingBottom: 8 }}>
-          <button
-            type="button"
-            onClick={() => setActiveTab("dashboard")}
-            style={{
-              ...buttonStyle,
-              height: 34,
-              background: "transparent",
-              borderRadius: 0,
-              borderBottom: activeTab === "dashboard" ? "2px solid #FA8112" : "2px solid transparent",
-              color: activeTab === "dashboard" ? "#0f172a" : "#64748b",
-              padding: "0 2px",
-            }}
-          >
-            Dashboard
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("calendar")}
-            style={{
-              ...buttonStyle,
-              height: 34,
-              background: "transparent",
-              borderRadius: 0,
-              borderBottom: activeTab === "calendar" ? "2px solid #FA8112" : "2px solid transparent",
-              color: activeTab === "calendar" ? "#0f172a" : "#64748b",
-              padding: "0 2px",
-            }}
-          >
-            Calendar View
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("details")}
-            style={{
-              ...buttonStyle,
-              height: 34,
-              background: "transparent",
-              borderRadius: 0,
-              borderBottom: activeTab === "details" ? "2px solid #FA8112" : "2px solid transparent",
-              color: activeTab === "details" ? "#0f172a" : "#64748b",
-              padding: "0 2px",
-            }}
-          >
-            Booking Details
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/admin/qr-checkin")}
-            style={{
-              ...buttonStyle,
-              height: 34,
-              background: "transparent",
-              borderRadius: 0,
-              borderBottom: "2px solid transparent",
-              color: "#64748b",
-              padding: "0 2px",
-            }}
-          >
-            QR Check-In
-          </button>
           </div>
 
           {activeTab === "dashboard" && (
