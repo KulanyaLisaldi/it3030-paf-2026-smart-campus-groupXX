@@ -34,13 +34,6 @@ function getResourceDetailImageUrls(resource) {
   return out;
 }
 
-function fmtDate(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString();
-}
-
 export default function ResourceDetailsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -179,14 +172,16 @@ export default function ResourceDetailsPage() {
                 <div><strong>Capacity:</strong> {resource.capacity ?? "—"}</div>
                 <div><strong>Location:</strong> {resource.location || "—"}</div>
                 <div><strong>Status:</strong> {resource.status || "—"}</div>
-                <div style={{ gridColumn: "1 / -1" }}><strong>Description:</strong> {resource.description || "—"}</div>
-                <div style={{ gridColumn: "1 / -1" }}><strong>Availability:</strong> {resource.availability || resource.availabilityText || "—"}</div>
-                <div><strong>Created:</strong> {fmtDate(resource.createdAt)}</div>
-                <div><strong>Updated:</strong> {fmtDate(resource.updatedAt)}</div>
+                <div><strong>Description:</strong> {resource.description || "—"}</div>
+                <div><strong>Availability:</strong> {resource.availability || resource.availabilityText || "—"}</div>
               </div>
 
               <div style={{ marginTop: 14 }}>
-                <button type="button" onClick={onBookNow} style={{ padding: "10px 14px", borderRadius: 10, border: "none", background: "#FA8112", color: "#fff", fontWeight: 800, cursor: "pointer" }}>
+                <button
+                  type="button"
+                  onClick={onBookNow}
+                  style={{ height: 42, padding: "0 12px", borderRadius: 10, border: "none", background: "#FA8112", color: "#fff", fontWeight: 600, fontSize: 16, cursor: "pointer" }}
+                >
                   Book Now
                 </button>
               </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { setAuthToken } from "../../api/http";
 import { persistCampusUser } from "../../utils/campusUserStorage";
+import campusSyncLogo from "../../assets/campus-sync-logo.png";
 
 const pageWrap = {
   height: "100vh",
@@ -155,9 +156,20 @@ export default function AccountLayout({ active = "personal", children }) {
             }}
             aria-label="CampusSync — go to home"
           >
-            <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "linear-gradient(135deg, #FA8112, #F5E7C6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: "15px", flexShrink: 0 }}>C</div>
+            <img
+              src={campusSyncLogo}
+              alt="CampusSync"
+              style={{
+                height: "32px",
+                width: "auto",
+                maxWidth: "100%",
+                objectFit: "contain",
+                objectPosition: "left center",
+                display: "block",
+                flexShrink: 0,
+              }}
+            />
             <div>
-              <div style={{ fontWeight: 700, fontSize: "16px", color: "#111827" }}>CampusSync</div>
               <div style={{ fontSize: "12px", color: "#9ca3af" }}>Account</div>
             </div>
           </button>

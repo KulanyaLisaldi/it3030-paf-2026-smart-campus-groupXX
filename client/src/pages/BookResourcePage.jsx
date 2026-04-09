@@ -4,13 +4,21 @@ import { getAuthToken } from "../api/http";
 import { getResources } from "../api/resources";
 import { createBooking, getBookedSlots } from "../api/bookings";
 
-const pageStyle = { maxWidth: 1180, margin: "0 auto", padding: "24px 18px 40px", boxSizing: "border-box" };
+const pageStyle = { maxWidth: 1220, margin: "0 auto", padding: "24px 18px 40px", boxSizing: "border-box" };
 const twoColStyle = { display: "grid", gridTemplateColumns: "minmax(0, 1fr) 320px", gap: 16, alignItems: "start" };
 const panelStyle = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, boxShadow: "0 8px 26px rgba(15,23,42,0.06)", padding: 18 };
-const summaryPanelStyle = { ...panelStyle, position: "sticky", top: 16 };
 const inputStyle = { width: "100%", height: 44, padding: "0 12px", borderRadius: 10, border: "1px solid #dbe4ee", boxSizing: "border-box", outline: "none", background: "#fff", color: "#0f172a", fontSize: 14 };
 const textareaStyle = { ...inputStyle, height: 108, padding: "12px", resize: "vertical" };
-const buttonStyle = { height: 42, borderRadius: 10, padding: "0 14px", border: "none", fontWeight: 800, cursor: "pointer" };
+const buttonStyle = {
+  height: 42,
+  minWidth: 84,
+  borderRadius: 10,
+  padding: "0 12px",
+  border: "none",
+  fontWeight: 600,
+  fontSize: 16,
+  cursor: "pointer",
+};
 
 const SLOT_DURATION_HOURS = 1;
 const DEFAULT_WINDOW_START = "08:00";
@@ -105,22 +113,27 @@ function normalizeImageUrl(url) {
   return `/${value.replace(/^\.?\/*/, "")}`;
 }
 
-function resourcePrimaryImage(resource) {
-  if (!resource || typeof resource !== "object") return "";
-  const candidates = [];
-  if (Array.isArray(resource.imageUrls)) candidates.push(...resource.imageUrls);
-  if (resource.imageUrl) candidates.push(resource.imageUrl);
-  for (const c of candidates) {
-    const n = normalizeImageUrl(c);
-    if (n) return n;
+function resourceImageUrls(resource) {
+  if (!resource || typeof resource !== "object") return [];
+  const raw = [];
+  if (Array.isArray(resource.imageUrls)) raw.push(...resource.imageUrls);
+  if (resource.imageUrl) raw.push(resource.imageUrl);
+  const seen = new Set();
+  const out = [];
+  for (const item of raw) {
+    const normalized = normalizeImageUrl(item);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    out.push(normalized);
   }
-  return "";
+  return out;
 }
 
 export default function BookResourcePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const preselectedResourceId = (searchParams.get("resourceId") || "").trim();
+  const [isCompactLayout, setIsCompactLayout] = useState(() => (typeof window !== "undefined" ? window.innerWidth < 1100 : false));
 
   const [currentStep, setCurrentStep] = useState(0);
   const [loadingResources, setLoadingResources] = useState(true);
@@ -137,6 +150,16 @@ export default function BookResourcePage() {
   const [bookedRanges, setBookedRanges] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlotKeys, setSelectedSlotKeys] = useState([]);
+  const [imageIndex, setImageIndex] = useState(0);
+  const [mainImageBroken, setMainImageBroken] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const onResize = () => setIsCompactLayout(window.innerWidth < 1100);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     if (!getAuthToken()) navigate("/signin", { replace: true });
@@ -170,7 +193,13 @@ export default function BookResourcePage() {
     () => parseAvailabilityWindow(selectedResource?.availability || selectedResource?.availabilityText),
     [selectedResource]
   );
-  const resourceImage = useMemo(() => resourcePrimaryImage(selectedResource), [selectedResource]);
+  const resourceImages = useMemo(() => resourceImageUrls(selectedResource), [selectedResource]);
+  const selectedImage = resourceImages[imageIndex] || "";
+
+  useEffect(() => {
+    setImageIndex(0);
+    setMainImageBroken(false);
+  }, [selectedResource?.id, form.resourceId]);
 
   const allSlots = useMemo(() => {
     const startMin = toMinutes(availabilityWindow.start);
@@ -315,21 +344,45 @@ export default function BookResourcePage() {
   };
 
   const stepPills = ["Resource", "Date & Time + Details", "Confirmation"];
+  const timeSlotsSummary = selectedSlotKeys.length ? selectedOrderedSlots.map((s) => prettySlot(s.startTime, s.endTime)).join(", ") : "-";
 
   const summaryCard = (
-    <aside style={summaryPanelStyle}>
-      <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: "#0f172a" }}>Booking Summary</h3>
-      <div style={{ marginTop: 12, display: "grid", gap: 8, color: "#334155", fontSize: 14 }}>
-        <div><strong>Resource Name:</strong> {selectedResource?.name || selectedResource?.code || "-"}</div>
-        <div><strong>Type:</strong> {selectedResource?.type || "-"}</div>
-        <div><strong>Location:</strong> {selectedResource?.location || "-"}</div>
-        <div><strong>Capacity:</strong> {selectedResource?.capacity ?? "-"}</div>
-        <div><strong>Booking Date:</strong> {form.bookingDate || "-"}</div>
-        <div><strong>Time Slots:</strong> {selectedSlotKeys.length ? selectedOrderedSlots.map((s) => prettySlot(s.startTime, s.endTime)).join(", ") : "-"}</div>
-        <div><strong>Duration:</strong> {selectedDurationHours ? `${selectedDurationHours} hours` : "-"}</div>
-        <div><strong>Status:</strong> {currentStep === 3 ? "Pending" : "-"}</div>
-        {currentStep >= 2 && <div><strong>Purpose:</strong> {form.purpose.trim() || "-"}</div>}
-        {currentStep >= 2 && <div><strong>Attendees:</strong> {attendeesApplicable ? (form.expectedAttendees || "-") : "-"}</div>}
+    <aside
+      style={{
+        ...panelStyle,
+        position: isCompactLayout ? "static" : "sticky",
+        top: isCompactLayout ? 0 : 16,
+        alignSelf: "start",
+      }}
+    >
+      <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, lineHeight: 1.35, letterSpacing: "-0.02em", color: "#14213D" }}>Reservation Summary</h3>
+      <div style={{ marginTop: 12, display: "grid", gap: 10, color: "#334155", fontSize: 13 }}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div><strong>Resource Name:</strong> {selectedResource?.name || selectedResource?.code || "-"}</div>
+          <div><strong>Type:</strong> {selectedResource?.type || "-"}</div>
+          <div><strong>Location:</strong> {selectedResource?.location || "-"}</div>
+          <div><strong>Capacity:</strong> {selectedResource?.capacity ?? "-"}</div>
+        </div>
+        <div style={{ height: 1, background: "#e2e8f0" }} />
+        <div style={{ display: "grid", gap: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase" }}>Booking Details</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 6 }}>
+            <div><strong>Booking Date:</strong> {form.bookingDate || "-"}</div>
+            <div><strong>Time Slots:</strong> {timeSlotsSummary}</div>
+            <div><strong>Duration:</strong> {selectedDurationHours ? `${selectedDurationHours} hour(s)` : "-"}</div>
+            <div><strong>Status:</strong> {currentStep === 3 ? "Pending" : "-"}</div>
+          </div>
+        </div>
+        {currentStep >= 2 && (
+          <>
+            <div style={{ height: 1, background: "#e2e8f0" }} />
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase" }}>Request Notes</div>
+              <div><strong>Purpose:</strong> {form.purpose.trim() || "-"}</div>
+              <div><strong>Attendees:</strong> {attendeesApplicable ? (form.expectedAttendees || "-") : "-"}</div>
+            </div>
+          </>
+        )}
       </div>
     </aside>
   );
@@ -337,63 +390,188 @@ export default function BookResourcePage() {
   return (
     <main style={{ flex: 1, background: "#f8fafc" }}>
       <div style={pageStyle}>
-        <h1 style={{ margin: 0, color: "#14213D", fontSize: 30, fontWeight: 900 }}>Book a Resource</h1>
-        <p style={{ margin: "8px 0 0", color: "#64748b", fontSize: 14 }}>Complete your booking in 4 steps and submit for approval.</p>
-
-        <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {stepPills.map((step, idx) => {
-            const done = currentStep > idx || currentStep === 3;
-            const active = currentStep === idx;
-            return (
-              <span key={step} style={{ padding: "6px 10px", borderRadius: 999, border: active ? "1px solid #0369a1" : "1px solid #d1d5db", background: done ? "#dcfce7" : active ? "#e0f2fe" : "#fff", color: done ? "#166534" : active ? "#0c4a6e" : "#475569", fontWeight: 800, fontSize: 12 }}>
-                {idx + 1}. {step}
-              </span>
-            );
-          })}
+        <div
+          style={{
+            marginTop: 14,
+            display: "flex",
+            justifyContent: "center",
+            width: isCompactLayout ? "100%" : "1016px",
+            maxWidth: "100%",
+            marginLeft: "auto",
+            marginRight: "auto",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, overflowX: "auto", paddingBottom: 2, maxWidth: "100%" }}>
+            {stepPills.map((step, idx) => {
+              const done = currentStep > idx || currentStep === 3;
+              const active = currentStep === idx;
+              const nodeBg = done ? "#22c55e" : active ? "#FA8112" : "#e2e8f0";
+              const nodeFg = done || active ? "#ffffff" : "#475569";
+              const textColor = done ? "#15803d" : active ? "#14213D" : "#64748b";
+              const connectorColor = done ? "#22c55e" : "#cbd5e1";
+              return (
+                <React.Fragment key={step}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <span
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 6,
+                        background: nodeBg,
+                        color: nodeFg,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 700,
+                        fontSize: 12,
+                        lineHeight: 1,
+                      }}
+                      aria-hidden
+                    >
+                      {done ? "✓" : idx + 1}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: textColor, whiteSpace: "nowrap" }}>{step}</span>
+                  </div>
+                  {idx < stepPills.length - 1 && (
+                    <span
+                      aria-hidden
+                      style={{
+                        height: 2,
+                        width: 44,
+                        margin: "0 10px",
+                        borderRadius: 999,
+                        background: connectorColor,
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
         </div>
 
-        <div style={{ marginTop: 14, ...twoColStyle }}>
+        <div
+          style={{
+            marginTop: 24,
+            ...twoColStyle,
+            gridTemplateColumns: isCompactLayout ? "1fr" : "680px 320px",
+            gap: isCompactLayout ? 14 : 16,
+            justifyContent: isCompactLayout ? "stretch" : "center",
+          }}
+        >
+          <div style={{ display: "grid", gap: 12 }}>
           <section style={panelStyle}>
             {loadingResources && <p style={{ margin: 0, color: "#64748b", fontWeight: 700 }}>Loading resources...</p>}
             {!loadingResources && loadError && <p style={{ margin: 0, color: "#b91c1c", fontWeight: 700 }}>{loadError}</p>}
 
             {!loadingResources && currentStep === 0 && (
               <>
-                <h2 style={{ margin: "0 0 12px 0", fontSize: 19, color: "#0f172a", fontWeight: 900 }}>Selected Resource</h2>
-                <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 14 }}>
-                  <div style={{ height: 136, borderRadius: 10, overflow: "hidden", border: "1px solid #e2e8f0", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {resourceImage ? <img src={resourceImage} alt="Resource" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ color: "#64748b", fontSize: 13, fontWeight: 700 }}>No image</span>}
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <div style={{ gridColumn: "1 / -1" }}>
-                      <label style={{ display: "block", marginBottom: 6, color: "#334155", fontWeight: 700 }}>{isResourceLocked ? "Selected Resource" : "Select Resource"}</label>
-                      {isResourceLocked ? (
-                        <input style={{ ...inputStyle, background: "#f8fafc", color: "#475569" }} value={`${selectedResource?.name || selectedResource?.code || "Resource"} (${selectedResource?.type || "UNKNOWN"})`} readOnly disabled />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 14 }}>
+                  <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid #e2e8f0", background: "#f8fafc" }}>
+                    <div
+                      style={{
+                        width: "100%",
+                        minHeight: 180,
+                        maxHeight: 340,
+                        display: mainImageBroken || !selectedImage ? "flex" : "block",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {!mainImageBroken && selectedImage ? (
+                        <img
+                          src={selectedImage}
+                          alt={`${selectedResource?.name || "Resource"} preview`}
+                          style={{ width: "100%", height: "100%", maxHeight: 340, objectFit: "cover", display: "block" }}
+                          onError={() => setMainImageBroken(true)}
+                        />
                       ) : (
+                        <span style={{ color: "#64748b", fontSize: 13, fontWeight: 700, padding: 16 }}>No image</span>
+                      )}
+                    </div>
+                    {resourceImages.length > 1 && (
+                      <div style={{ display: "flex", gap: 8, padding: 10, borderTop: "1px solid #e2e8f0", overflowX: "auto" }}>
+                        {resourceImages.map((src, idx) => (
+                          <button
+                            key={`${src}-${idx}`}
+                            type="button"
+                            onClick={() => {
+                              setImageIndex(idx);
+                              setMainImageBroken(false);
+                            }}
+                            style={{
+                              padding: 0,
+                              width: 74,
+                              height: 54,
+                              borderRadius: 8,
+                              overflow: "hidden",
+                              border: idx === imageIndex ? "2px solid #FA8112" : "1px solid #cbd5e1",
+                              background: "#fff",
+                              cursor: "pointer",
+                              flexShrink: 0,
+                            }}
+                            aria-label={`Show image ${idx + 1}`}
+                            aria-current={idx === imageIndex ? "true" : undefined}
+                          >
+                            <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: isCompactLayout ? "1fr 1fr" : "repeat(3, minmax(0, 1fr))", gap: "16px 10px" }}>
+                    {!isResourceLocked && (
+                      <div style={{ gridColumn: "1 / -1" }}>
                         <select style={inputStyle} value={form.resourceId} onChange={(e) => setForm((s) => ({ ...s, resourceId: e.target.value }))} disabled={loadingResources}>
                           <option value="">Select a resource</option>
                           {resources.map((r) => <option key={r.id} value={r.id}>{`${r.name || r.code || "Resource"} (${r.type || "UNKNOWN"})`}</option>)}
                         </select>
-                      )}
+                      </div>
+                    )}
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Resource Name</div>
+                      <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>{selectedResource?.name || "-"}</div>
                     </div>
-                    <div><strong>Resource Name:</strong> {selectedResource?.name || "-"}</div>
-                    <div><strong>Resource Code:</strong> {selectedResource?.code || "-"}</div>
-                    <div><strong>Type:</strong> {selectedResource?.type || "-"}</div>
-                    <div><strong>Capacity:</strong> {selectedResource?.capacity ?? "-"}</div>
-                    <div><strong>Location:</strong> {selectedResource?.location || "-"}</div>
-                    <div><strong>Status:</strong> {selectedResource?.status || "-"}</div>
-                    <div style={{ gridColumn: "1 / -1" }}><strong>Availability Window:</strong> {selectedResource?.availability || selectedResource?.availabilityText || `${availabilityWindow.start} - ${availabilityWindow.end}`}</div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Type</div>
+                      <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>{selectedResource?.type || "-"}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Capacity</div>
+                      <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>{selectedResource?.capacity ?? "-"}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Location</div>
+                      <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>{selectedResource?.location || "-"}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Status</div>
+                      <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>{selectedResource?.status || "-"}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Availability Window</div>
+                      <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>
+                        {selectedResource?.availability || selectedResource?.availabilityText || `${availabilityWindow.start} - ${availabilityWindow.end}`}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end" }}>
-                  <button type="button" style={{ ...buttonStyle, background: "#FA8112", color: "#fff" }} onClick={nextStep}>Next {"->"}</button>
+                <div style={{ marginTop: 14, display: "flex", justifyContent: isCompactLayout ? "stretch" : "flex-end" }}>
+                  <button
+                    type="button"
+                    style={{ ...buttonStyle, background: "#FA8112", color: "#fff", width: isCompactLayout ? "100%" : "auto" }}
+                    onClick={nextStep}
+                  >
+                    Next
+                  </button>
                 </div>
               </>
             )}
 
             {!loadingResources && currentStep === 1 && (
               <>
-                <h2 style={{ margin: "0 0 12px 0", fontSize: 19, color: "#0f172a", fontWeight: 900 }}>Date & Time + Details</h2>
+                <h2 style={{ margin: "0 0 12px 0", fontSize: 19, color: "#14213D", fontWeight: 700, lineHeight: 1.35, letterSpacing: "-0.02em" }}>Date & Time + Details</h2>
                 <div>
                   <label style={{ display: "block", marginBottom: 6, color: "#334155", fontWeight: 700 }}>Booking Date</label>
                   <input type="date" min={todayIsoDate()} style={inputStyle} value={form.bookingDate} onChange={(e) => setForm((s) => ({ ...s, bookingDate: e.target.value }))} />
@@ -422,7 +600,7 @@ export default function BookResourcePage() {
                               border: isSelected ? "2px solid #0369a1" : "1px solid #cbd5e1",
                               background: isBooked ? "#e5e7eb" : isSelected ? "#e0f2fe" : "#ffffff",
                               color: isBooked ? "#6b7280" : isSelected ? "#0c4a6e" : "#0f172a",
-                              fontWeight: 800,
+                              fontWeight: 600,
                               cursor: isBooked ? "not-allowed" : "pointer",
                             }}
                           >
@@ -452,31 +630,60 @@ export default function BookResourcePage() {
                   <textarea style={textareaStyle} value={form.additionalNotes} onChange={(e) => setForm((s) => ({ ...s, additionalNotes: e.target.value }))} placeholder="Any additional notes..." />
                 </div>
                 <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", gap: 10 }}>
-                  <button type="button" style={{ ...buttonStyle, background: "#fff", color: "#0f172a", border: "1px solid #dbe4ee" }} onClick={previousStep}>Back {"<-"}</button>
-                  <button type="button" style={{ ...buttonStyle, background: "#FA8112", color: "#fff" }} onClick={nextStep}>Next {"->"}</button>
+                  <button type="button" style={{ ...buttonStyle, background: "#fff", color: "#0f172a", border: "1px solid #dbe4ee" }} onClick={previousStep}>Back</button>
+                  <button type="button" style={{ ...buttonStyle, background: "#FA8112", color: "#fff" }} onClick={nextStep}>Next</button>
                 </div>
               </>
             )}
 
             {!loadingResources && currentStep === 2 && (
               <>
-                <h2 style={{ margin: "0 0 10px 0", fontSize: 19, color: "#0f172a", fontWeight: 900 }}>Confirmation</h2>
+                <h2 style={{ margin: "0 0 10px 0", fontSize: 19, color: "#14213D", fontWeight: 700, lineHeight: 1.35, letterSpacing: "-0.02em" }}>Confirmation</h2>
                 <div style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 10, padding: "10px 12px", fontWeight: 700 }}>
                   Review your booking before submitting
                 </div>
-                <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 14px", color: "#334155", fontSize: 14 }}>
-                  <div><strong>Resource Name:</strong> {selectedResource?.name || "-"}</div>
-                  <div><strong>Type:</strong> {selectedResource?.type || "-"}</div>
-                  <div><strong>Location:</strong> {selectedResource?.location || "-"}</div>
-                  <div><strong>Date:</strong> {form.bookingDate || "-"}</div>
-                  <div><strong>Time Slots:</strong> {selectedSlotKeys.length ? selectedOrderedSlots.map((s) => prettySlot(s.startTime, s.endTime)).join(", ") : "-"}</div>
-                  <div><strong>Duration:</strong> {selectedDurationHours ? `${selectedDurationHours} hours` : "-"}</div>
-                  <div style={{ gridColumn: "1 / -1" }}><strong>Purpose:</strong> {form.purpose || "-"}</div>
-                  <div><strong>Attendees:</strong> {attendeesApplicable ? (form.expectedAttendees || "-") : "-"}</div>
-                  <div><strong>Notes:</strong> {form.additionalNotes || "-"}</div>
+                <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: isCompactLayout ? "1fr 1fr" : "repeat(3, minmax(0, 1fr))", gap: "16px 14px" }}>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Resource Name</div>
+                    <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>{selectedResource?.name || "-"}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Type</div>
+                    <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>{selectedResource?.type || "-"}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Date</div>
+                    <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>{form.bookingDate || "-"}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Location</div>
+                    <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>{selectedResource?.location || "-"}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Time Slots</div>
+                    <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>
+                      {selectedSlotKeys.length ? selectedOrderedSlots.map((s) => prettySlot(s.startTime, s.endTime)).join(", ") : "-"}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Duration</div>
+                    <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>{selectedDurationHours ? `${selectedDurationHours} hours` : "-"}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Purpose</div>
+                    <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>{form.purpose || "-"}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Attendees</div>
+                    <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>{attendeesApplicable ? (form.expectedAttendees || "-") : "-"}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Notes</div>
+                    <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: "#14213D" }}>{form.additionalNotes || "-"}</div>
+                  </div>
                 </div>
                 <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", gap: 10 }}>
-                  <button type="button" style={{ ...buttonStyle, background: "#fff", color: "#0f172a", border: "1px solid #dbe4ee" }} onClick={previousStep}>Back {"<-"}</button>
+                  <button type="button" style={{ ...buttonStyle, background: "#fff", color: "#0f172a", border: "1px solid #dbe4ee" }} onClick={previousStep}>Back</button>
                   <button type="button" style={{ ...buttonStyle, background: "#FA8112", color: "#fff", opacity: submitState.busy ? 0.7 : 1 }} onClick={handleSubmit} disabled={submitState.busy}>
                     {submitState.busy ? "Submitting..." : "Submit Booking"}
                   </button>
@@ -486,12 +693,9 @@ export default function BookResourcePage() {
 
             {!loadingResources && currentStep === 3 && (
               <>
-                <h2 style={{ margin: "0 0 12px 0", fontSize: 19, color: "#0f172a", fontWeight: 900 }}>Booking Submitted</h2>
+                <h2 style={{ margin: "0 0 12px 0", fontSize: 19, color: "#14213D", fontWeight: 700, lineHeight: 1.35, letterSpacing: "-0.02em" }}>Booking Submitted</h2>
                 <div style={{ border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#166534", borderRadius: 10, padding: "12px 14px", fontWeight: 700 }}>
                   Your booking request has been submitted
-                </div>
-                <div style={{ marginTop: 12, border: "1px dashed #cbd5e1", borderRadius: 10, padding: "14px", color: "#64748b", fontWeight: 600 }}>
-                  Booking QR placeholder (to be added later)
                 </div>
                 <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button type="button" style={{ ...buttonStyle, background: "#fff", color: "#0f172a", border: "1px solid #dbe4ee" }} onClick={() => navigate("/account/bookings")}>View My Bookings</button>
@@ -500,9 +704,36 @@ export default function BookResourcePage() {
               </>
             )}
 
-            {submitState.error && <p style={{ margin: "12px 0 0", color: "#b91c1c", fontWeight: 800 }}>{submitState.error}</p>}
-            {submitState.success && currentStep !== 3 && <p style={{ margin: "12px 0 0", color: "#15803d", fontWeight: 800 }}>{submitState.success}</p>}
+            {submitState.error && (
+              <p
+                style={{
+                  margin: "12px 0 0",
+                  color: "#b91c1c",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  lineHeight: 1.45,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                {submitState.error}
+              </p>
+            )}
+            {submitState.success && currentStep !== 3 && (
+              <p
+                style={{
+                  margin: "12px 0 0",
+                  color: "#15803d",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  lineHeight: 1.45,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                {submitState.success}
+              </p>
+            )}
           </section>
+          </div>
 
           {summaryCard}
         </div>

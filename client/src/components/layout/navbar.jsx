@@ -46,6 +46,16 @@ function ProfileAvatarImage({ user, sizePx, fontSize }) {
   );
 }
 
+function LogoutIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
 const Navbar = () => {
   const navigate = useNavigate();
   const [logoutTick, setLogoutTick] = useState(0);
@@ -497,29 +507,35 @@ const Navbar = () => {
                   </button>
                 </div>
                 <hr style={dividerStyle} />
-                <div style={{ padding: "4px 0 8px" }}>
+                <div style={{ padding: "10px 16px 12px" }}>
                   <button
                     type="button"
                     role="menuitem"
                     onClick={handleLogout}
                     style={{
                       width: "100%",
-                      textAlign: "left",
-                      padding: "12px 20px",
-                      border: "none",
-                      background: "none",
+                      textAlign: "center",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                      padding: "10px 14px",
+                      border: "1px solid #fecaca",
+                      borderRadius: "8px",
+                      background: "#fee2e2",
+                      color: "#991b1b",
                       fontSize: "14px",
-                      fontWeight: 500,
-                      color: "#111827",
+                      fontWeight: 600,
                       cursor: "pointer",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#fef2f2";
+                      e.currentTarget.style.backgroundColor = "#fecaca";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
+                      e.currentTarget.style.backgroundColor = "#fee2e2";
                     }}
                   >
+                    <LogoutIcon />
                     Log out
                   </button>
                 </div>
