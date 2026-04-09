@@ -141,13 +141,6 @@ const submitButtonStyle = {
   fontFamily: appFontFamily,
 };
 
-const footerNoteStyle = {
-  marginTop: "12px",
-  color: "#6B7280",
-  fontSize: "12px",
-  lineHeight: 1.45,
-};
-
 const CONTACT_MESSAGES_STORAGE_KEY = "smartCampusContactMessages";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -405,9 +398,6 @@ export default function ContactUs() {
               <button type="submit" style={submitButtonStyle}>
                 Submit Request
               </button>
-              <p style={footerNoteStyle}>
-                After submitting, you will be redirected to your <strong>My contact messages</strong> section.
-              </p>
               {submitError ? <div style={submitFeedbackStyle}>{submitError}</div> : null}
             </form>
           </div>
