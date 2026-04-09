@@ -27,7 +27,7 @@ const sidebarStyle = {
   overflow: "hidden",
 };
 const mainColumnStyle = { flex: 1, display: "flex", flexDirection: "column", height: "100vh", minWidth: 0, overflow: "hidden" };
-const topBarStyle = { flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", padding: "14px 24px", backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0" };
+const topBarStyle = { flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", padding: "12px 24px", backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0" };
 const mainScrollStyle = { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "28px 28px 40px", boxSizing: "border-box" };
 const sectionLabelStyle = { fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", color: "#64748b", padding: "0 16px", marginTop: "20px", marginBottom: "8px" };
 const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "2px solid #F5E7C6", fontSize: "15px", outline: "none", boxSizing: "border-box", backgroundColor: "#FFFFFF", color: "#222222" };
@@ -80,6 +80,8 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
   const [passwordOtpCode, setPasswordOtpCode] = useState("");
   const [passwordOtpSent, setPasswordOtpSent] = useState(false);
   const [passwordState, setPasswordState] = useState({ busy: false, message: "", error: "" });
+  const [profileFirstNameDraft, setProfileFirstNameDraft] = useState("");
+  const [profileLastNameDraft, setProfileLastNameDraft] = useState("");
   const [profilePhoneDraft, setProfilePhoneDraft] = useState("");
   const [profileSaveState, setProfileSaveState] = useState({ busy: false, message: "", error: "" });
   const [avatarBusy, setAvatarBusy] = useState(false);
@@ -109,6 +111,8 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
   }, []);
   useEffect(() => {
     if (!profileModalOpen) return;
+    setProfileFirstNameDraft((adminUser?.firstName || "").trim());
+    setProfileLastNameDraft((adminUser?.lastName || "").trim());
     setProfilePhoneDraft(phoneFromServer(adminUser?.phoneNumber));
     setAvatarBusy(false);
     setAvatarRemoveBusy(false);
@@ -119,7 +123,14 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
 
   if (!getAuthToken() || !adminUser || adminUser.role !== "ADMIN") return null;
   const serverPhone = phoneFromServer(adminUser?.phoneNumber);
-  const canSavePhone = isValidProfilePhone(profilePhoneDraft) && profilePhoneDraft !== serverPhone;
+  const serverFirstName = (adminUser?.firstName || "").trim();
+  const serverLastName = (adminUser?.lastName || "").trim();
+  const canSaveProfile =
+    isValidProfilePhone(profilePhoneDraft) &&
+    !!profileFirstNameDraft.trim() &&
+    (profilePhoneDraft !== serverPhone ||
+      profileFirstNameDraft.trim() !== serverFirstName ||
+      profileLastNameDraft.trim() !== serverLastName);
   const displayName = `${(adminUser.firstName || "").trim()} ${(adminUser.lastName || "").trim()}`.trim() || adminUser.email || "Admin";
   const initial = ((adminUser.firstName || adminUser.email || "A").trim().charAt(0) || "A").toUpperCase();
   const handleLogout = () => {
@@ -346,40 +357,47 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
       </aside>
       <div style={mainColumnStyle}>
         <header style={topBarStyle}>
-          <button
-            type="button"
-            aria-label="Notifications"
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              border: "1px solid #e2e8f0",
-              background: "#fff",
-              color: "#0f172a",
-              cursor: "pointer",
-              fontSize: 18,
-            }}
-          >
-            🔔
-          </button>
-          <div ref={profileRef} style={{ position: "relative" }}>
-            <button type="button" aria-expanded={profileMenuOpen} aria-haspopup="menu" aria-label="Account menu" style={{ width: 40, height: 40, borderRadius: "50%", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: adminUser.profileImageUrl ? "#fff" : "#475569", color: "#fff", fontWeight: 700, fontSize: "16px", overflow: "hidden", boxShadow: profileMenuOpen ? "0 0 0 2px #FA8112" : "0 0 0 1px #e2e8f0" }} onClick={() => setProfileMenuOpen((o) => !o)}>
-              {adminUser.profileImageUrl ? <img src={adminUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initial}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>
+              {`Welcome back, ${displayName}`}
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <button
+              type="button"
+              aria-label="Notifications"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                border: "1px solid #e2e8f0",
+                background: "#fff",
+                color: "#0f172a",
+                cursor: "pointer",
+                fontSize: 18,
+              }}
+            >
+              🔔
             </button>
-            {profileMenuOpen && (
-              <div role="menu" style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: "min(280px, calc(100vw - 48px))", backgroundColor: "rgba(15, 23, 42, 0.08)", border: "1px solid rgba(148, 163, 184, 0.45)", borderRadius: "12px", boxShadow: "0 12px 40px rgba(15, 23, 42, 0.12)", padding: "16px", zIndex: 50, backdropFilter: "blur(10px)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-                  <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: adminUser.profileImageUrl ? "#f1f5f9" : "#475569", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "18px", overflow: "hidden" }}>{adminUser.profileImageUrl ? <img src={adminUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initial}</div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: "15px", color: "#0f172a" }}>{displayName}</div>
-                    <div style={{ fontSize: "12px", color: "#64748b", wordBreak: "break-word" }}>{adminUser.email || "—"}</div>
+            <div ref={profileRef} style={{ position: "relative" }}>
+              <button type="button" aria-expanded={profileMenuOpen} aria-haspopup="menu" aria-label="Account menu" style={{ width: 40, height: 40, borderRadius: "50%", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: adminUser.profileImageUrl ? "#fff" : "#475569", color: "#fff", fontWeight: 700, fontSize: "16px", overflow: "hidden", boxShadow: profileMenuOpen ? "0 0 0 2px #FA8112" : "0 0 0 1px #e2e8f0" }} onClick={() => setProfileMenuOpen((o) => !o)}>
+                {adminUser.profileImageUrl ? <img src={adminUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initial}
+              </button>
+              {profileMenuOpen && (
+                <div role="menu" style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: "min(280px, calc(100vw - 48px))", backgroundColor: "rgba(15, 23, 42, 0.08)", border: "1px solid rgba(148, 163, 184, 0.45)", borderRadius: "12px", boxShadow: "0 12px 40px rgba(15, 23, 42, 0.12)", padding: "16px", zIndex: 50, backdropFilter: "blur(10px)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+                    <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: adminUser.profileImageUrl ? "#f1f5f9" : "#475569", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "18px", overflow: "hidden" }}>{adminUser.profileImageUrl ? <img src={adminUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initial}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: "15px", color: "#0f172a" }}>{displayName}</div>
+                      <div style={{ fontSize: "12px", color: "#64748b", wordBreak: "break-word" }}>{adminUser.email || "—"}</div>
+                    </div>
                   </div>
+                  <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); setProfileModalOpen(true); }} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(226, 232, 240, 0.9)", background: "rgba(255, 255, 255, 0.15)", fontWeight: 600, fontSize: "14px", color: "#0f172a", cursor: "pointer", textAlign: "left" }}>My profile</button>
+                  <button type="button" role="menuitem" onClick={handleChangePassword} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(226, 232, 240, 0.9)", background: "rgba(255, 255, 255, 0.15)", fontWeight: 600, fontSize: "14px", color: "#0f172a", cursor: "pointer", textAlign: "left", marginTop: 8 }}>Change Password</button>
+                  <button type="button" role="menuitem" onClick={handleLogout} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(248, 113, 113, 0.35)", background: "rgba(255, 255, 255, 0.15)", fontWeight: 700, fontSize: "14px", color: "#b91c1c", cursor: "pointer", textAlign: "left", marginTop: 8 }}>Logout</button>
                 </div>
-                <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); setProfileModalOpen(true); }} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(226, 232, 240, 0.9)", background: "rgba(255, 255, 255, 0.15)", fontWeight: 600, fontSize: "14px", color: "#0f172a", cursor: "pointer", textAlign: "left" }}>My profile</button>
-                <button type="button" role="menuitem" onClick={handleChangePassword} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(226, 232, 240, 0.9)", background: "rgba(255, 255, 255, 0.15)", fontWeight: 600, fontSize: "14px", color: "#0f172a", cursor: "pointer", textAlign: "left", marginTop: 8 }}>Change Password</button>
-                <button type="button" role="menuitem" onClick={handleLogout} style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid rgba(248, 113, 113, 0.35)", background: "rgba(255, 255, 255, 0.15)", fontWeight: 700, fontSize: "14px", color: "#b91c1c", cursor: "pointer", textAlign: "left", marginTop: 8 }}>Logout</button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </header>
         <main style={mainScrollStyle}>
@@ -514,15 +532,31 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                     <div style={{ marginTop: "10px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                       <div>
                         <label style={labelStyle}>First name</label>
-                        <input type="text" readOnly disabled value={adminUser.firstName || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151", padding: "10px 12px" }} />
+                        <input
+                          type="text"
+                          value={profileFirstNameDraft}
+                          onChange={(e) => {
+                            setProfileFirstNameDraft(e.target.value);
+                            setProfileSaveState((s) => ({ ...s, message: "", error: "" }));
+                          }}
+                          style={{ ...inputStyle, padding: "10px 12px" }}
+                        />
                       </div>
                       <div>
                         <label style={labelStyle}>Last name</label>
-                        <input type="text" readOnly disabled value={adminUser.lastName || ""} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#374151", padding: "10px 12px" }} />
+                        <input
+                          type="text"
+                          value={profileLastNameDraft}
+                          onChange={(e) => {
+                            setProfileLastNameDraft(e.target.value);
+                            setProfileSaveState((s) => ({ ...s, message: "", error: "" }));
+                          }}
+                          style={{ ...inputStyle, padding: "10px 12px" }}
+                        />
                       </div>
                     </div>
                     <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                      <button type="button" disabled={!canSavePhone || profileSaveState.busy} onClick={async () => { if (!canSavePhone || profileSaveState.busy) return; setProfileSaveState({ busy: true, message: "", error: "" }); try { const updated = await updateProfilePhone({ phoneNumber: profilePhoneDraft }); persistCampusUser(updated); setProfileSaveState({ busy: false, message: "Changes saved.", error: "" }); } catch (err) { setProfileSaveState({ busy: false, message: "", error: err?.message || "Save failed" }); } }} style={{ padding: "10px 14px", borderRadius: "10px", border: "none", backgroundColor: "#FA8112", color: "#fff", fontWeight: 800, fontSize: "14px", cursor: !canSavePhone || profileSaveState.busy ? "not-allowed" : "pointer", opacity: !canSavePhone || profileSaveState.busy ? 0.6 : 1 }}>{profileSaveState.busy ? "Saving..." : "Save changes"}</button>
+                      <button type="button" disabled={!canSaveProfile || profileSaveState.busy} onClick={async () => { if (!canSaveProfile || profileSaveState.busy) return; setProfileSaveState({ busy: true, message: "", error: "" }); try { const updated = await updateProfilePhone({ firstName: profileFirstNameDraft.trim(), lastName: profileLastNameDraft.trim(), phoneNumber: profilePhoneDraft }); persistCampusUser(updated); setProfileSaveState({ busy: false, message: "Changes saved.", error: "" }); } catch (err) { setProfileSaveState({ busy: false, message: "", error: err?.message || "Save failed" }); } }} style={{ padding: "10px 14px", borderRadius: "10px", border: "none", backgroundColor: "#FA8112", color: "#fff", fontWeight: 800, fontSize: "14px", cursor: !canSaveProfile || profileSaveState.busy ? "not-allowed" : "pointer", opacity: !canSaveProfile || profileSaveState.busy ? 0.6 : 1 }}>{profileSaveState.busy ? "Saving..." : "Save changes"}</button>
                       {profileSaveState.message ? <span style={{ color: "#15803d", fontWeight: 700, fontSize: "12px" }}>{profileSaveState.message}</span> : null}
                       {profileSaveState.error ? <span style={{ color: "#b91c1c", fontWeight: 700, fontSize: "12px" }}>{profileSaveState.error}</span> : null}
                     </div>

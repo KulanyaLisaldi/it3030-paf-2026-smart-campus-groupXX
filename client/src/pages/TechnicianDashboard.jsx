@@ -2506,7 +2506,9 @@ function AdminTechnicianForm() {
           marginBottom: "18px",
         }}
       >
-        <div style={{ color: "#222222", fontSize: "22px", fontWeight: 800, lineHeight: 1.1 }}>Welcome back, Admin</div>
+        <div style={{ color: "#222222", fontSize: "22px", fontWeight: 800, lineHeight: 1.1 }}>
+          {`Welcome back, ${techShellDisplayName(techUser)}`}
+        </div>
         <div style={{ color: "#6b7280", fontSize: "13px", fontWeight: 600, marginTop: "6px" }}>
           Ticket analytics dashboard with live operational metrics
         </div>
