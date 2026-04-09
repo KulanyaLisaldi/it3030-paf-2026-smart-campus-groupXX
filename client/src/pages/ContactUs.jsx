@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { appFontFamily } from "../utils/appFont";
+import { apiPost } from "../api/http";
 import {
   ERR_LONG_TEXT_CHARS,
   ERR_NAME_CHARS,
@@ -216,7 +217,7 @@ export default function ContactUs() {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const payload = {
       firstName: form.firstName.trim(),
@@ -239,6 +240,12 @@ export default function ContactUs() {
       submittedAt: new Date().toISOString(),
       ...payload,
     };
+    try {
+      await apiPost("/api/contact-messages", payload);
+    } catch {
+      /* Keep existing local flow even if backend is temporarily unavailable. */
+    }
+
     try {
       const raw = localStorage.getItem(CONTACT_MESSAGES_STORAGE_KEY);
       const existing = raw ? JSON.parse(raw) : [];
