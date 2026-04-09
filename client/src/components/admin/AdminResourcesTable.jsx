@@ -739,31 +739,31 @@ export default function AdminResourcesTable() {
           style={{ position: "fixed", inset: 0, zIndex: 1002, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px", overflowY: "auto" }}
           onMouseDown={(e) => { if (e.target === e.currentTarget) setAddModalOpen(false); }}
         >
-          <div style={{ width: "100%", maxWidth: "860px", maxHeight: "calc(100vh - 36px)", margin: "auto 0", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+          <div style={{ width: "100%", maxWidth: "860px", maxHeight: "calc(100vh - 36px)", margin: "auto 0", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #FFDDB8", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "1px solid #FFDDB8", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexShrink: 0 }}>
               <div>
                 <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Add Resource</div>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", marginTop: "2px" }}>Create a new facility or asset entry.</div>
               </div>
-              <button type="button" onClick={() => setAddModalOpen(false)} aria-label="Close" style={{ width: 36, height: 36, borderRadius: "999px", border: "1px solid #e5e7eb", background: "#fff", fontWeight: 900, fontSize: "20px", lineHeight: 1, cursor: "pointer", color: "#0f172a" }}>×</button>
+              <button type="button" onClick={() => setAddModalOpen(false)} aria-label="Close" style={{ width: 36, height: 36, borderRadius: "999px", border: "1px solid #FFDDB8", background: "#fff", fontWeight: 900, fontSize: "20px", lineHeight: 1, cursor: "pointer", color: "#0f172a" }}>×</button>
             </div>
 
             <form onSubmit={handleCreateResource} style={{ padding: "18px 22px 22px", display: "grid", gap: "16px", overflowY: "auto" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
                   <label style={labelStyle}>Resource Code</label>
-                  <input value={formData.resourceCode} onChange={(e) => updateForm("resourceCode", e.target.value)} style={inputStyle} placeholder="LAB-C-204" required />
+                  <input value={formData.resourceCode} onChange={(e) => updateForm("resourceCode", e.target.value)} style={filterInputStyle} placeholder="LAB-C-204" required />
                 </div>
                 <div>
                   <label style={labelStyle}>Resource Name</label>
-                  <input value={formData.resourceName} onChange={(e) => updateForm("resourceName", e.target.value)} style={inputStyle} placeholder="Computer Lab C204" required />
+                  <input value={formData.resourceName} onChange={(e) => updateForm("resourceName", e.target.value)} style={filterInputStyle} placeholder="Computer Lab C204" required />
                 </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
                   <label style={labelStyle}>Resource Type</label>
-                  <select value={formData.resourceType} onChange={(e) => updateForm("resourceType", e.target.value)} style={inputStyle}>
+                  <select value={formData.resourceType} onChange={(e) => updateForm("resourceType", e.target.value)} style={filterInputStyle}>
                     <option value="LECTURE_HALL">Lecture Hall</option>
                     <option value="LAB">Lab</option>
                     <option value="MEETING_ROOM">Meeting Room</option>
@@ -772,18 +772,18 @@ export default function AdminResourcesTable() {
                 </div>
                 <div>
                   <label style={labelStyle}>Capacity</label>
-                  <input value={formData.capacity} onChange={(e) => updateForm("capacity", e.target.value.replace(/[^\d]/g, ""))} style={inputStyle} placeholder="40" required />
+                  <input value={formData.capacity} onChange={(e) => updateForm("capacity", e.target.value.replace(/[^\d]/g, ""))} style={filterInputStyle} placeholder="40" required />
                 </div>
               </div>
 
               <div>
                 <label style={labelStyle}>Location</label>
-                <input value={formData.location} onChange={(e) => updateForm("location", e.target.value)} style={inputStyle} placeholder="Engineering Block C - Floor 2" required />
+                <input value={formData.location} onChange={(e) => updateForm("location", e.target.value)} style={filterInputStyle} placeholder="Engineering Block C - Floor 2" required />
               </div>
 
               <div>
                 <label style={labelStyle}>Description</label>
-                <textarea value={formData.description} onChange={(e) => updateForm("description", e.target.value)} style={{ ...inputStyle, minHeight: "88px", resize: "vertical" }} placeholder="Short description of the resource" />
+                <textarea value={formData.description} onChange={(e) => updateForm("description", e.target.value)} style={{ ...filterInputStyle, minHeight: "88px", resize: "vertical" }} placeholder="Short description of the resource" />
               </div>
 
               <div>
@@ -792,7 +792,7 @@ export default function AdminResourcesTable() {
                   type="file"
                   accept="image/*"
                   multiple
-                  style={{ ...inputStyle, height: "auto", padding: "10px" }}
+                  style={{ ...filterInputStyle, height: "auto", padding: "10px" }}
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
                     if (files.length === 0) return;
@@ -815,14 +815,14 @@ export default function AdminResourcesTable() {
                   <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(120px, 1fr))", gap: 8 }}>
                     {formData.resourceImagePreviews.map((src, idx) => (
                       <div key={`${src}-${idx}`} style={{ position: "relative" }}>
-                        <img src={src} alt="Resource preview" style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 10, border: "1px solid #e5e7eb" }} />
+                        <img src={src} alt="Resource preview" style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 10, border: "1px solid #FFDDB8" }} />
                         <button
                           type="button"
                           onClick={() => {
                             updateForm("resourceImageFiles", formData.resourceImageFiles.filter((_, i) => i !== idx));
                             updateForm("resourceImagePreviews", formData.resourceImagePreviews.filter((_, i) => i !== idx));
                           }}
-                          style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: "50%", border: "1px solid #e5e7eb", background: "#fff", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
+                          style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: "50%", border: "1px solid #FFDDB8", background: "#fff", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
                           aria-label="Remove image"
                         >
                           ×
@@ -836,15 +836,15 @@ export default function AdminResourcesTable() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
                   <label style={labelStyle}>Availability Start</label>
-                  <input type="time" value={formData.availabilityStart} onChange={(e) => updateForm("availabilityStart", e.target.value)} style={inputStyle} />
+                  <input type="time" value={formData.availabilityStart} onChange={(e) => updateForm("availabilityStart", e.target.value)} style={filterInputStyle} />
                 </div>
                 <div>
                   <label style={labelStyle}>Availability End</label>
-                  <input type="time" value={formData.availabilityEnd} onChange={(e) => updateForm("availabilityEnd", e.target.value)} style={inputStyle} />
+                  <input type="time" value={formData.availabilityEnd} onChange={(e) => updateForm("availabilityEnd", e.target.value)} style={filterInputStyle} />
                 </div>
                 <div>
                   <label style={labelStyle}>Status</label>
-                  <select value={formData.status} onChange={(e) => updateForm("status", e.target.value)} style={inputStyle}>
+                  <select value={formData.status} onChange={(e) => updateForm("status", e.target.value)} style={filterInputStyle}>
                     <option value="ACTIVE">ACTIVE</option>
                     <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
                   </select>
