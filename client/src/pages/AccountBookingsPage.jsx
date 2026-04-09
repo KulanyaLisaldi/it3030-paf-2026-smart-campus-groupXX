@@ -10,8 +10,10 @@ import AccountLayout from "../components/account/AccountLayout";
 const cardStyle = { backgroundColor: "#ffffff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #e5e7eb", padding: "28px 32px", width: "100%" };
 const sectionHeading = { fontSize: "28px", fontWeight: 650, color: "#111827", margin: "0 0 8px 0", letterSpacing: "-0.02em" };
 const subtleNote = { fontSize: "13px", color: "#6b7280", marginBottom: "24px", lineHeight: 1.5 };
-const bookingCardStyle = { backgroundColor: "#ffffff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #e5e7eb", padding: "18px 20px" };
+const bookingCardStyle = { backgroundColor: "#ffffff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #e5e7eb", padding: "18px 20px", width: "100%", margin: "0" };
 const bookingChipStyle = { display: "inline-flex", alignItems: "center", padding: "5px 10px", borderRadius: "999px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.03em", textTransform: "uppercase" };
+const bookingFieldLabelStyle = { fontSize: "10px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" };
+const bookingFieldValueStyle = { marginTop: "2px", fontSize: "14px", fontWeight: 600, color: "#14213D" };
 const inputDisabled = { width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #d1d5db", backgroundColor: "#f9fafb", color: "#4b5563", fontSize: "14px", boxSizing: "border-box", cursor: "not-allowed", opacity: 1 };
 const inputEditable = { ...inputDisabled, backgroundColor: "#ffffff", color: "#111827", cursor: "text" };
 const filterBarGrid = {
@@ -20,6 +22,12 @@ const filterBarGrid = {
   gap: "12px",
   alignItems: "stretch",
   width: "100%",
+};
+const bookingsGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))",
+  gap: "14px",
+  alignItems: "start",
 };
 const labelStyle = { display: "block", fontSize: "13px", fontWeight: 600, color: "#111827", marginBottom: "6px" };
 const EDIT_SLOT_WINDOW_START = "08:00";
@@ -137,6 +145,21 @@ function resourcePrimaryImage(resource) {
   }
   return "";
 }
+function resourceImageUrls(resource) {
+  if (!resource || typeof resource !== "object") return [];
+  const list = [];
+  if (Array.isArray(resource.imageUrls)) list.push(...resource.imageUrls);
+  if (resource.imageUrl) list.push(resource.imageUrl);
+  const seen = new Set();
+  const out = [];
+  for (const item of list) {
+    const normalized = normalizeImageUrl(item);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    out.push(normalized);
+  }
+  return out;
+}
 function bookingEndDate(booking) {
   const datePart = String(booking?.bookingDate || "");
   const endPart = String(booking?.endTime || "00:00");
@@ -172,7 +195,9 @@ export default function AccountBookingsPage() {
   const [resourceImageById, setResourceImageById] = useState({});
   const [resourceAvailabilityById, setResourceAvailabilityById] = useState({});
   const [detailBooking, setDetailBooking] = useState(null);
-  const [detailResourceImage, setDetailResourceImage] = useState("");
+  const [detailResourceImages, setDetailResourceImages] = useState([]);
+  const [detailResourceLocation, setDetailResourceLocation] = useState("");
+  const [detailImageIndex, setDetailImageIndex] = useState(0);
   const [detailImageLoading, setDetailImageLoading] = useState(false);
   const [detailQrImage, setDetailQrImage] = useState("");
   const [detailQrLoading, setDetailQrLoading] = useState(false);
@@ -255,7 +280,9 @@ export default function AccountBookingsPage() {
 
   useEffect(() => {
     if (!detailBooking?.resourceId) {
-      setDetailResourceImage("");
+      setDetailResourceImages([]);
+      setDetailResourceLocation("");
+      setDetailImageIndex(0);
       setDetailImageLoading(false);
       return;
     }
@@ -264,10 +291,18 @@ export default function AccountBookingsPage() {
     void (async () => {
       try {
         const resource = await getResourceById(detailBooking.resourceId);
-        const image = resourcePrimaryImage(resource);
-        if (!cancelled) setDetailResourceImage(image);
+        const images = resourceImageUrls(resource);
+        if (!cancelled) {
+          setDetailResourceImages(images);
+          setDetailResourceLocation(String(resource?.location || "").trim());
+          setDetailImageIndex(0);
+        }
       } catch {
-        if (!cancelled) setDetailResourceImage("");
+        if (!cancelled) {
+          setDetailResourceImages([]);
+          setDetailResourceLocation("");
+          setDetailImageIndex(0);
+        }
       } finally {
         if (!cancelled) setDetailImageLoading(false);
       }
@@ -532,14 +567,26 @@ export default function AccountBookingsPage() {
         <h3 style={{ margin: "0 0 3px 0", fontSize: "17px", fontWeight: 800, color: "#111827" }}>{booking.resourceName || "Resource"}</h3>
         <span style={{ ...bookingChipStyle, ...bookingStatusChip(booking.status) }}>{booking.status || "PENDING"}</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 170px", gap: "10px 14px", alignItems: "center", fontSize: "14px", color: "#374151" }}>
-        <div>
-          <div><strong>Resource Type:</strong> {booking.resourceType || "—"}</div>
-          <div style={{ marginTop: "8px" }}><strong>Time Range:</strong> {booking.startTime || "—"} - {booking.endTime || "—"}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 170px", gap: "12px 14px", alignItems: "center" }}>
+        <div style={{ display: "grid", gap: "12px" }}>
+          <div>
+            <div style={bookingFieldLabelStyle}>Resource Type</div>
+            <div style={bookingFieldValueStyle}>{booking.resourceType || "—"}</div>
+          </div>
+          <div>
+            <div style={bookingFieldLabelStyle}>Time Range</div>
+            <div style={bookingFieldValueStyle}>{booking.startTime || "—"} - {booking.endTime || "—"}</div>
+          </div>
         </div>
-        <div>
-          <div><strong>Date:</strong> {formatBookingDate(booking.bookingDate)}</div>
-          <div style={{ marginTop: "8px" }}><strong>Status:</strong> {booking.status || "PENDING"}</div>
+        <div style={{ display: "grid", gap: "12px" }}>
+          <div>
+            <div style={bookingFieldLabelStyle}>Date</div>
+            <div style={bookingFieldValueStyle}>{formatBookingDate(booking.bookingDate)}</div>
+          </div>
+          <div>
+            <div style={bookingFieldLabelStyle}>Status</div>
+            <div style={bookingFieldValueStyle}>{booking.status || "PENDING"}</div>
+          </div>
         </div>
         <div style={{ width: "170px", height: "112px", borderRadius: "10px", overflow: "hidden", border: "1px solid #e5e7eb", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", justifySelf: "end" }}>
           {resourceImageById[booking.resourceId] ? (
@@ -713,7 +760,7 @@ export default function AccountBookingsPage() {
             filteredUpcomingBookings.length === 0 ? (
               <div style={{ ...cardStyle, padding: "16px 18px" }}><p style={{ margin: 0, color: "#6b7280", fontSize: "14px" }}>No upcoming bookings.</p></div>
             ) : (
-              <div style={{ display: "grid", gap: "14px" }}>{filteredUpcomingBookings.map(renderBookingCard)}</div>
+              <div style={bookingsGridStyle}>{filteredUpcomingBookings.map(renderBookingCard)}</div>
             )
           )}
 
@@ -721,54 +768,132 @@ export default function AccountBookingsPage() {
             filteredHistoryBookings.length === 0 ? (
               <div style={{ ...cardStyle, padding: "16px 18px" }}><p style={{ margin: 0, color: "#6b7280", fontSize: "14px" }}>No booking history yet.</p></div>
             ) : (
-              <div style={{ display: "grid", gap: "14px" }}>{filteredHistoryBookings.map(renderBookingCard)}</div>
+              <div style={bookingsGridStyle}>{filteredHistoryBookings.map(renderBookingCard)}</div>
             )
           )}
         </div>
       )}
       {detailBooking && (
         <div role="dialog" aria-modal="true" onClick={() => setDetailBooking(null)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", zIndex: 1200 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: "820px", backgroundColor: "#fff", borderRadius: "14px", border: "1px solid #e5e7eb", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)", padding: "18px 18px 14px" }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "820px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              backgroundColor: "#fff",
+              borderRadius: "14px",
+              border: "1px solid #e5e7eb",
+              boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)",
+              padding: "18px 18px 14px",
+            }}
+          >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-              <h2 style={{ ...sectionHeading, margin: 0 }}>Booking Details</h2>
+              <h2
+                style={{
+                  margin: 0,
+                  color: "#14213D",
+                  fontSize: "34px",
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                Booking Details
+              </h2>
               <button type="button" onClick={() => setDetailBooking(null)} style={{ border: "1px solid #d1d5db", backgroundColor: "#fff", borderRadius: "8px", padding: "6px 10px", cursor: "pointer", fontWeight: 700, color: "#374151" }}>Close</button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: "14px" }}>
-              <div style={{ display: "grid", gap: "10px" }}>
-                <div style={{ border: "1px solid #e5e7eb", borderRadius: "10px", overflow: "hidden", background: "#f8fafc", height: "170px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ display: "grid", gap: "14px" }}>
+              <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden", background: "#f8fafc" }}>
+                <div style={{ width: "100%", minHeight: 180, maxHeight: 340, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {detailImageLoading ? (
                     <span style={{ color: "#64748b", fontSize: "13px", fontWeight: 600 }}>Loading image...</span>
-                  ) : detailResourceImage ? (
-                    <img src={detailResourceImage} alt="Resource" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : detailResourceImages[detailImageIndex] ? (
+                    <img src={detailResourceImages[detailImageIndex]} alt="Resource" style={{ width: "100%", height: "100%", maxHeight: 340, objectFit: "cover" }} />
                   ) : (
                     <span style={{ color: "#64748b", fontSize: "13px", fontWeight: 600 }}>No image available</span>
                   )}
                 </div>
-                {(String(detailBooking?.status || "").toUpperCase() === "APPROVED" || String(detailBooking?.status || "").toUpperCase() === "CHECKED_IN") && (
-                  <div style={{ border: "1px solid #e5e7eb", borderRadius: "10px", background: "#fff", padding: "10px", display: "grid", gap: 8, justifyItems: "center" }}>
-                    <strong style={{ fontSize: 13, color: "#111827" }}>Booking QR</strong>
-                    {detailQrLoading && <span style={{ color: "#64748b", fontSize: 12 }}>Loading QR...</span>}
-                    {!detailQrLoading && detailQrImage && <img src={detailQrImage} alt="Booking QR" style={{ width: 140, height: 140, objectFit: "contain", border: "1px solid #e5e7eb", borderRadius: 8 }} />}
-                    {!detailQrLoading && !detailQrImage && <span style={{ color: "#64748b", fontSize: 12 }}>{detailQrError || "QR unavailable."}</span>}
-                    <button type="button" disabled={!detailQrImage} onClick={downloadQr} style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #d1d5db", background: detailQrImage ? "#fff" : "#f3f4f6", color: "#374151", fontWeight: 700, fontSize: "12px", cursor: detailQrImage ? "pointer" : "not-allowed" }}>
-                      Download QR
-                    </button>
+                {detailResourceImages.length > 1 && (
+                  <div style={{ display: "flex", gap: 8, padding: 10, borderTop: "1px solid #e5e7eb", overflowX: "auto" }}>
+                    {detailResourceImages.map((src, idx) => (
+                      <button
+                        key={`${src}-${idx}`}
+                        type="button"
+                        onClick={() => setDetailImageIndex(idx)}
+                        style={{
+                          width: 74,
+                          height: 54,
+                          padding: 0,
+                          borderRadius: 8,
+                          overflow: "hidden",
+                          border: idx === detailImageIndex ? "2px solid #FA8112" : "1px solid #cbd5e1",
+                          background: "#fff",
+                          cursor: "pointer",
+                          flexShrink: 0,
+                        }}
+                        aria-label={`Show image ${idx + 1}`}
+                        aria-current={idx === detailImageIndex ? "true" : undefined}
+                      >
+                        <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 14px", fontSize: "14px", color: "#374151" }}>
-                <div><strong>Booking ID:</strong> {detailBooking.id || "—"}</div>
-                <div><strong>Resource Name:</strong> {detailBooking.resourceName || "—"}</div>
-                <div><strong>Resource Type:</strong> {detailBooking.resourceType || "—"}</div>
-                <div><strong>Date:</strong> {formatBookingDate(detailBooking.bookingDate)}</div>
-                <div><strong>Time Range:</strong> {detailBooking.startTime || "—"} - {detailBooking.endTime || "—"}</div>
-                <div><strong>Status:</strong> {detailBooking.status || "PENDING"}</div>
-                <div style={{ gridColumn: "1 / -1" }}><strong>Purpose:</strong> {detailBooking.purpose || "—"}</div>
-                <div style={{ gridColumn: "1 / -1" }}><strong>{cancellationOrRejectionLabel(detailBooking)}:</strong> {cancellationOrRejectionReason(detailBooking) || "—"}</div>
-                <div><strong>Created Date:</strong> {formatBookingDateTime(detailBooking.createdAt)}</div>
-                <div><strong>Total Duration:</strong> {durationHours(detailBooking.startTime, detailBooking.endTime)}</div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "16px 14px" }}>
+                <div>
+                  <div style={bookingFieldLabelStyle}>Resource Name</div>
+                  <div style={bookingFieldValueStyle}>{detailBooking.resourceName || "—"}</div>
+                </div>
+                <div>
+                  <div style={bookingFieldLabelStyle}>Type</div>
+                  <div style={bookingFieldValueStyle}>{detailBooking.resourceType || "—"}</div>
+                </div>
+                <div>
+                  <div style={bookingFieldLabelStyle}>Date</div>
+                  <div style={bookingFieldValueStyle}>{formatBookingDate(detailBooking.bookingDate)}</div>
+                </div>
+                <div>
+                  <div style={bookingFieldLabelStyle}>Location</div>
+                  <div style={bookingFieldValueStyle}>{detailResourceLocation || detailBooking.resourceLocation || detailBooking.location || "—"}</div>
+                </div>
+                <div>
+                  <div style={bookingFieldLabelStyle}>Status</div>
+                  <div style={bookingFieldValueStyle}>{detailBooking.status || "PENDING"}</div>
+                </div>
+                <div>
+                  <div style={bookingFieldLabelStyle}>Time Range</div>
+                  <div style={bookingFieldValueStyle}>{detailBooking.startTime || "—"} - {detailBooking.endTime || "—"}</div>
+                </div>
+                <div>
+                  <div style={bookingFieldLabelStyle}>Purpose</div>
+                  <div style={bookingFieldValueStyle}>{detailBooking.purpose || "—"}</div>
+                </div>
+                <div>
+                  <div style={bookingFieldLabelStyle}>{cancellationOrRejectionLabel(detailBooking)}</div>
+                  <div style={bookingFieldValueStyle}>{cancellationOrRejectionReason(detailBooking) || "—"}</div>
+                </div>
+                <div>
+                  <div style={bookingFieldLabelStyle}>Total Duration</div>
+                  <div style={bookingFieldValueStyle}>{durationHours(detailBooking.startTime, detailBooking.endTime)}</div>
+                </div>
               </div>
+
+              {(String(detailBooking?.status || "").toUpperCase() === "APPROVED" || String(detailBooking?.status || "").toUpperCase() === "CHECKED_IN") && (
+                <div style={{ border: "1px solid #e5e7eb", borderRadius: "10px", background: "#fff", padding: "10px", display: "grid", gap: 8, justifyItems: "center" }}>
+                  <strong style={{ fontSize: 13, color: "#111827" }}>Booking QR</strong>
+                  {detailQrLoading && <span style={{ color: "#64748b", fontSize: 12 }}>Loading QR...</span>}
+                  {!detailQrLoading && detailQrImage && <img src={detailQrImage} alt="Booking QR" style={{ width: 140, height: 140, objectFit: "contain", border: "1px solid #e5e7eb", borderRadius: 8 }} />}
+                  {!detailQrLoading && !detailQrImage && <span style={{ color: "#64748b", fontSize: 12 }}>{detailQrError || "QR unavailable."}</span>}
+                  <button type="button" disabled={!detailQrImage} onClick={downloadQr} style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid #d1d5db", background: detailQrImage ? "#fff" : "#f3f4f6", color: "#374151", fontWeight: 700, fontSize: "12px", cursor: detailQrImage ? "pointer" : "not-allowed" }}>
+                    Download QR
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

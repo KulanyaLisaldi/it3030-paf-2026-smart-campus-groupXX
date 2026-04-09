@@ -390,19 +390,18 @@ export default function BookResourcePage() {
   return (
     <main style={{ flex: 1, background: "#f8fafc" }}>
       <div style={pageStyle}>
-        <h1 style={{ margin: 0, color: "#14213D", fontSize: 30, fontWeight: 700, lineHeight: 1.2, letterSpacing: "-0.02em" }}>Book a Resource</h1>
-        <p style={{ margin: "8px 0 0", color: "#64748b", fontSize: 14 }}>Complete your booking in 4 steps and submit for approval.</p>
-
         <div
           style={{
             marginTop: 14,
-            display: "grid",
-            gridTemplateColumns: isCompactLayout ? "1fr" : "680px 320px",
-            gap: isCompactLayout ? 0 : 16,
-            justifyContent: isCompactLayout ? "stretch" : "center",
+            display: "flex",
+            justifyContent: "center",
+            width: isCompactLayout ? "100%" : "1016px",
+            maxWidth: "100%",
+            marginLeft: "auto",
+            marginRight: "auto",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 0, overflowX: "auto", paddingBottom: 2, maxWidth: "100%" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, overflowX: "auto", paddingBottom: 2, maxWidth: "100%" }}>
             {stepPills.map((step, idx) => {
               const done = currentStep > idx || currentStep === 3;
               const active = currentStep === idx;
@@ -454,7 +453,7 @@ export default function BookResourcePage() {
 
         <div
           style={{
-            marginTop: 14,
+            marginTop: 24,
             ...twoColStyle,
             gridTemplateColumns: isCompactLayout ? "1fr" : "680px 320px",
             gap: isCompactLayout ? 14 : 16,
