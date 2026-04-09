@@ -47,7 +47,7 @@ const buttonStyle = { height: 38, borderRadius: 9, border: "none", padding: "0 1
 const actionControlStyle = { height: 32, width: 108, borderRadius: 8, fontSize: 12, boxSizing: "border-box" };
 const chartPalette = {
   navy: "#14213D",
-  orange: "#FA8112",
+  green: "#16a34a",
   amber: "#FCA311",
   red: "#d32f2f",
   gray: "#6b7280",
@@ -56,10 +56,10 @@ const chartPalette = {
 function statusChip(statusRaw) {
   const status = String(statusRaw || "").toUpperCase();
   if (status === "CHECKED_IN") return { background: "#ccfbf1", color: "#0f766e" };
-  if (status === "APPROVED") return { background: "#ffedd5", color: "#9a3412" };
+  if (status === "APPROVED") return { background: "#dcfce7", color: "#166534" };
   if (status === "REJECTED") return { background: "#fee2e2", color: "#b91c1c" };
   if (status === "CANCELLED") return { background: "#e5e7eb", color: "#374151" };
-  return { background: "#dbeafe", color: "#1d4ed8" };
+  return { background: "#ffedd5", color: "#9a3412" };
 }
 
 function fmtDate(value) {
@@ -208,8 +208,8 @@ export default function AdminBookingsPage() {
   const statusCounts = useMemo(() => countByStatus(rows), [rows]);
   const statusChartData = useMemo(
     () => [
-      { name: "Pending", value: statusCounts.pending, color: chartPalette.navy },
-      { name: "Approved", value: statusCounts.approved, color: chartPalette.orange },
+      { name: "Pending", value: statusCounts.pending, color: "#FA8112" },
+      { name: "Approved", value: statusCounts.approved, color: chartPalette.green },
       { name: "Rejected", value: statusCounts.rejected, color: chartPalette.red },
       { name: "Cancelled", value: statusCounts.cancelled, color: chartPalette.gray },
     ],
@@ -452,9 +452,9 @@ export default function AdminBookingsPage() {
             {[
               { label: "Total Bookings", value: statusCounts.total, accent: "#14213D" },
               { label: "Pending", value: statusCounts.pending, accent: "#FA8112" },
-              { label: "Approved", value: statusCounts.approved, accent: "#FA8112" },
+              { label: "Approved", value: statusCounts.approved, accent: "#16a34a" },
               { label: "Rejected", value: statusCounts.rejected, accent: "#d32f2f" },
-              { label: "Cancelled", value: statusCounts.cancelled, accent: "#FCA311" },
+              { label: "Cancelled", value: statusCounts.cancelled, accent: "#6b7280" },
             ].map((card) => (
               <div
                 key={card.label}
@@ -523,7 +523,7 @@ export default function AdminBookingsPage() {
                         <XAxis dataKey="label" />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
-                        <Line type="monotone" dataKey="count" stroke={chartPalette.orange} strokeWidth={3} dot={{ r: 3 }} />
+                        <Line type="monotone" dataKey="count" stroke={chartPalette.navy} strokeWidth={3} dot={{ r: 3 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -569,10 +569,10 @@ export default function AdminBookingsPage() {
                         <YAxis allowDecimals={false} />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="approved" stackId="a" fill={chartPalette.orange} />
+                        <Bar dataKey="approved" stackId="a" fill={chartPalette.green} />
                         <Bar dataKey="rejected" stackId="a" fill={chartPalette.red} />
                         <Bar dataKey="cancelled" stackId="a" fill={chartPalette.gray} />
-                        <Bar dataKey="pending" stackId="a" fill={chartPalette.navy} />
+                        <Bar dataKey="pending" stackId="a" fill="#FA8112" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -587,7 +587,7 @@ export default function AdminBookingsPage() {
                         <XAxis dataKey="hour" />
                         <YAxis allowDecimals={false} />
                         <Tooltip />
-                        <Bar dataKey="count" fill={chartPalette.orange} radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="count" fill={chartPalette.navy} radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -664,7 +664,7 @@ export default function AdminBookingsPage() {
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                     <button type="button" onClick={() => setViewRow(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#fff", border: "1px solid #FFDDB8", color: "#0f172a", textAlign: "center" }}>View</button>
                     {canApprove(row.status) && (
-                      <button type="button" disabled={busyId === row.id} onClick={() => void handleApproveDirect(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#FA8112", color: "#fff", textAlign: "center" }}>
+                      <button type="button" disabled={busyId === row.id} onClick={() => void handleApproveDirect(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#16a34a", color: "#fff", textAlign: "center" }}>
                         Approve
                       </button>
                     )}
@@ -715,7 +715,7 @@ export default function AdminBookingsPage() {
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, color: "#475569", fontSize: 13 }}>
-                <span style={{ width: 10, height: 10, borderRadius: 999, background: "#FA8112", display: "inline-block" }} />
+                <span style={{ width: 10, height: 10, borderRadius: 999, background: "#16a34a", display: "inline-block" }} />
                 Approved booking dates
               </div>
 
@@ -735,7 +735,7 @@ export default function AdminBookingsPage() {
                       minHeight: 70,
                       borderRadius: 10,
                       border: "1px solid #FFDDB8",
-                      background: cell.approved ? "linear-gradient(180deg, #fffbeb 0%, #ffedd5 100%)" : "#fff",
+                      background: cell.approved ? "linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%)" : "#fff",
                       opacity: cell.inCurrentMonth ? 1 : 0.45,
                       padding: 6,
                       display: "flex",
@@ -747,7 +747,7 @@ export default function AdminBookingsPage() {
                   >
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>{cell.day}</span>
                     {cell.approved && (
-                      <span style={{ alignSelf: "flex-start", fontSize: 11, fontWeight: 700, color: "#9a3412", background: "#fed7aa", borderRadius: 999, padding: "2px 6px" }}>
+                      <span style={{ alignSelf: "flex-start", fontSize: 11, fontWeight: 700, color: "#166534", background: "#bbf7d0", borderRadius: 999, padding: "2px 6px" }}>
                         {cell.approvedCount} approved
                       </span>
                     )}
