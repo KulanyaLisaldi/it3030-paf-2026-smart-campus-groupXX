@@ -1,8 +1,11 @@
 package com.example.server.service;
 
 import com.example.server.dto.resource.CreateResourceRequest;
+import com.example.server.dto.resource.TopResourceResponse;
 import com.example.server.dto.resource.UpdateResourceRequest;
+import com.example.server.model.Booking;
 import com.example.server.model.Resource;
+import com.example.server.repository.BookingRepo;
 import com.example.server.repository.ResourceRepo;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,24 +17,31 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class ResourceService {
 
     private static final List<String> ALLOWED_TYPES = List.of("LECTURE_HALL", "LAB", "MEETING_ROOM", "EQUIPMENT");
     private static final List<String> ALLOWED_STATUS = List.of("ACTIVE", "OUT_OF_SERVICE");
+    private static final Set<String> COUNTED_BOOKING_STATUSES = Set.of("PENDING", "APPROVED", "CHECKED_IN");
     private static final int MAX_IMAGES = 3;
 
     private final ResourceRepo resourceRepo;
+    private final BookingRepo bookingRepo;
 
-    public ResourceService(ResourceRepo resourceRepo) {
+    public ResourceService(ResourceRepo resourceRepo, BookingRepo bookingRepo) {
         this.resourceRepo = resourceRepo;
+        this.bookingRepo = bookingRepo;
     }
 
     public Resource create(CreateResourceRequest request) throws IOException {
@@ -121,6 +131,52 @@ public class ResourceService {
 
     public Optional<Resource> getById(String id) {
         return resourceRepo.findById(id);
+    }
+
+    public List<TopResourceResponse> getTopUsedResources(int limit) {
+        int safeLimit = limit <= 0 ? 4 : Math.min(limit, 20);
+        List<Resource> resources = resourceRepo.findAll();
+        if (resources.isEmpty()) {
+            return List.of();
+        }
+        Map<String, Resource> resourcesById = resources.stream()
+            .filter(r -> safeTrim(r.getId()).length() > 0)
+            .collect(Collectors.toMap(
+                r -> safeTrim(r.getId()),
+                Function.identity(),
+                (a, b) -> a
+            ));
+
+        Map<String, Long> usageByResource = bookingRepo.findAll().stream()
+            .filter(b -> COUNTED_BOOKING_STATUSES.contains(safeTrim(b.getStatus()).toUpperCase(Locale.ROOT)))
+            .map(Booking::getResourceId)
+            .map(this::safeTrim)
+            .filter(resourcesById::containsKey)
+            .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
+        Map<String, Long> sorted = usageByResource.entrySet().stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder()))
+            .limit(safeLimit)
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                Map.Entry::getValue,
+                (a, b) -> a,
+                LinkedHashMap::new
+            ));
+
+        return sorted.entrySet().stream().map(e -> {
+            Resource r = resourcesById.get(e.getKey());
+            String imageUrl = (r.getImageUrls() != null && !r.getImageUrls().isEmpty()) ? r.getImageUrls().get(0) : safeTrim(r.getImageUrl());
+            return new TopResourceResponse(
+                safeTrim(r.getId()),
+                safeTrim(r.getCode()),
+                safeTrim(r.getName()),
+                safeTrim(r.getType()),
+                safeTrim(r.getLocation()),
+                imageUrl,
+                e.getValue()
+            );
+        }).toList();
     }
 
     public Optional<Resource> update(String id, UpdateResourceRequest request) {

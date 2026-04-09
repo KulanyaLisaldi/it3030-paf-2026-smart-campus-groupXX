@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { getTopUsedResources } from '../api/resources';
 
 const FEATURE_CARDS = [
   {
@@ -37,6 +38,7 @@ const Hero = () => {
   const navigate = useNavigate();
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [topResources, setTopResources] = useState([]);
 
   const goNext = useCallback(() => {
     setActive((i) => (i + 1) % HERO_SLIDES.length);
@@ -55,6 +57,22 @@ const Hero = () => {
     const id = window.setInterval(goNext, AUTO_ADVANCE_MS);
     return () => window.clearInterval(id);
   }, [paused, goNext]);
+
+  useEffect(() => {
+    let mounted = true;
+    getTopUsedResources(4)
+      .then((data) => {
+        if (!mounted) return;
+        setTopResources(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setTopResources([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const getStartedButtonStyle = {
     backgroundColor: '#FA8112',
@@ -231,6 +249,47 @@ const Hero = () => {
                 </div>
               </Link>
             ))}
+          </div>
+
+          <div className="mb-16">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-[#14213D]">Top Resources</h2>
+              <button
+                type="button"
+                onClick={() => navigate('/resources')}
+                className="rounded-md border border-[#e2e8f0] bg-white px-3 py-2 text-sm font-semibold text-[#14213D] hover:bg-slate-50"
+              >
+                View all
+              </button>
+            </div>
+            {topResources.length === 0 ? (
+              <div className="rounded-lg border border-[#e2e8f0] bg-white p-5 text-sm font-semibold text-slate-500">
+                Top resources will appear once bookings are available.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+                {topResources.map((item, index) => (
+                  <div key={item.resourceId || `${item.code}-${index}`} className="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-sm">
+                    <div className="h-36 w-full bg-slate-100">
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt={item.name || 'Resource'} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs font-bold text-slate-500">No image</div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <div className="text-base font-bold text-[#0f172a]">{item.name || 'Unnamed Resource'}</div>
+                      <div className="mt-1 text-xs font-semibold text-slate-500">{item.code || '—'}</div>
+                      <div className="mt-3 grid gap-1 text-sm text-slate-700">
+                        <div><span className="font-semibold">Type:</span> {item.type || '—'}</div>
+                        <div><span className="font-semibold">Location:</span> {item.location || '—'}</div>
+                        <div><span className="font-semibold">Bookings:</span> {item.usageCount ?? 0}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
