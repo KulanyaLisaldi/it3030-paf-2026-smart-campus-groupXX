@@ -59,6 +59,21 @@ function toSortHour(label) {
   return hour;
 }
 
+function normalizeTypeLabel(value) {
+  const normalized = String(value || "").toUpperCase().replace(/\s+/g, "_").trim();
+  if (!normalized) return "UNKNOWN";
+  return normalized;
+}
+
+function displayTypeLabel(value) {
+  const normalized = normalizeTypeLabel(value);
+  if (normalized === "LECTURE_HALL") return "Lecture Hall";
+  if (normalized === "MEETING_ROOM") return "Meeting Room";
+  if (normalized === "LAB") return "Lab";
+  if (normalized === "EQUIPMENT") return "Equipment";
+  return normalized.replaceAll("_", " ");
+}
+
 export default function AdminResourcesPage() {
   const location = useLocation();
   const tab = new URLSearchParams(location.search).get("tab") || "overview";
@@ -321,7 +336,21 @@ export default function AdminResourcesPage() {
 
   const smartAvailabilitySlotChartData = useMemo(() => {
     const weekdayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const knownTypes = Array.from(
+      new Set(resources.map((resource) => normalizeTypeLabel(resource?.type)).filter((type) => type && type !== "UNKNOWN"))
+    );
     const slotDemand = new Map();
+    const slotTypeDemand = new Map();
+
+    const ensureSlotTypeMap = (slot) => {
+      if (!slotTypeDemand.has(slot)) {
+        const seed = new Map();
+        knownTypes.forEach((type) => seed.set(type, 0));
+        slotTypeDemand.set(slot, seed);
+      }
+      return slotTypeDemand.get(slot);
+    };
+
     bookings.forEach((b) => {
       const date = new Date(`${b?.bookingDate || ""}T00:00:00`);
       if (Number.isNaN(date.getTime())) return;
@@ -330,17 +359,27 @@ export default function AdminResourcesPage() {
       if (!hourLabel) return;
       const slot = `${weekday} ${hourLabel}`;
       slotDemand.set(slot, (slotDemand.get(slot) || 0) + 1);
+
+      const type = normalizeTypeLabel(b?.resourceType);
+      const byType = ensureSlotTypeMap(slot);
+      byType.set(type, (byType.get(type) || 0) + 1);
     });
-    const rankedRows = Array.from(slotDemand.entries())
-      .map(([slot, demand]) => ({ slot, demand }))
+
+    return Array.from(slotDemand.entries())
+      .map(([slot, demand]) => {
+        const byType = ensureSlotTypeMap(slot);
+        const typeRows = Array.from(byType.entries())
+          .map(([type, count]) => ({ type, count }))
+          .sort((a, b) => a.count - b.count);
+        const bestTypes = typeRows
+          .slice(0, 2)
+          .map((row) => displayTypeLabel(row.type))
+          .join(", ");
+        return { slot, demand, resourceTypes: bestTypes || "General" };
+      })
       .sort((a, b) => a.demand - b.demand)
       .slice(0, 8);
-    const maxValue = Math.max(1, ...rankedRows.map((row) => Number(row.demand) || 0));
-    return rankedRows.map((row) => ({
-      slot: row.slot,
-      availabilityPercent: Number((100 - ((Number(row.demand) || 0) / maxValue) * 100).toFixed(1)),
-    }));
-  }, [bookings]);
+  }, [bookings, resources]);
 
   return (
     <AdminLayout activeSection="resources" pageTitle={null} description={null}>
@@ -481,7 +520,7 @@ export default function AdminResourcesPage() {
                 Time-based forecasts from historical bookings for demand planning, peak-hour management, and smart slot suggestions.
               </p>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, alignItems: "stretch" }}>
                 <div style={chartCardStyle}>
                   <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Resource Demand Prediction (Next Week)</h3>
                   <div style={{ height: 260 }}>
@@ -555,20 +594,6 @@ export default function AdminResourcesPage() {
                   </p>
                 </div>
 
-                <div style={chartCardStyle}>
-                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Smart Availability Suggestion</h3>
-                  <div style={{ height: 260 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={smartAvailabilitySlotChartData} layout="vertical" margin={{ left: 26 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#FFDDB8" />
-                        <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
-                        <YAxis type="category" dataKey="slot" width={105} />
-                        <Tooltip formatter={(value) => `${value}% availability`} />
-                        <Bar dataKey="availabilityPercent" fill="#16a34a" radius={[0, 6, 6, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
               </div>
             </div>
           </section>
