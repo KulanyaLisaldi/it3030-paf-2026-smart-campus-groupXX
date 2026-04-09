@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { setAuthToken } from "../../api/http";
 import { ACCOUNT_PATH } from "../../utils/authRedirect";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../../utils/campusUserStorage";
+import campusSyncLogo from "../../assets/campus-sync-logo.png";
 
 function displayName(user) {
   if (!user) return "";
@@ -85,7 +86,7 @@ const Navbar = () => {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "12px 32px",
+    padding: "10px 20px",
     boxSizing: "border-box",
     backgroundColor: "rgba(255, 255, 255, 0.62)",
     backdropFilter: "saturate(180%) blur(14px)",
@@ -95,29 +96,30 @@ const Navbar = () => {
     position: "sticky",
     top: 0,
     zIndex: 100,
+    overflow: "visible",
   };
 
   const brandStyle = {
     display: "flex",
     alignItems: "center",
-    gap: "8px",
-    fontWeight: 600,
-    fontSize: "18px",
-    color: "#222222",
     cursor: "pointer",
+    flexShrink: 0,
+    maxWidth: "min(500px, 52vw)",
+    minWidth: 0,
+    lineHeight: 0,
+    overflow: "visible",
   };
 
-  const logoBoxStyle = {
-    width: "32px",
-    height: "32px",
-    borderRadius: "8px",
-    background: "linear-gradient(135deg, #FA8112, #F5E7C6)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#ffffff",
-    fontWeight: 700,
-    fontSize: "16px",
+  /** Larger base size + scale so the mark reads big; brand width allows wide wordmarks. */
+  const logoImgStyle = {
+    display: "block",
+    height: "clamp(56px, 10.5vw, 76px)",
+    width: "auto",
+    maxWidth: "100%",
+    objectFit: "contain",
+    objectPosition: "left center",
+    transform: "scale(1.52)",
+    transformOrigin: "left center",
   };
 
   const centerMenuStyle = {
@@ -263,8 +265,7 @@ const Navbar = () => {
   return (
     <nav style={navStyle}>
       <div style={brandStyle} onClick={() => navigate("/")}>
-        <div style={logoBoxStyle}>SC</div>
-        <span>CampusSync</span>
+        <img src={campusSyncLogo} alt="CampusSync" style={logoImgStyle} />
       </div>
 
       <div style={centerMenuStyle}>
