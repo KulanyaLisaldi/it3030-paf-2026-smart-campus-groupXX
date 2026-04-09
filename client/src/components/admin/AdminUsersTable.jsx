@@ -10,11 +10,14 @@ import {
 import { readCampusUser } from "../../utils/campusUserStorage";
 import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../../utils/profilePhone";
 
+/** Light orange frame lines (buttons keep their own border styles). */
+const BORDER_LIGHT_ORANGE = "#F5D4B0";
+
 const pageCardStyle = {
   maxWidth: "100%",
   backgroundColor: "#FFFFFF",
   borderRadius: "16px",
-  border: "1px solid #e2e8f0",
+  border: `1px solid ${BORDER_LIGHT_ORANGE}`,
   boxShadow: "0 12px 40px rgba(15, 23, 42, 0.08)",
   padding: "18px",
   boxSizing: "border-box",
@@ -32,13 +35,14 @@ const thStyle = {
   padding: "10px 10px",
   fontWeight: 900,
   color: "#0f172a",
-  borderBottom: "1px solid #e5e7eb",
+  backgroundColor: "#FFF8ED",
+  borderBottom: `1px solid ${BORDER_LIGHT_ORANGE}`,
   whiteSpace: "nowrap",
 };
 
 const tdStyle = {
   padding: "10px 10px",
-  borderBottom: "1px solid #eef2f7",
+  borderBottom: `1px solid ${BORDER_LIGHT_ORANGE}`,
   color: "#334155",
   verticalAlign: "top",
 };
@@ -78,13 +82,16 @@ const iconBtnStyle = (variant = "neutral") => ({
   justifyContent: "center",
 });
 
-const summaryCardStyle = {
-  border: "1px solid #F5E7C6",
+/** Light border + left accent strip (aligned with Resource Management summary cards). */
+const summaryCardBaseStyle = {
+  backgroundColor: "#FFFFFF",
+  border: `1px solid ${BORDER_LIGHT_ORANGE}`,
   borderRadius: "12px",
   padding: "12px",
-  backgroundColor: "#FFFFFF",
   boxShadow: "0 6px 14px rgba(20, 33, 61, 0.05)",
 };
+const summaryLabelStyle = { fontSize: "11px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" };
+const summaryValueStyle = { fontSize: "26px", fontWeight: 800, color: "#14213D", marginTop: 4 };
 
 function EyeIcon() {
   return (
@@ -219,7 +226,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     width: "100%",
     padding: "12px 14px",
     borderRadius: "10px",
-    border: "1px solid #e5e7eb",
+    border: `1px solid ${BORDER_LIGHT_ORANGE}`,
     fontSize: "14px",
     outline: "none",
     boxSizing: "border-box",
@@ -454,39 +461,39 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(6, minmax(120px, 1fr))",
-            gap: 10,
+            gap: 12,
             marginBottom: 14,
           }}
         >
-          <div style={summaryCardStyle}>
-            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 800 }}>Total Users</div>
-            <div style={{ marginTop: 4, fontSize: 22, color: "#0f172a", fontWeight: 900 }}>{summary.totalUsers}</div>
+          <div style={{ ...summaryCardBaseStyle, borderLeft: "6px solid #14213D" }}>
+            <div style={summaryLabelStyle}>Total Users</div>
+            <div style={summaryValueStyle}>{summary.totalUsers}</div>
           </div>
-          <div style={summaryCardStyle}>
-            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 800 }}>Admins</div>
-            <div style={{ marginTop: 4, fontSize: 22, color: "#0f172a", fontWeight: 900 }}>{summary.admins}</div>
+          <div style={{ ...summaryCardBaseStyle, borderLeft: "6px solid #1565c0" }}>
+            <div style={summaryLabelStyle}>Admins</div>
+            <div style={summaryValueStyle}>{summary.admins}</div>
           </div>
-          <div style={summaryCardStyle}>
-            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 800 }}>Technicians</div>
-            <div style={{ marginTop: 4, fontSize: 22, color: "#0f172a", fontWeight: 900 }}>{summary.technicians}</div>
+          <div style={{ ...summaryCardBaseStyle, borderLeft: "6px solid #2e7d32" }}>
+            <div style={summaryLabelStyle}>Technicians</div>
+            <div style={summaryValueStyle}>{summary.technicians}</div>
           </div>
-          <div style={summaryCardStyle}>
-            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 800 }}>Active Users</div>
-            <div style={{ marginTop: 4, fontSize: 22, color: "#0f172a", fontWeight: 900 }}>{summary.activeUsers}</div>
+          <div style={{ ...summaryCardBaseStyle, borderLeft: "6px solid #388e3c" }}>
+            <div style={summaryLabelStyle}>Active Users</div>
+            <div style={summaryValueStyle}>{summary.activeUsers}</div>
           </div>
-          <div style={summaryCardStyle}>
-            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 800 }}>Suspended Users</div>
-            <div style={{ marginTop: 4, fontSize: 22, color: "#0f172a", fontWeight: 900 }}>{summary.suspendedUsers}</div>
+          <div style={{ ...summaryCardBaseStyle, borderLeft: "6px solid #d32f2f" }}>
+            <div style={summaryLabelStyle}>Suspended Users</div>
+            <div style={summaryValueStyle}>{summary.suspendedUsers}</div>
           </div>
-          <div style={summaryCardStyle}>
-            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 800 }}>Google Users</div>
-            <div style={{ marginTop: 4, fontSize: 22, color: "#0f172a", fontWeight: 900 }}>{summary.googleUsers}</div>
+          <div style={{ ...summaryCardBaseStyle, borderLeft: "6px solid #FCA311" }}>
+            <div style={summaryLabelStyle}>Google Users</div>
+            <div style={summaryValueStyle}>{summary.googleUsers}</div>
           </div>
         </div>
       )}
 
       {!loading && !error && (
-        <div role="tablist" aria-label="User management" style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: "2px solid #e5e7eb" }}>
+        <div role="tablist" aria-label="User management" style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: `2px solid ${BORDER_LIGHT_ORANGE}` }}>
           <button
             type="button"
             role="tab"
@@ -540,7 +547,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
           role="tabpanel"
           aria-labelledby="user-mgmt-tab-dashboard"
           style={{
-            border: "1px solid #e2e8f0",
+            border: `1px solid ${BORDER_LIGHT_ORANGE}`,
             borderRadius: 12,
             padding: "24px 20px",
             background: "#f8fafc",
@@ -576,7 +583,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               width: "100%",
               padding: "10px 12px",
               borderRadius: 12,
-              border: "1px solid #e5e7eb",
+              border: `1px solid ${BORDER_LIGHT_ORANGE}`,
               background: "#fff",
               outline: "none",
               color: "#0f172a",
@@ -594,7 +601,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               width: "100%",
               padding: "10px 12px",
               borderRadius: 12,
-              border: "1px solid #e5e7eb",
+              border: `1px solid ${BORDER_LIGHT_ORANGE}`,
               background: "#fff",
               outline: "none",
               color: "#0f172a",
@@ -617,7 +624,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               width: "100%",
               padding: "10px 12px",
               borderRadius: 12,
-              border: "1px solid #e5e7eb",
+              border: `1px solid ${BORDER_LIGHT_ORANGE}`,
               background: "#fff",
               outline: "none",
               color: "#0f172a",
@@ -639,7 +646,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               width: "100%",
               padding: "10px 12px",
               borderRadius: 12,
-              border: "1px solid #e5e7eb",
+              border: `1px solid ${BORDER_LIGHT_ORANGE}`,
               background: "#fff",
               outline: "none",
               color: "#0f172a",
@@ -675,7 +682,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                   right: 0,
                   zIndex: 30,
                   background: "#fff",
-                  border: "1px solid #e5e7eb",
+                  border: `1px solid ${BORDER_LIGHT_ORANGE}`,
                   borderRadius: 10,
                   boxShadow: "0 10px 30px rgba(15, 23, 42, 0.12)",
                   overflow: "hidden",
@@ -688,7 +695,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                     setAddUserMenuOpen(false);
                     onAddTechnician?.("ADMIN");
                   }}
-                  style={{ width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: "1px solid #f1f5f9", background: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", color: "#0f172a" }}
+                  style={{ width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: `1px solid ${BORDER_LIGHT_ORANGE}`, background: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", color: "#0f172a" }}
                 >
                   ADMIN
                 </button>
@@ -711,7 +718,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
 
       <div style={{ marginBottom: 14 }} />
 
-          <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #e5e7eb" }} role="tabpanel" aria-labelledby="user-mgmt-tab-all-users">
+          <div style={{ overflowX: "auto", borderRadius: 12, border: `1px solid ${BORDER_LIGHT_ORANGE}` }} role="tabpanel" aria-labelledby="user-mgmt-tab-all-users">
             <table style={tableStyle}>
               <thead>
                 <tr>
@@ -875,7 +882,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                   maxHeight: "calc(100vh - 68px)",
                   background: "rgba(255, 255, 255, 0.90)",
                   backdropFilter: "blur(8px)",
-                  borderLeft: "1px solid #e5e7eb",
+                  borderLeft: `1px solid ${BORDER_LIGHT_ORANGE}`,
                   borderRadius: "18px",
                   boxShadow: "-8px 12px 34px rgba(15, 23, 42, 0.16)",
                   padding: "20px 18px 18px",
@@ -1016,7 +1023,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                   </div>
 
                   {(selectedUser.provider || "") !== "Google OAuth" ? (
-                    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 10, background: "#fff" }}>
+                    <div style={{ border: `1px solid ${BORDER_LIGHT_ORANGE}`, borderRadius: 12, padding: 10, background: "#fff" }}>
                       <div style={{ fontSize: 12, fontWeight: 900, color: "#0f172a", marginBottom: 8 }}>Password reset</div>
                       <input
                         type="password"
@@ -1066,7 +1073,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                 maxHeight: "calc(100vh - 68px)",
                 background: "rgba(255, 255, 255, 0.90)",
                 backdropFilter: "blur(8px)",
-                borderLeft: "1px solid #e5e7eb",
+                borderLeft: `1px solid ${BORDER_LIGHT_ORANGE}`,
                 borderRadius: "18px",
                 boxShadow: "-8px 12px 34px rgba(15, 23, 42, 0.18)",
                 padding: "20px 18px 18px",
@@ -1125,7 +1132,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                 display: "grid",
                 gap: 10,
                 background: "rgba(255,255,255,0.75)",
-                border: "1px solid #e2e8f0",
+                border: `1px solid ${BORDER_LIGHT_ORANGE}`,
                 borderRadius: 12,
                 padding: 12,
               }}

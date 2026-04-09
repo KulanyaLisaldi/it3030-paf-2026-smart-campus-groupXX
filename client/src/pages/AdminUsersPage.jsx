@@ -5,12 +5,15 @@ import { adminCreateUser } from "../api/adminUsers";
 import { DEFAULT_TECHNICIAN_CATEGORY, TECHNICIAN_CATEGORIES, toApiTechnicianCategory } from "../constants/technicianCategories";
 import PasswordInput from "../components/PasswordInput.jsx";
 import { isValidProfilePhone, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../utils/profilePhone";
+import { appFontFamily } from "../utils/appFont";
+
+const BORDER_LIGHT_ORANGE = "#F5D4B0";
 
 const inputStyle = {
   width: "100%",
   padding: "12px 14px",
   borderRadius: "10px",
-  border: "2px solid #F5E7C6",
+  border: `2px solid ${BORDER_LIGHT_ORANGE}`,
   fontSize: "15px",
   outline: "none",
   boxSizing: "border-box",
@@ -93,20 +96,22 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <AdminLayout activeSection="users" pageTitle="User Management">
-      <AdminUsersTable
-        refreshKey={usersTableRev}
-        onAddTechnician={(role) => {
-          setSelectedRole(role === "ADMIN" ? "ADMIN" : "TECHNICIAN");
-          setAddUserModalOpen(true);
-        }}
-        onRequestRefresh={() => setUsersTableRev((n) => n + 1)}
-      />
+    <AdminLayout activeSection="users" pageTitle={null} description={null}>
+      <div style={{ fontFamily: appFontFamily }}>
+        <h1 style={{ margin: "0 0 8px 0", fontSize: "26px", fontWeight: 800, color: "#14213D" }}>User Management</h1>
+        <AdminUsersTable
+          refreshKey={usersTableRev}
+          onAddTechnician={(role) => {
+            setSelectedRole(role === "ADMIN" ? "ADMIN" : "TECHNICIAN");
+            setAddUserModalOpen(true);
+          }}
+          onRequestRefresh={() => setUsersTableRev((n) => n + 1)}
+        />
 
-      {addUserModalOpen && (
+        {addUserModalOpen && (
         <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 1001, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px" }} onMouseDown={(e) => { if (e.target === e.currentTarget) setAddUserModalOpen(false); }}>
-          <div style={{ width: "100%", maxWidth: "760px", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+          <div style={{ width: "100%", maxWidth: "760px", backgroundColor: "#ffffff", borderRadius: "16px", border: `1px solid ${BORDER_LIGHT_ORANGE}`, boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden" }}>
+            <div style={{ padding: "16px 22px", borderBottom: `1px solid ${BORDER_LIGHT_ORANGE}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
               <div>
                 <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>
                   {selectedRole === "ADMIN" ? "Add Admin User" : "Add Technician User"}
@@ -161,7 +166,8 @@ export default function AdminUsersPage() {
             </div>
           </div>
         </div>
-      )}
+        )}
+      </div>
     </AdminLayout>
   );
 }
