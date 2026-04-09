@@ -4,6 +4,7 @@ import { setAuthToken } from "../../api/http";
 import { ACCOUNT_PATH } from "../../utils/authRedirect";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../../utils/campusUserStorage";
 import campusSyncLogo from "../../assets/campus-sync-logo.png";
+import NotificationBell from "../notifications/NotificationBell";
 
 function displayName(user) {
   if (!user) return "";
@@ -418,9 +419,10 @@ const Navbar = () => {
         {isLoggedIn && user ? (
           <div
             ref={profileMenuRef}
-            style={{ position: "relative" }}
+            style={{ position: "relative", display: "flex", alignItems: "center", gap: "12px" }}
             onMouseDown={(e) => e.stopPropagation()}
           >
+            <NotificationBell />
             <button
               type="button"
               aria-expanded={showProfileMenu}

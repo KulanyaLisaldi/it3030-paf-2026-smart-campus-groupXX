@@ -56,6 +56,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordOtpEmailService passwordOtpEmailService;
     private final JwtService jwtService;
+    private final NotificationService notificationService;
 
     public AuthService(
         UserRepo userRepo,
@@ -64,7 +65,8 @@ public class AuthService {
         TicketChatRepo ticketChatRepo,
         PasswordEncoder passwordEncoder,
         PasswordOtpEmailService passwordOtpEmailService,
-        JwtService jwtService
+        JwtService jwtService,
+        NotificationService notificationService
     ) {
         this.userRepo = userRepo;
         this.ticketRepo = ticketRepo;
@@ -73,6 +75,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.passwordOtpEmailService = passwordOtpEmailService;
         this.jwtService = jwtService;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -235,9 +238,45 @@ public class AuthService {
             throw new IllegalStateException("Account disabled");
         }
 
+        boolean firstLoginEver = synced.getLastLoginAt() == null;
         // Record successful sign-in for analytics/admin display
         synced.setLastLoginAt(Instant.now());
-        return userRepo.save(synced);
+        User saved = userRepo.save(synced);
+        if (firstLoginEver && saved.getEffectiveRole() == UserRole.USER) {
+            notifyAdminsFirstUserLogin(saved);
+        }
+        return saved;
+    }
+
+    /** Alerts all admins when a campus (Google) user signs in for the first time. */
+    private void notifyAdminsFirstUserLogin(User user) {
+        if (user == null || user.getId() == null) {
+            return;
+        }
+        String display = formatUserDisplayForAdminNotice(user);
+        String email = user.getEmail() == null ? "" : user.getEmail().trim();
+        String message = email.isEmpty()
+            ? display + " signed in for the first time."
+            : display + " (" + email + ") signed in for the first time.";
+        notificationService.createForRole(
+            UserRole.ADMIN,
+            "USER_FIRST_LOGIN",
+            "New user sign in",
+            message,
+            "USER",
+            user.getId(),
+            "/adminusers"
+        );
+    }
+
+    private static String formatUserDisplayForAdminNotice(User user) {
+        String first = user.getFirstName() == null ? "" : user.getFirstName().trim();
+        String last = user.getLastName() == null ? "" : user.getLastName().trim();
+        String combined = (first + " " + last).trim();
+        if (!combined.isEmpty()) {
+            return combined;
+        }
+        return "New user";
     }
 
     private User ensureUserRole(User user) {

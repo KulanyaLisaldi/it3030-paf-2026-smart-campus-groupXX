@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import QRCode from "qrcode";
 import { cancelMyBooking, getBookedSlots, getMyBookingQr, getMyBookings, updateMyBooking } from "../api/bookings";
 import { getAuthToken } from "../api/http";
@@ -188,6 +188,7 @@ function deriveSlotKeysFromRange(slots, startTime, endTime) {
 export default function AccountBookingsPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsError, setBookingsError] = useState("");
@@ -242,6 +243,22 @@ export default function AccountBookingsPage() {
     };
     void loadBookings();
   }, [navigate, location.pathname]);
+
+  useEffect(() => {
+    const openId = (searchParams.get("openBooking") || "").trim();
+    if (!openId) return;
+    if (bookingsLoading) return;
+    const found = bookings.find((b) => String(b?.id || "") === openId);
+    if (found) {
+      setDetailBooking(found);
+      requestAnimationFrame(() => {
+        document.getElementById(`account-booking-card-${openId}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete("openBooking");
+    setSearchParams(next, { replace: true });
+  }, [bookingsLoading, bookings, searchParams, setSearchParams]);
 
   useEffect(() => {
     const ids = Array.from(new Set(bookings.map((b) => String(b?.resourceId || "").trim()).filter(Boolean)));
@@ -563,6 +580,7 @@ export default function AccountBookingsPage() {
   const renderBookingCard = (booking) => (
     <article
       className="bookings-3d-card"
+      id={booking.id ? `account-booking-card-${booking.id}` : undefined}
       key={booking.id || `${booking.resourceId}-${booking.bookingDate}-${booking.startTime}`}
       style={{
         ...bookingCardStyle,

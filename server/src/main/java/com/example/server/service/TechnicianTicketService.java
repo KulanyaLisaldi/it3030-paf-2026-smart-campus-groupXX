@@ -22,15 +22,18 @@ public class TechnicianTicketService {
     private final TicketRepo ticketRepo;
     private final UserRepo userRepo;
     private final TicketNotificationEmailService ticketNotificationEmailService;
+    private final NotificationService notificationService;
 
     public TechnicianTicketService(
         TicketRepo ticketRepo,
         UserRepo userRepo,
-        TicketNotificationEmailService ticketNotificationEmailService
+        TicketNotificationEmailService ticketNotificationEmailService,
+        NotificationService notificationService
     ) {
         this.ticketRepo = ticketRepo;
         this.userRepo = userRepo;
         this.ticketNotificationEmailService = ticketNotificationEmailService;
+        this.notificationService = notificationService;
     }
 
     public List<Ticket> listAssigned(String technicianUserId) {
@@ -85,10 +88,33 @@ public class TechnicianTicketService {
         }
         ticket.setStatus(next);
         Ticket saved = ticketRepo.save(ticket);
+        resolveTicketOwnerId(saved).ifPresent(ownerId ->
+            notificationService.createAndPush(
+                ownerId,
+                "TICKET_STATUS_CHANGED",
+                "Ticket status updated",
+                "Your ticket status is now " + next + ".",
+                "TICKET",
+                saved.getId(),
+                "/my-tickets"
+            )
+        );
         if ("RESOLVED".equals(next)) {
             ticketNotificationEmailService.notifyTicketResolved(saved);
         }
         return saved;
+    }
+
+    private Optional<String> resolveTicketOwnerId(Ticket ticket) {
+        String ref = ticket == null ? "" : safeTrim(ticket.getCreatedBy());
+        if (ref.isEmpty()) return Optional.empty();
+        Optional<User> byId = userRepo.findById(ref);
+        if (byId.isPresent()) return Optional.ofNullable(byId.get().getId());
+        return userRepo.findByEmail(ref.toLowerCase(Locale.ROOT)).map(User::getId);
+    }
+
+    private static String safeTrim(String raw) {
+        return raw == null ? "" : raw.trim();
     }
 
     private boolean isAssignedToTechnician(Ticket ticket, String userId) {

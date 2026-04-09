@@ -6,6 +6,7 @@ import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../../ut
 import PasswordInput from "../PasswordInput.jsx";
 import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../../utils/profilePhone";
 import campusSyncLogo from "../../assets/campus-sync-logo.png";
+import NotificationBell from "../notifications/NotificationBell.jsx";
 
 const shellStyle = {
   height: "100vh",
@@ -75,6 +76,7 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [resourceMenuOpen, setResourceMenuOpen] = useState(activeSection === "resources");
   const [bookingMenuOpen, setBookingMenuOpen] = useState(activeSection === "bookings");
+  const [userMenuOpen, setUserMenuOpen] = useState(activeSection === "users");
   const [userRev, setUserRev] = useState(0);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -117,6 +119,9 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
   }, [activeSection]);
   useEffect(() => {
     if (activeSection === "bookings") setBookingMenuOpen(true);
+  }, [activeSection]);
+  useEffect(() => {
+    if (activeSection === "users") setUserMenuOpen(true);
   }, [activeSection]);
   useEffect(() => {
     if (!profileModalOpen) return;
@@ -455,13 +460,52 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                 )}
               </div>
               <button type="button" style={navRowStyle(activeSection === "tickets")} onClick={() => navigate(routesBySection.tickets)}>Ticket Management</button>
-              <button type="button" style={navRowStyle(activeSection === "users")} onClick={() => navigate(routesBySection.users)}>User Management</button>
+              <div style={{ margin: "2px 8px" }}>
+                <button
+                  type="button"
+                  style={{ ...navRowStyle(false), margin: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                  onClick={() => setUserMenuOpen((open) => !open)}
+                >
+                  <span>User Management</span>
+                  <span style={{ fontSize: 12, color: "#9ca3af" }}>{userMenuOpen ? "▼" : "▶"}</span>
+                </button>
+                {userMenuOpen && (
+                  <div style={{ marginTop: 4, marginLeft: 10, display: "grid", gap: 2 }}>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/adminusers?tab=overview")}
+                      style={{
+                        ...navRowStyle(activeSection === "users" && location.pathname === "/adminusers" && new URLSearchParams(location.search).get("tab") !== "details" && new URLSearchParams(location.search).get("tab") !== "all-users"),
+                        margin: 0,
+                        padding: "8px 12px",
+                        fontSize: 13,
+                        color: "#334155",
+                      }}
+                    >
+                      Overview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/adminusers?tab=details")}
+                      style={{
+                        ...navRowStyle(activeSection === "users" && location.pathname === "/adminusers" && (new URLSearchParams(location.search).get("tab") === "details" || new URLSearchParams(location.search).get("tab") === "all-users")),
+                        margin: 0,
+                        padding: "8px 12px",
+                        fontSize: 13,
+                        color: "#334155",
+                      }}
+                    >
+                      User Details
+                    </button>
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 style={navRowStyle(activeSection === "contactMessages")}
                 onClick={() => navigate(routesBySection.contactMessages)}
               >
-                Contact Messages Management
+                Contact Management
               </button>
               <button type="button" style={navRowStyle(activeSection === "notifications")} onClick={() => navigate(routesBySection.notifications)}>Notification</button>
             </>
@@ -476,22 +520,7 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <button
-              type="button"
-              aria-label="Notifications"
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: "50%",
-                border: "1px solid #e2e8f0",
-                background: "#fff",
-                color: "#0f172a",
-                cursor: "pointer",
-                fontSize: 18,
-              }}
-            >
-              🔔
-            </button>
+            <NotificationBell />
             <div ref={profileRef} style={{ position: "relative" }}>
               <button type="button" aria-expanded={profileMenuOpen} aria-haspopup="menu" aria-label="Account menu" style={{ width: 40, height: 40, borderRadius: "50%", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: adminUser.profileImageUrl ? "#fff" : "#475569", color: "#fff", fontWeight: 700, fontSize: "16px", overflow: "hidden", boxShadow: profileMenuOpen ? "0 0 0 2px #FA8112" : "0 0 0 1px #e2e8f0" }} onClick={() => setProfileMenuOpen((o) => !o)}>
                 {adminUser.profileImageUrl ? <img src={adminUser.profileImageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initial}

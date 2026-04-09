@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { acceptAdminTicket, getAdminTicketList, rejectAdminTicket } from "../api/adminticket";
 import { apiDelete } from "../api/http";
 import { listTechnicians } from "../api/adminTechnicians";
@@ -409,6 +409,7 @@ function getProgressInfo(status, commentsCount) {
 
 export default function AdminTicketDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -454,14 +455,30 @@ export default function AdminTicketDashboard() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const view = params.get("view");
-    if (view === "tickets") {
+    const params = new URLSearchParams(location.search);
+    const view = (params.get("view") || "").toLowerCase();
+    if (view === "tickets") setActiveView("tickets");
+    else setActiveView("dashboard");
+  }, [location.search]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const openTicketId = (params.get("openTicket") || "").trim();
+    if (!openTicketId) return;
+    if (loading) return;
+    if (!tickets.length) return;
+    const item = tickets.find((t) => String(t?.ticket?.id || "") === openTicketId);
+    if (item) {
       setActiveView("tickets");
-    } else {
-      setActiveView("dashboard");
+      setCommentsModalPayload({
+        ticket: item?.ticket || {},
+        comments: Array.isArray(item?.comments) ? item.comments : [],
+      });
     }
-  }, []);
+    params.delete("openTicket");
+    const qs = params.toString();
+    navigate({ pathname: "/adminticket", search: qs ? `?${qs}` : "" }, { replace: true });
+  }, [location.search, loading, tickets, navigate]);
 
   const openCommentsModalRow = (item) => {
     setCommentsModalPayload({

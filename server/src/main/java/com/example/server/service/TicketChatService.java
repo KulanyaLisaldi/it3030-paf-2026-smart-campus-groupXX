@@ -4,6 +4,7 @@ import com.example.server.dto.ticket.CreateTicketChatMessageRequest;
 import com.example.server.model.Ticket;
 import com.example.server.model.TicketChatMessage;
 import com.example.server.model.User;
+import com.example.server.model.UserRole;
 import com.example.server.repository.TicketChatRepo;
 import com.example.server.repository.TicketRepo;
 import com.example.server.repository.UserRepo;
@@ -29,19 +30,22 @@ public class TicketChatService {
     private final UserRepo userRepo;
     private final TicketMetricsService ticketMetricsService;
     private final TicketNotificationEmailService ticketNotificationEmailService;
+    private final NotificationService notificationService;
 
     public TicketChatService(
         TicketRepo ticketRepo,
         TicketChatRepo chatRepo,
         UserRepo userRepo,
         TicketMetricsService ticketMetricsService,
-        TicketNotificationEmailService ticketNotificationEmailService
+        TicketNotificationEmailService ticketNotificationEmailService,
+        NotificationService notificationService
     ) {
         this.ticketRepo = ticketRepo;
         this.chatRepo = chatRepo;
         this.userRepo = userRepo;
         this.ticketMetricsService = ticketMetricsService;
         this.ticketNotificationEmailService = ticketNotificationEmailService;
+        this.notificationService = notificationService;
     }
 
     public List<TicketChatMessage> listMessages(String ticketId, Authentication authentication) {
@@ -80,6 +84,19 @@ public class TicketChatService {
                 saved.getSenderDisplayName(),
                 saved.getBody()
             );
+            resolveTicketOwnerId(ticket).ifPresent(ownerId -> {
+                if (!ownerId.equals(saved.getSenderUserId())) {
+                    notificationService.createAndPush(
+                        ownerId,
+                        "TICKET_COMMENT_ADDED",
+                        "New ticket comment",
+                        "New update from technician on your ticket.",
+                        "TICKET",
+                        ticket.getId(),
+                        "/my-tickets"
+                    );
+                }
+            });
         } else {
             findAssigneeUser(ticket).ifPresent(technician ->
                 ticketNotificationEmailService.notifyNewChatFromUser(
@@ -89,6 +106,32 @@ public class TicketChatService {
                     saved.getBody()
                 )
             );
+            findAssigneeUser(ticket).ifPresent(technician -> {
+                if (technician.getId() != null && !technician.getId().equals(saved.getSenderUserId())) {
+                    notificationService.createAndPush(
+                        technician.getId(),
+                        "TICKET_COMMENT_ADDED",
+                        "New ticket comment",
+                        "User posted a new comment on assigned ticket.",
+                        "TICKET",
+                        ticket.getId(),
+                        "/technician/tickets"
+                    );
+                }
+            });
+            userRepo.findByRole(UserRole.ADMIN).forEach(admin -> {
+                if (admin == null || admin.getId() == null) return;
+                if (admin.getId().equals(saved.getSenderUserId())) return;
+                notificationService.createAndPush(
+                    admin.getId(),
+                    "TICKET_COMMENT_ADDED",
+                    "New user comment",
+                    "A user commented on ticket: " + safeTitle(ticket),
+                    "TICKET",
+                    ticket.getId(),
+                    "/adminticket"
+                );
+            });
         }
         return saved;
     }
@@ -216,5 +259,22 @@ public class TicketChatService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Message is too long");
         }
         return body;
+    }
+
+    private Optional<String> resolveTicketOwnerId(Ticket ticket) {
+        String ref = ticket == null ? "" : safeTrim(ticket.getCreatedBy());
+        if (ref.isEmpty()) return Optional.empty();
+        Optional<User> byId = userRepo.findById(ref);
+        if (byId.isPresent()) return Optional.ofNullable(byId.get().getId());
+        return userRepo.findByEmail(ref.toLowerCase(Locale.ROOT)).map(User::getId);
+    }
+
+    private static String safeTrim(String raw) {
+        return raw == null ? "" : raw.trim();
+    }
+
+    private static String safeTitle(Ticket ticket) {
+        String title = ticket == null ? "" : safeTrim(ticket.getIssueTitle());
+        return title.isEmpty() ? "Incident ticket" : title;
     }
 }

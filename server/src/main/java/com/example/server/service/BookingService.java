@@ -6,6 +6,7 @@ import com.example.server.dto.booking.UpdateMyBookingRequest;
 import com.example.server.model.Booking;
 import com.example.server.model.Resource;
 import com.example.server.model.User;
+import com.example.server.model.UserRole;
 import com.example.server.repository.BookingRepo;
 import com.example.server.repository.ResourceRepo;
 import com.example.server.repository.UserRepo;
@@ -37,11 +38,18 @@ public class BookingService {
     private final BookingRepo bookingRepo;
     private final ResourceRepo resourceRepo;
     private final UserRepo userRepo;
+    private final NotificationService notificationService;
 
-    public BookingService(BookingRepo bookingRepo, ResourceRepo resourceRepo, UserRepo userRepo) {
+    public BookingService(
+        BookingRepo bookingRepo,
+        ResourceRepo resourceRepo,
+        UserRepo userRepo,
+        NotificationService notificationService
+    ) {
         this.bookingRepo = bookingRepo;
         this.resourceRepo = resourceRepo;
         this.userRepo = userRepo;
+        this.notificationService = notificationService;
     }
 
     public Booking createBooking(CreateBookingRequest request, String createdBy) {
@@ -91,7 +99,17 @@ public class BookingService {
         booking.setCreatedBy(createdBy.trim());
         booking.setCreatedAt(Instant.now());
         booking.setUpdatedAt(Instant.now());
-        return bookingRepo.save(booking);
+        Booking saved = bookingRepo.save(booking);
+        notificationService.createForRole(
+            UserRole.ADMIN,
+            "BOOKING_REQUEST_CREATED",
+            "New booking request",
+            "A new booking request was submitted for " + safeTrim(saved.getResourceName()) + ".",
+            "BOOKING",
+            safeTrim(saved.getId()),
+            "/adminbookings"
+        );
+        return saved;
     }
 
     public List<Booking> getMyBookings(String createdBy) {
@@ -189,7 +207,17 @@ public class BookingService {
         booking.setStatus("CANCELLED");
         booking.setCancellationReason(reason);
         booking.setUpdatedAt(Instant.now());
-        return Optional.of(bookingRepo.save(booking));
+        Booking saved = bookingRepo.save(booking);
+        notificationService.createForRole(
+            UserRole.ADMIN,
+            "BOOKING_CANCELLED_BY_USER",
+            "Booking cancelled",
+            "A user cancelled booking " + safeTrim(saved.getResourceName()) + ".",
+            "BOOKING",
+            safeTrim(saved.getId()),
+            "/adminbookings"
+        );
+        return Optional.of(saved);
     }
 
     public Optional<Booking> approveBookingByAdmin(String bookingId, String reasonRaw) {
@@ -207,7 +235,19 @@ public class BookingService {
         ensureCheckInQr(booking);
         booking.setReviewReason(safeTrim(reasonRaw));
         booking.setUpdatedAt(Instant.now());
-        return Optional.of(bookingRepo.save(booking));
+        Booking saved = bookingRepo.save(booking);
+        resolveUserIdFromRef(saved.getCreatedBy()).ifPresent(ownerId ->
+            notificationService.createAndPush(
+                ownerId,
+                "BOOKING_APPROVED",
+                "Booking approved",
+                "Your booking for " + safeTrim(saved.getResourceName()) + " was approved.",
+                "BOOKING",
+                safeTrim(saved.getId()),
+                "/account/bookings"
+            )
+        );
+        return Optional.of(saved);
     }
 
     public Optional<Booking> rejectBookingByAdmin(String bookingId, String reasonRaw) {
@@ -227,7 +267,19 @@ public class BookingService {
         booking.setStatus("REJECTED");
         booking.setReviewReason(reason);
         booking.setUpdatedAt(Instant.now());
-        return Optional.of(bookingRepo.save(booking));
+        Booking saved = bookingRepo.save(booking);
+        resolveUserIdFromRef(saved.getCreatedBy()).ifPresent(ownerId ->
+            notificationService.createAndPush(
+                ownerId,
+                "BOOKING_REJECTED",
+                "Booking rejected",
+                "Your booking for " + safeTrim(saved.getResourceName()) + " was rejected.",
+                "BOOKING",
+                safeTrim(saved.getId()),
+                "/account/bookings/history"
+            )
+        );
+        return Optional.of(saved);
     }
 
     public Optional<Booking> cancelBookingByAdmin(String bookingId, String reasonRaw) {
@@ -248,7 +300,19 @@ public class BookingService {
         booking.setReviewReason(reason);
         booking.setCancellationReason("");
         booking.setUpdatedAt(Instant.now());
-        return Optional.of(bookingRepo.save(booking));
+        Booking saved = bookingRepo.save(booking);
+        resolveUserIdFromRef(saved.getCreatedBy()).ifPresent(ownerId ->
+            notificationService.createAndPush(
+                ownerId,
+                "BOOKING_CANCELLED_BY_ADMIN",
+                "Booking cancelled by admin",
+                "Your approved booking for " + safeTrim(saved.getResourceName()) + " was cancelled by admin.",
+                "BOOKING",
+                safeTrim(saved.getId()),
+                "/account/bookings/history"
+            )
+        );
+        return Optional.of(saved);
     }
 
     public boolean deleteCancelledBookingByAdmin(String bookingId) {
@@ -587,6 +651,14 @@ public class BookingService {
         Optional<User> byId = userRepo.findById(createdBy);
         if (byId.isPresent()) return byId.get();
         return userRepo.findByEmail(createdBy).orElse(null);
+    }
+
+    private Optional<String> resolveUserIdFromRef(String userRefRaw) {
+        String ref = safeTrim(userRefRaw);
+        if (ref.isEmpty()) return Optional.empty();
+        Optional<User> byId = userRepo.findById(ref);
+        if (byId.isPresent()) return Optional.ofNullable(byId.get().getId());
+        return userRepo.findByEmail(ref.toLowerCase(Locale.ROOT)).map(User::getId);
     }
 
     private static final class ParsedQrPayload {

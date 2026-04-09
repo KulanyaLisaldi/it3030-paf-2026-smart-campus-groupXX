@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -228,6 +229,7 @@ function Badge({ text, style }) {
 }
 
 export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onRequestRefresh }) {
+  const location = useLocation();
   const currentUserId = useMemo(() => {
     const me = readCampusUser();
     return String(me?.id || "").trim();
@@ -259,7 +261,10 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
   const [hoveredRowId, setHoveredRowId] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [addUserMenuOpen, setAddUserMenuOpen] = useState(false);
-  const [mainTab, setMainTab] = useState("dashboard");
+  const [mainTab, setMainTab] = useState(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    return tab === "details" || tab === "all-users" ? "allUsers" : "dashboard";
+  });
 
   const modalInputStyle = {
     width: "100%",
@@ -592,6 +597,12 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     }
   }, [currentPage, totalPages]);
 
+  useEffect(() => {
+    const tab = new URLSearchParams(location.search).get("tab");
+    const next = tab === "details" || tab === "all-users" ? "allUsers" : "dashboard";
+    setMainTab(next);
+  }, [location.search]);
+
   return (
     <div style={pageCardStyle}>
       {!loading && !error && (
@@ -630,60 +641,12 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
         </div>
       )}
 
-      {!loading && !error && (
-        <div role="tablist" aria-label="User management" style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: `2px solid ${BORDER_LIGHT_ORANGE}` }}>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mainTab === "dashboard"}
-            id="user-mgmt-tab-dashboard"
-            onClick={() => setMainTab("dashboard")}
-            style={{
-              padding: "10px 16px",
-              border: "none",
-              borderBottom: mainTab === "dashboard" ? "3px solid #FA8112" : "3px solid transparent",
-              marginBottom: -2,
-              background: "transparent",
-              fontWeight: 800,
-              fontSize: 14,
-              color: mainTab === "dashboard" ? "#0f172a" : "#64748b",
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            Overview
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mainTab === "allUsers"}
-            id="user-mgmt-tab-all-users"
-            onClick={() => setMainTab("allUsers")}
-            style={{
-              padding: "10px 16px",
-              border: "none",
-              borderBottom: mainTab === "allUsers" ? "3px solid #FA8112" : "3px solid transparent",
-              marginBottom: -2,
-              background: "transparent",
-              fontWeight: 800,
-              fontSize: 14,
-              color: mainTab === "allUsers" ? "#0f172a" : "#64748b",
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            All Users
-          </button>
-        </div>
-      )}
-
       {loading && <p style={{ margin: 0, color: "#64748b", fontWeight: 800 }}>Loading users…</p>}
       {error && <p style={{ margin: 0, color: "#b91c1c", fontWeight: 900 }}>{error}</p>}
 
       {!loading && !error && mainTab === "dashboard" && (
         <div
           role="tabpanel"
-          aria-labelledby="user-mgmt-tab-dashboard"
           style={{
             border: `1px solid ${BORDER_LIGHT_ORANGE}`,
             borderRadius: 12,
@@ -980,7 +943,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
 
       <div style={{ marginBottom: 14 }} />
 
-          <div style={{ overflowX: "auto", borderRadius: 12, border: `1px solid ${BORDER_LIGHT_ORANGE}` }} role="tabpanel" aria-labelledby="user-mgmt-tab-all-users">
+          <div style={{ overflowX: "auto", borderRadius: 12, border: `1px solid ${BORDER_LIGHT_ORANGE}` }} role="tabpanel">
             <table style={tableStyle}>
               <thead>
                 <tr>

@@ -21,6 +21,8 @@ import { getTicketDetails } from "../api/tickets";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
 import PasswordInput from "../components/PasswordInput.jsx";
 import TicketTechnicianChat from "../components/TicketTechnicianChat.jsx";
+import NotificationBell from "../components/notifications/NotificationBell.jsx";
+import NotificationListView from "../components/notifications/NotificationListView.jsx";
 import { formatDurationSeconds, formatTicketInstant } from "../utils/slaFormat";
 import { appFontFamily as techFontUi } from "../utils/appFont";
 import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../utils/profilePhone";
@@ -821,22 +823,7 @@ function TechnicianAppShell({ children }) {
             borderBottom: "1px solid #e2e8f0",
           }}
         >
-          <button
-            type="button"
-            aria-label="Notifications"
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              border: "1px solid #e2e8f0",
-              background: "#fff",
-              color: "#0f172a",
-              cursor: "pointer",
-              fontSize: 18,
-            }}
-          >
-            🔔
-          </button>
+          <NotificationBell />
           <button
             type="button"
             ref={profileMenuTriggerRef}
@@ -882,6 +869,7 @@ function TechnicianAppShell({ children }) {
 
 function TechnicianWorkspace() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [userRev, setUserRev] = useState(0);
   const techUser = useMemo(() => readCampusUser(), [userRev]);
 
@@ -965,6 +953,7 @@ function TechnicianWorkspace() {
     const map = {
       "#technician-personal-details": "technician-personal-details",
       "#technician-assigned-tickets": "technician-assigned-tickets",
+      "#technician-notifications": "technician-notifications",
     };
     const elId = map[location.hash];
     if (!elId) return;
@@ -1147,6 +1136,17 @@ function TechnicianWorkspace() {
     setTicketDetailModalId(ticketId);
     loadTicketDetailsForModal(ticketId);
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const openTicketId = (params.get("openTicket") || "").trim();
+    if (!openTicketId) return;
+    openTicketDetailModal(openTicketId);
+    params.delete("openTicket");
+    const qs = params.toString();
+    const hash = location.hash || "";
+    navigate(`${location.pathname}${qs ? `?${qs}` : ""}${hash}`, { replace: true });
+  }, [location.search, location.pathname, location.hash, navigate]);
 
   const handleTicketProgress = async (ticketId, nextStatus, options = {}) => {
     if (!ticketId) return;
@@ -1557,6 +1557,26 @@ function TechnicianWorkspace() {
               })}
             </div>
           )}
+        </div>
+
+        <div
+          id="technician-notifications"
+          style={{
+            flexShrink: 0,
+            marginTop: 20,
+            border: "1px solid #F5E7C6",
+            borderRadius: "12px",
+            padding: "clamp(16px, 3vw, 22px)",
+            backgroundColor: "#FFFFFF",
+            boxSizing: "border-box",
+            boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
+          }}
+        >
+          <div style={{ ...sectionTitleStyle, fontSize: "17px", color: "#14213D", marginBottom: "8px" }}>Notifications</div>
+          <p style={{ margin: "0 0 14px 0", color: "#6b7280", fontSize: "13px", lineHeight: 1.45 }}>
+            Booking and ticket updates for your technician account.
+          </p>
+          <NotificationListView />
         </div>
 
         <div style={{ flex: 1, minHeight: 12 }} aria-hidden />
@@ -2507,7 +2527,7 @@ function AdminTechnicianForm() {
         }}
       >
         <div style={{ color: "#222222", fontSize: "22px", fontWeight: 800, lineHeight: 1.1 }}>
-          {`Welcome back, ${techShellDisplayName(techUser)}`}
+          {`Welcome back, ${techShellDisplayName(user)}`}
         </div>
         <div style={{ color: "#6b7280", fontSize: "13px", fontWeight: 600, marginTop: "6px" }}>
           Ticket analytics dashboard with live operational metrics

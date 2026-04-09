@@ -3,6 +3,7 @@ package com.example.server.service;
 import com.example.server.dto.ticket.CreateTicketRequest;
 import com.example.server.dto.ticket.UpdateTicketRequest;
 import com.example.server.model.Ticket;
+import com.example.server.model.UserRole;
 import com.example.server.repository.TicketRepo;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,9 +35,11 @@ public class TicketService {
     private static final int MAX_ATTACHMENTS = 3;
 
     private final TicketRepo ticketRepo;
+    private final NotificationService notificationService;
 
-    public TicketService(TicketRepo ticketRepo) {
+    public TicketService(TicketRepo ticketRepo, NotificationService notificationService) {
         this.ticketRepo = ticketRepo;
+        this.notificationService = notificationService;
     }
 
     public Ticket createTicket(CreateTicketRequest request, MultipartFile[] attachments, String reporterUserId) throws IOException {
@@ -60,7 +63,17 @@ public class TicketService {
         ticket.setCreatedBy(reporterUserId.trim());
         ticket.setCreatedAt(Instant.now());
 
-        return ticketRepo.save(ticket);
+        Ticket saved = ticketRepo.save(ticket);
+        notificationService.createForRole(
+            UserRole.ADMIN,
+            "TICKET_CREATED",
+            "New incident ticket",
+            "A new support ticket was created: " + saved.getIssueTitle().trim(),
+            "TICKET",
+            saved.getId(),
+            "/adminticket"
+        );
+        return saved;
     }
 
     public List<Ticket> getMyTickets(String createdBy) {
