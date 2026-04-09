@@ -1,5 +1,6 @@
 package com.example.server.service;
 
+import com.example.server.dto.notification.NotificationPageResponse;
 import com.example.server.dto.notification.NotificationRealtimePayload;
 import com.example.server.model.Notification;
 import com.example.server.model.User;
@@ -81,6 +82,19 @@ public class NotificationService {
         String userId = safeTrim(userIdRaw);
         int safeLimit = Math.max(1, Math.min(limit, 100));
         return notificationRepo.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, safeLimit));
+    }
+
+    /**
+     * Paginated notifications (newest first). Page is 0-based.
+     */
+    public NotificationPageResponse listForUserPage(String userIdRaw, int page, int size) {
+        String userId = safeTrim(userIdRaw);
+        int p = Math.max(0, page);
+        int s = Math.max(1, Math.min(size, 100));
+        long totalElements = notificationRepo.countByUserId(userId);
+        List<Notification> content = notificationRepo.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(p, s));
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / (double) s);
+        return new NotificationPageResponse(content, totalElements, totalPages, p, s);
     }
 
     public long unreadCount(String userIdRaw) {
