@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
+import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, LineChart, Line, PieChart, Pie, Cell, Legend, ReferenceArea } from "recharts";
 import AdminLayout from "../components/admin/AdminLayout.jsx";
 import AdminResourcesTable from "../components/admin/AdminResourcesTable.jsx";
 import { getAdminResources } from "../api/adminResources";
@@ -250,11 +250,24 @@ export default function AdminResourcesPage() {
       const weekday = (date.getDay() + 6) % 7;
       rows[weekday][resource] += 1;
     });
+    const normalizedRows = rows.map((row) => {
+      const next = { day: row.day };
+      topResources.forEach((name) => {
+        next[name] = Number((row[name] / divisor).toFixed(2));
+      });
+      return next;
+    });
+
+    const maxValue = Math.max(
+      1,
+      ...normalizedRows.flatMap((row) => topResources.map((name) => Number(row[name]) || 0))
+    );
+
     return {
-      rows: rows.map((row) => {
+      rows: normalizedRows.map((row) => {
         const next = { day: row.day };
         topResources.forEach((name) => {
-          next[name] = Number((row[name] / divisor).toFixed(2));
+          next[name] = Number((((Number(row[name]) || 0) / maxValue) * 100).toFixed(1));
         });
         return next;
       }),
@@ -272,7 +285,7 @@ export default function AdminResourcesPage() {
       map.set(hourLabel, (map.get(hourLabel) || 0) + 1);
     });
     const daysDivisor = Math.max(1, uniqueDays.size);
-    return Array.from(map.entries())
+    const normalizedRows = Array.from(map.entries())
       .map(([hour, count]) => ({
         hour,
         avgBookings: Number((count / daysDivisor).toFixed(2)),
@@ -280,7 +293,31 @@ export default function AdminResourcesPage() {
       }))
       .sort((a, b) => a.sort - b.sort)
       .map(({ hour, avgBookings }) => ({ hour, avgBookings }));
+    const maxValue = Math.max(1, ...normalizedRows.map((row) => Number(row.avgBookings) || 0));
+    return normalizedRows.map((row) => ({
+      hour: row.hour,
+      usagePercent: Number((((Number(row.avgBookings) || 0) / maxValue) * 100).toFixed(1)),
+    }));
   }, [bookings]);
+
+  const peakUsageBands = useMemo(() => {
+    const max = 100;
+    const lowMax = 40;
+    const mediumMax = 75;
+    return { max, lowMax, mediumMax };
+  }, [peakUsagePredictionChartData]);
+
+  const peakUsageChartWithLevels = useMemo(
+    () =>
+      peakUsagePredictionChartData.map((item) => {
+        const value = Number(item.usagePercent) || 0;
+        let level = "Low";
+        if (value > peakUsageBands.mediumMax) level = "Very High";
+        else if (value > peakUsageBands.lowMax) level = "Medium";
+        return { ...item, level };
+      }),
+    [peakUsagePredictionChartData, peakUsageBands]
+  );
 
   const smartAvailabilitySlotChartData = useMemo(() => {
     const weekdayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -294,10 +331,15 @@ export default function AdminResourcesPage() {
       const slot = `${weekday} ${hourLabel}`;
       slotDemand.set(slot, (slotDemand.get(slot) || 0) + 1);
     });
-    return Array.from(slotDemand.entries())
+    const rankedRows = Array.from(slotDemand.entries())
       .map(([slot, demand]) => ({ slot, demand }))
       .sort((a, b) => a.demand - b.demand)
       .slice(0, 8);
+    const maxValue = Math.max(1, ...rankedRows.map((row) => Number(row.demand) || 0));
+    return rankedRows.map((row) => ({
+      slot: row.slot,
+      availabilityPercent: Number((100 - ((Number(row.demand) || 0) / maxValue) * 100).toFixed(1)),
+    }));
   }, [bookings]);
 
   return (
@@ -447,8 +489,8 @@ export default function AdminResourcesPage() {
                       <LineChart data={demandPredictionChartData.rows}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#FFDDB8" />
                         <XAxis dataKey="day" />
-                        <YAxis />
-                        <Tooltip />
+                        <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+                        <Tooltip formatter={(value) => `${value}% demand`} />
                         <Legend />
                         {demandPredictionChartData.resources.map((resourceName, index) => {
                           const lineColors = ["#14213D", "#FCA311", "#16a34a", "#7c3aed"];
@@ -461,17 +503,56 @@ export default function AdminResourcesPage() {
 
                 <div style={chartCardStyle}>
                   <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Peak Usage Time Prediction</h3>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                    {[
+                      { label: "Low Usage", color: "#22c55e" },
+                      { label: "Medium Usage", color: "#f59e0b" },
+                      { label: "Very High Usage", color: "#ef4444" },
+                    ].map((item) => (
+                      <span
+                        key={item.label}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "3px 8px",
+                          borderRadius: 999,
+                          border: "1px solid #F5E7C6",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "#334155",
+                          backgroundColor: "#fff",
+                        }}
+                      >
+                        <span style={{ width: 9, height: 9, borderRadius: 999, backgroundColor: item.color }} />
+                        {item.label}
+                      </span>
+                    ))}
+                  </div>
                   <div style={{ height: 260 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={peakUsagePredictionChartData}>
+                      <BarChart data={peakUsageChartWithLevels}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#FFDDB8" />
+                        <ReferenceArea y1={0} y2={peakUsageBands.lowMax} fill="#22c55e" fillOpacity={0.08} />
+                        <ReferenceArea y1={peakUsageBands.lowMax} y2={peakUsageBands.mediumMax} fill="#f59e0b" fillOpacity={0.08} />
+                        <ReferenceArea y1={peakUsageBands.mediumMax} y2={peakUsageBands.max} fill="#ef4444" fillOpacity={0.08} />
                         <XAxis dataKey="hour" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="avgBookings" fill="#dc2626" radius={[6, 6, 0, 0]} />
+                        <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+                        <Tooltip formatter={(value) => `${value}% usage`} />
+                        <Bar dataKey="usagePercent" radius={[6, 6, 0, 0]}>
+                          {peakUsageChartWithLevels.map((entry) => (
+                            <Cell
+                              key={entry.hour}
+                              fill={entry.level === "Very High" ? "#ef4444" : entry.level === "Medium" ? "#f59e0b" : "#22c55e"}
+                            />
+                          ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+                  <p style={{ margin: "8px 0 0", color: "#64748b", fontSize: 12 }}>
+                    Color bands indicate predicted demand ranges across hours, helping with staffing, cleaning, and energy optimization.
+                  </p>
                 </div>
 
                 <div style={chartCardStyle}>
@@ -480,10 +561,10 @@ export default function AdminResourcesPage() {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={smartAvailabilitySlotChartData} layout="vertical" margin={{ left: 26 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#FFDDB8" />
-                        <XAxis type="number" />
+                        <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
                         <YAxis type="category" dataKey="slot" width={105} />
-                        <Tooltip />
-                        <Bar dataKey="demand" fill="#16a34a" radius={[0, 6, 6, 0]} />
+                        <Tooltip formatter={(value) => `${value}% availability`} />
+                        <Bar dataKey="availabilityPercent" fill="#16a34a" radius={[0, 6, 6, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
