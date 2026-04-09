@@ -104,22 +104,20 @@ const Navbar = () => {
     alignItems: "center",
     cursor: "pointer",
     flexShrink: 0,
-    maxWidth: "min(500px, 52vw)",
+    maxWidth: "min(380px, 64vw)",
     minWidth: 0,
     lineHeight: 0,
     overflow: "visible",
   };
 
-  /** Larger base size + scale so the mark reads big; brand width allows wide wordmarks. */
+  /** Wide wordmark: height drives scale; maxWidth on brand keeps layout stable. */
   const logoImgStyle = {
     display: "block",
-    height: "clamp(56px, 10.5vw, 76px)",
+    height: "clamp(32px, 4.6vw, 44px)",
     width: "auto",
     maxWidth: "100%",
     objectFit: "contain",
     objectPosition: "left center",
-    transform: "scale(1.52)",
-    transformOrigin: "left center",
   };
 
   const centerMenuStyle = {
