@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import AdminLayout from "../components/admin/AdminLayout.jsx";
+import { appFontFamily } from "../utils/appFont";
 import { confirmBookingCheckIn, validateBookingCheckIn } from "../api/bookings";
 
-const panelStyle = { backgroundColor: "#FFFFFF", borderRadius: "14px", border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(15,23,42,0.04)", padding: "14px" };
+const panelStyle = { backgroundColor: "#FFFFFF", borderRadius: "14px", border: "1px solid #FFDDB8", boxShadow: "0 2px 8px rgba(15,23,42,0.04)", padding: "14px" };
 const buttonStyle = { height: 38, borderRadius: 9, border: "none", padding: "0 12px", fontWeight: 700, cursor: "pointer" };
-const inputStyle = { width: "100%", height: 40, borderRadius: 10, border: "1px solid #d1d5db", padding: "0 10px", boxSizing: "border-box", fontSize: 14 };
+const inputStyle = { width: "100%", height: 40, borderRadius: 10, border: "1px solid #FFDDB8", padding: "0 10px", boxSizing: "border-box", fontSize: 14 };
 
 function parseQr(raw) {
   const value = String(raw || "").trim();
@@ -122,15 +123,20 @@ export default function AdminQrCheckInPage() {
   };
 
   return (
-    <AdminLayout activeSection="bookings" pageTitle="QR Check-In" description="Scan approved booking QR, validate booking, and confirm check-in.">
-      <section style={panelStyle}>
+    <AdminLayout activeSection="bookings" pageTitle={null} description={null}>
+      <div style={{ fontFamily: appFontFamily }}>
+        <h1 style={{ margin: "0 0 8px 0", fontSize: "26px", fontWeight: 800, color: "#14213D" }}>QR Check-In</h1>
+        <p style={{ margin: "0 0 28px 0", fontSize: "14px", color: "#64748b", maxWidth: "640px", lineHeight: 1.5 }}>
+          Scan approved booking QR, validate booking, and confirm check-in.
+        </p>
+        <section style={panelStyle}>
         <div style={{ display: "grid", gridTemplateColumns: "1.15fr 1fr", gap: 12 }}>
-          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12 }}>
+          <div style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12 }}>
             <h3 style={{ margin: "0 0 6px", fontSize: 19, fontWeight: 800, color: "#0f172a" }}>Booking QR Verification</h3>
             <p style={{ margin: "0 0 12px", color: "#64748b", fontSize: 14 }}>
               Use laptop/desktop webcam to scan booking QR code.
             </p>
-            <div id="booking-qr-reader" style={{ width: "100%", minHeight: 260, borderRadius: 10, border: "1px dashed #cbd5e1", background: "#f8fafc" }} />
+            <div id="booking-qr-reader" style={{ width: "100%", minHeight: 260, borderRadius: 10, border: "1px dashed #FFDDB8", background: "#f8fafc" }} />
             <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button type="button" onClick={() => void startScanner()} style={{ ...buttonStyle, background: "#16a34a", color: "#fff" }}>Start Scanner</button>
               <button type="button" onClick={() => void stopScanner()} style={{ ...buttonStyle, background: "#334155", color: "#fff" }}>Stop Scanner</button>
@@ -138,14 +144,14 @@ export default function AdminQrCheckInPage() {
             </div>
           </div>
 
-          <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, display: "grid", gap: 10, alignContent: "start" }}>
-            <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+          <div style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, display: "grid", gap: 10, alignContent: "start" }}>
+            <div style={{ border: "1px solid #FFDDB8", borderRadius: 10, padding: 10, background: "#fff" }}>
               <h4 style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Verification Result</h4>
               <p style={{ margin: 0, color: verification?.valid ? "#166534" : "#64748b", fontWeight: 700 }}>
                 {verification ? verification.message : "Scan QR or verify booking ID manually."}
               </p>
             </div>
-            <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
+            <div style={{ border: "1px solid #FFDDB8", borderRadius: 10, padding: 10, background: "#fff" }}>
               <h4 style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Booking Details</h4>
               {!verification && <p style={{ margin: 0, color: "#64748b" }}>No booking loaded.</p>}
               {verification && (
@@ -166,14 +172,14 @@ export default function AdminQrCheckInPage() {
               <button type="button" disabled={!verification?.valid || confirmBusy} onClick={() => void confirmCheckIn()} style={{ ...buttonStyle, background: verification?.valid ? "#16a34a" : "#94a3b8", color: "#fff" }}>
                 {confirmBusy ? "Confirming..." : "Confirm Check-In"}
               </button>
-              <button type="button" onClick={() => { setVerification(null); setScannerError(""); setVerifyPayload({ bookingId: "", qrValue: "" }); }} style={{ ...buttonStyle, background: "#fff", border: "1px solid #d1d5db", color: "#0f172a" }}>
+              <button type="button" onClick={() => { setVerification(null); setScannerError(""); setVerifyPayload({ bookingId: "", qrValue: "" }); }} style={{ ...buttonStyle, background: "#fff", border: "1px solid #FFDDB8", color: "#0f172a" }}>
                 Clear Result
               </button>
             </div>
           </div>
         </div>
 
-        <section style={{ marginTop: 12, border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, background: "#fff" }}>
+        <section style={{ marginTop: 12, border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
           <h4 style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Manual Verification</h4>
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
             <input value={manualBookingId} onChange={(e) => setManualBookingId(e.target.value)} placeholder="Enter booking ID" style={inputStyle} />
@@ -184,6 +190,7 @@ export default function AdminQrCheckInPage() {
           {scannerError && <p style={{ margin: "8px 0 0", color: "#b91c1c", fontWeight: 700 }}>{scannerError}</p>}
         </section>
       </section>
+      </div>
     </AdminLayout>
   );
 }
