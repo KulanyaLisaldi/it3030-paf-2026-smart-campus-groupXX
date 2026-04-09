@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Cell,
   Legend,
+  Label,
   Line,
   LineChart,
   Pie,
@@ -20,6 +21,8 @@ import {
 } from "recharts";
 
 const panelStyle = { backgroundColor: "#FFFFFF", borderRadius: "14px", border: "1px solid #FFDDB8", boxShadow: "0 2px 8px rgba(15,23,42,0.04)", padding: "14px" };
+const dashboardChartsGridStyle = { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", columnGap: 12, rowGap: 36 };
+const dashboardChartCardStyle = { border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff", minHeight: 300 };
 
 /** Stat cards: cream border + colored left bar (aligned with admin resource metric cards). */
 const bookingStatCardBaseStyle = {
@@ -518,9 +521,9 @@ export default function AdminBookingsPage() {
 
           {activeTab === "dashboard" && (
             <div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
-                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Bookings by Status</h3>
+              <div style={dashboardChartsGridStyle}>
+                <div style={dashboardChartCardStyle}>
+                  <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Bookings by Status</h3>
                   <div style={{ height: 260 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -528,6 +531,24 @@ export default function AdminBookingsPage() {
                           {statusChartData.map((entry) => (
                             <Cell key={entry.name} fill={entry.color} />
                           ))}
+                          <Label
+                            position="center"
+                            content={({ viewBox }) => {
+                              if (!viewBox || viewBox.cx == null || viewBox.cy == null) return null;
+                              const cx = viewBox.cx;
+                              const cy = viewBox.cy;
+                              return (
+                                <g>
+                                  <text x={cx} y={cy - 8} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 12, fontWeight: 700, fill: "#64748b" }}>
+                                    Total
+                                  </text>
+                                  <text x={cx} y={cy + 14} textAnchor="middle" dominantBaseline="central" style={{ fontSize: 34, fontWeight: 800, fill: "#14213D" }}>
+                                    {statusCounts.total}
+                                  </text>
+                                </g>
+                              );
+                            }}
+                          />
                         </Pie>
                         <Tooltip />
                         <Legend />
@@ -536,8 +557,8 @@ export default function AdminBookingsPage() {
                   </div>
                 </div>
 
-                <div style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <div style={dashboardChartCardStyle}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                     <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Bookings Trend</h3>
                     <select value={trendMode} onChange={(e) => setTrendMode(e.target.value)} style={{ ...inputStyle, width: 120, height: 32 }}>
                       <option value="DAY">Day</option>
@@ -557,11 +578,9 @@ export default function AdminBookingsPage() {
                     </ResponsiveContainer>
                   </div>
                 </div>
-              </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-                <div style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
-                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Most Booked Resource Types</h3>
+                <div style={dashboardChartCardStyle}>
+                  <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Most Booked Resource Types</h3>
                   <div style={{ height: 260 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={resourceTypeChartData}>
@@ -575,8 +594,8 @@ export default function AdminBookingsPage() {
                   </div>
                 </div>
 
-                <div style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
-                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Top Booked Resources</h3>
+                <div style={dashboardChartCardStyle}>
+                  <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Top Booked Resources</h3>
                   <div style={{ height: 260 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={topResourcesChartData} layout="vertical" margin={{ left: 30 }}>
@@ -589,11 +608,9 @@ export default function AdminBookingsPage() {
                     </ResponsiveContainer>
                   </div>
                 </div>
-              </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-                <div style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
-                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Approval Decision by Resource Type</h3>
+                <div style={dashboardChartCardStyle}>
+                  <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Approval Decision by Resource Type</h3>
                   <div style={{ height: 280 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={decisionByTypeChartData}>
@@ -611,8 +628,8 @@ export default function AdminBookingsPage() {
                   </div>
                 </div>
 
-                <div style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
-                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Peak Booking Hours</h3>
+                <div style={dashboardChartCardStyle}>
+                  <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 800, color: "#0f172a" }}>Peak Booking Hours</h3>
                   <div style={{ height: 280 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={peakHoursChartData}>
