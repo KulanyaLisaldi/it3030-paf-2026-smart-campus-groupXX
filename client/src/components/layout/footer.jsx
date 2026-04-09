@@ -139,14 +139,14 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <a 
-                  href="#" 
+                <Link
+                  to="/terms-of-use"
                   style={footerLinkStyle}
                   onMouseEnter={(e) => handleLinkHover(e, true)}
                   onMouseLeave={(e) => handleLinkHover(e, false)}
                 >
                   Terms of Use
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

@@ -16,8 +16,8 @@ const pageStyle = {
 const heroWrapStyle = {
   position: "relative",
   width: "100%",
-  minHeight: "min(56vh, 620px)",
-  maxHeight: "76vh",
+  minHeight: "min(62vh, 720px)",
+  maxHeight: "82vh",
 };
 
 const heroImgStyle = {
@@ -44,7 +44,7 @@ const heroOverlayStyle = {
 const heroTitleStyle = {
   margin: 0,
   color: "#FFFFFF",
-  fontSize: "clamp(34px, 5.2vw, 56px)",
+  fontSize: "clamp(32px, 4.8vw, 52px)",
   lineHeight: 1.12,
   fontWeight: 800,
   textShadow: "0 2px 18px rgba(0,0,0,0.35)",
@@ -56,21 +56,21 @@ const heroAccentStyle = {
 
 const heroDescStyle = {
   margin: "12px 0 0",
-  maxWidth: "880px",
+  maxWidth: "980px",
   color: "rgba(255, 255, 255, 0.96)",
-  fontSize: "clamp(15px, 2vw, 19px)",
-  lineHeight: 1.6,
+  fontSize: "clamp(14px, 1.8vw, 17px)",
+  lineHeight: 1.65,
 };
 
 const contentShellStyle = {
   width: "100%",
-  padding: "clamp(30px, 4.5vw, 52px) clamp(20px, 6vw, 64px) 72px",
+  padding: "clamp(36px, 5.2vw, 62px) clamp(24px, 7vw, 78px) 90px",
   boxSizing: "border-box",
 };
 
 const contentMaxStyle = {
   width: "100%",
-  maxWidth: "1240px",
+  maxWidth: "1360px",
   margin: "0 auto",
 };
 
@@ -79,29 +79,29 @@ const cardStyle = {
   borderRadius: "18px",
   border: "1px solid #E8E4DC",
   boxShadow: "0 10px 28px rgba(20, 33, 61, 0.08)",
-  padding: "clamp(22px, 2.8vw, 36px)",
+  padding: "clamp(26px, 3.2vw, 46px)",
 };
 
 const sectionTitleStyle = {
   margin: "0 0 12px",
   color: "#14213D",
-  fontSize: "clamp(21px, 2.5vw, 28px)",
+  fontSize: "clamp(20px, 2.3vw, 26px)",
   fontWeight: 800,
 };
 
 const paragraphStyle = {
   margin: "0 0 14px",
   color: "#475569",
-  fontSize: "16px",
-  lineHeight: 1.75,
+  fontSize: "15px",
+  lineHeight: 1.7,
 };
 
 const listStyle = {
   margin: "0 0 14px",
   paddingLeft: "22px",
   color: "#475569",
-  fontSize: "16px",
-  lineHeight: 1.8,
+  fontSize: "15px",
+  lineHeight: 1.75,
 };
 
 const metaRowStyle = {
