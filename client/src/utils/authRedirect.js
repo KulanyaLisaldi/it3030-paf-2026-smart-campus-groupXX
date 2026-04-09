@@ -13,8 +13,8 @@ export const CREATE_TICKET_PATH = "/tickets/create";
 
 export const ACCOUNT_PATH = "/account";
 
-/** Admin home: technician management (not the ticket console). */
-export const ADMIN_DASHBOARD_PATH = "/admin";
+/** Admin landing after sign-in: Resource Management. */
+export const ADMIN_DASHBOARD_PATH = "/adminresources";
 
 /**
  * @param {NavigateFunction} navigate
