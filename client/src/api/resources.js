@@ -16,6 +16,10 @@ export function getResources(filters = {}) {
   return apiGet(`/api/resources${toQueryString(filters)}`);
 }
 
+export function getTopUsedResources(limit = 4) {
+  return apiGet(`/api/resources/top-used?limit=${encodeURIComponent(limit)}`);
+}
+
 export function getResourceById(resourceId) {
   return apiGet(`/api/resources/${encodeURIComponent(resourceId)}`);
 }
