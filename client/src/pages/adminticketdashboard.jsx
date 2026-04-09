@@ -10,6 +10,9 @@ import AdminLayout from "../components/admin/AdminLayout.jsx";
 
 const ADMIN_SIDEBAR_ITEMS = ["Dashboard", "Tickets", "Charts", "Reports"];
 
+/** Rows per page for the main ticket table (dashboard view). */
+const ADMIN_TICKET_TABLE_PAGE_SIZE = 10;
+
 const pageStyle = {
   minHeight: "100vh",
   backgroundColor: "#FFFFFF",
@@ -415,6 +418,7 @@ export default function AdminTicketDashboard() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("DATE_DESC");
+  const [ticketTablePage, setTicketTablePage] = useState(1);
   const [activeMenuItem, setActiveMenuItem] = useState("Dashboard");
   const [rejectModalTicket, setRejectModalTicket] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -765,6 +769,28 @@ export default function AdminTicketDashboard() {
     return filtered;
   }, [tickets, statusFilter, priorityFilter, sortBy]);
 
+  useEffect(() => {
+    setTicketTablePage(1);
+  }, [statusFilter, priorityFilter, sortBy]);
+
+  useEffect(() => {
+    const totalPages = Math.max(
+      1,
+      Math.ceil(filteredAndSortedTickets.length / ADMIN_TICKET_TABLE_PAGE_SIZE)
+    );
+    setTicketTablePage((p) => Math.min(p, totalPages));
+  }, [filteredAndSortedTickets.length]);
+
+  const ticketTableTotalPages = Math.max(
+    1,
+    Math.ceil(filteredAndSortedTickets.length / ADMIN_TICKET_TABLE_PAGE_SIZE)
+  );
+  const ticketTableCurrentPage = Math.min(ticketTablePage, ticketTableTotalPages);
+  const paginatedTicketRows = useMemo(() => {
+    const start = (ticketTableCurrentPage - 1) * ADMIN_TICKET_TABLE_PAGE_SIZE;
+    return filteredAndSortedTickets.slice(start, start + ADMIN_TICKET_TABLE_PAGE_SIZE);
+  }, [filteredAndSortedTickets, ticketTableCurrentPage]);
+
   const dashboardStats = useMemo(() => {
     const data = filteredAndSortedTickets;
     const total = data.length;
@@ -923,7 +949,7 @@ export default function AdminTicketDashboard() {
         <div style={headerStyle}>
           <div>
             <h1 style={titleStyle}>
-              {activeView === "dashboard" ? "Admin Ticket Main Dashboard" : "Admin Ticket Operations"}
+              {activeView === "dashboard" ? "Ticket Management" : "Admin Ticket Operations"}
             </h1>
             <p style={subtitleStyle}>
               {activeView === "dashboard"
@@ -1058,28 +1084,6 @@ export default function AdminTicketDashboard() {
                 boxShadow: "0 6px 14px rgba(20, 33, 61, 0.04)",
               }}
             >
-              <div
-                style={{
-                  border: "1px solid #F5E7C6",
-                  borderRadius: "10px",
-                  padding: "12px",
-                  backgroundColor: "#FFFFFF",
-                  marginBottom: "10px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: "10px",
-                  flexWrap: "wrap",
-                }}
-              >
-                <div>
-                  <div style={{ color: "#222222", fontSize: "28px", fontWeight: 800, lineHeight: 1.05 }}>Welcome back, Admin</div>
-                  <div style={{ color: "#6b7280", fontSize: "13px", fontWeight: 600, marginTop: "4px" }}>
-                    Ticket analytics dashboard with live operational metrics
-                  </div>
-                </div>
-              </div>
-
               <div style={{ display: "grid", gap: "10px", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", marginBottom: "10px" }}>
                 <div style={{ ...metricCardStyle, borderLeft: "6px solid #14213D" }}>
                   <div style={{ color: "#6b7280", fontSize: "11px", fontWeight: 700, textTransform: "uppercase" }}>Total Tickets</div>
@@ -1487,7 +1491,7 @@ export default function AdminTicketDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredAndSortedTickets.map((item) => {
+                      {paginatedTicketRows.map((item) => {
                         const ticket = item.ticket || {};
                         const comments = item.comments || [];
                         const progress = getProgressInfo(ticket.status, comments.length);
@@ -1618,6 +1622,68 @@ export default function AdminTicketDashboard() {
                       })}
                     </tbody>
                   </table>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                      gap: "12px",
+                      padding: "12px 14px",
+                      borderTop: "1px solid #F5E7C6",
+                      backgroundColor: "#FAF3E1",
+                    }}
+                  >
+                    <span style={{ fontSize: "13px", color: "#374151", fontWeight: 600 }}>
+                      Showing{" "}
+                      {filteredAndSortedTickets.length === 0
+                        ? "0"
+                        : `${(ticketTableCurrentPage - 1) * ADMIN_TICKET_TABLE_PAGE_SIZE + 1}–${Math.min(
+                            ticketTableCurrentPage * ADMIN_TICKET_TABLE_PAGE_SIZE,
+                            filteredAndSortedTickets.length
+                          )}`}{" "}
+                      of {filteredAndSortedTickets.length}
+                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => setTicketTablePage((p) => Math.max(1, p - 1))}
+                        disabled={ticketTableCurrentPage <= 1}
+                        style={{
+                          ...buttonStyle,
+                          padding: "8px 14px",
+                          fontSize: "13px",
+                          backgroundColor: ticketTableCurrentPage <= 1 ? "#e5e7eb" : "#14213D",
+                          color: "#FFFFFF",
+                          cursor: ticketTableCurrentPage <= 1 ? "not-allowed" : "pointer",
+                          opacity: ticketTableCurrentPage <= 1 ? 0.65 : 1,
+                        }}
+                      >
+                        Previous
+                      </button>
+                      <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: 700 }}>
+                        Page {ticketTableCurrentPage} of {ticketTableTotalPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTicketTablePage((p) => Math.min(ticketTableTotalPages, p + 1))
+                        }
+                        disabled={ticketTableCurrentPage >= ticketTableTotalPages}
+                        style={{
+                          ...buttonStyle,
+                          padding: "8px 14px",
+                          fontSize: "13px",
+                          backgroundColor: ticketTableCurrentPage >= ticketTableTotalPages ? "#e5e7eb" : "#14213D",
+                          color: "#FFFFFF",
+                          cursor: ticketTableCurrentPage >= ticketTableTotalPages ? "not-allowed" : "pointer",
+                          opacity: ticketTableCurrentPage >= ticketTableTotalPages ? 0.65 : 1,
+                        }}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
