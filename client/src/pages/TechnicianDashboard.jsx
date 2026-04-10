@@ -19,7 +19,6 @@ import {
 import { getTechnicianAssignedTickets, updateTechnicianTicketProgress } from "../api/technicianTickets";
 import { getTicketDetails } from "../api/tickets";
 import { CAMPUS_USER_UPDATED, persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
-import { appSansSurfaceStyle } from "../utils/appFont";
 import PasswordInput from "../components/PasswordInput.jsx";
 import TicketTechnicianChat from "../components/TicketTechnicianChat.jsx";
 import NotificationBell from "../components/notifications/NotificationBell.jsx";
@@ -749,20 +748,9 @@ function TechnicianAppShell({ children }) {
           style={{ position: "fixed", inset: 0, zIndex: 10040, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px" }}
           onMouseDown={(e) => { if (e.target === e.currentTarget) setPasswordModalOpen(false); }}
         >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "520px",
-              backgroundColor: "#ffffff",
-              borderRadius: "14px",
-              border: "1px solid #e5e7eb",
-              boxShadow: "0 24px 90px rgba(0,0,0,0.25)",
-              overflow: "hidden",
-              ...appSansSurfaceStyle,
-            }}
-          >
+          <div style={{ width: "100%", maxWidth: "520px", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden" }}>
             <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827", letterSpacing: "-0.02em" }}>Change Password</div>
+              <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Change Password</div>
               <button type="button" onClick={() => setPasswordModalOpen(false)} style={{ border: "none", background: "transparent", fontWeight: 800, cursor: "pointer", color: "#0f172a" }}>Close</button>
             </div>
             <div style={{ padding: "18px", display: "grid", gap: "12px" }}>
@@ -787,7 +775,7 @@ function TechnicianAppShell({ children }) {
                     value={passwordOtpCode}
                     onChange={(e) => setPasswordOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     placeholder="6-digit code"
-                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb", fontFamily: "inherit" }}
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb" }}
                   />
                 </div>
               )}
@@ -807,7 +795,6 @@ function TechnicianAppShell({ children }) {
                     backgroundColor: "#FA8112",
                     color: "#fff",
                     fontWeight: 800,
-                    fontFamily: "inherit",
                     cursor: passwordState.busy || (passwordOtpSent ? !/^[0-9]{6}$/.test(passwordOtpCode) : !canSubmitPassword) ? "not-allowed" : "pointer",
                     opacity: passwordState.busy || (passwordOtpSent ? !/^[0-9]{6}$/.test(passwordOtpCode) : !canSubmitPassword) ? 0.6 : 1,
                   }}
@@ -890,8 +877,6 @@ function TechnicianWorkspace() {
   const avatarFileRef = useRef(null);
 
   const [phoneDraft, setPhoneDraft] = useState("");
-  const [firstNameDraft, setFirstNameDraft] = useState("");
-  const [lastNameDraft, setLastNameDraft] = useState("");
   const [saveState, setSaveState] = useState({ busy: false, message: "", error: "" });
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarRemoveBusy, setAvatarRemoveBusy] = useState(false);
@@ -1052,8 +1037,6 @@ function TechnicianWorkspace() {
   useEffect(() => {
     if (!profileModalOpen) return;
     setPhoneDraft(phoneFromServer(techUser?.phoneNumber));
-    setFirstNameDraft((techUser?.firstName || "").trim());
-    setLastNameDraft((techUser?.lastName || "").trim());
     setSaveState({ busy: false, message: "", error: "" });
     setAvatarBusy(false);
     setAvatarRemoveBusy(false);
@@ -1219,15 +1202,10 @@ function TechnicianWorkspace() {
   };
 
   const serverPhone = phoneFromServer(techUser?.phoneNumber);
-  const serverFirst = (techUser?.firstName || "").trim();
-  const serverLast = (techUser?.lastName || "").trim();
-  const canSaveProfile = useMemo(() => {
+  const canSavePhone = useMemo(() => {
     if (!isValidProfilePhone(phoneDraft)) return false;
-    const fn = firstNameDraft.trim();
-    const ln = lastNameDraft.trim();
-    if (!fn || !ln) return false;
-    return phoneDraft !== serverPhone || fn !== serverFirst || ln !== serverLast;
-  }, [phoneDraft, firstNameDraft, lastNameDraft, serverPhone, serverFirst, serverLast]);
+    return phoneDraft !== serverPhone;
+  }, [phoneDraft, serverPhone]);
 
   return (
     <>
@@ -1942,42 +1920,32 @@ function TechnicianWorkspace() {
                       <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#374151", marginBottom: "6px" }}>First name</label>
                       <input
                         type="text"
-                        autoComplete="given-name"
-                        value={firstNameDraft}
-                        onChange={(e) => {
-                          setFirstNameDraft(e.target.value);
-                          setSaveState((s) => ({ ...s, message: "", error: "" }));
-                        }}
-                        style={{ ...selectStyle, backgroundColor: "#fff", color: "#374151", padding: "10px 12px" }}
+                        value={techUser?.firstName || ""}
+                        readOnly
+                        disabled
+                        style={{ ...selectStyle, backgroundColor: "#f3f4f6", color: "#374151", padding: "10px 12px" }}
                       />
                     </div>
                     <div>
                       <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#374151", marginBottom: "6px" }}>Last name</label>
                       <input
                         type="text"
-                        autoComplete="family-name"
-                        value={lastNameDraft}
-                        onChange={(e) => {
-                          setLastNameDraft(e.target.value);
-                          setSaveState((s) => ({ ...s, message: "", error: "" }));
-                        }}
-                        style={{ ...selectStyle, backgroundColor: "#fff", color: "#374151", padding: "10px 12px" }}
+                        value={techUser?.lastName || ""}
+                        readOnly
+                        disabled
+                        style={{ ...selectStyle, backgroundColor: "#f3f4f6", color: "#374151", padding: "10px 12px" }}
                       />
                     </div>
                   </div>
                   <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                     <button
                       type="button"
-                      disabled={!canSaveProfile || saveState.busy}
+                      disabled={!canSavePhone || saveState.busy}
                       onClick={async () => {
-                        if (!canSaveProfile) return;
+                        if (!canSavePhone) return;
                         setSaveState({ busy: true, message: "", error: "" });
                         try {
-                          const updated = await updateProfilePhone({
-                            phoneNumber: phoneDraft,
-                            firstName: firstNameDraft.trim(),
-                            lastName: lastNameDraft.trim(),
-                          });
+                          const updated = await updateProfilePhone({ phoneNumber: phoneDraft });
                           persistCampusUser(updated);
                           setSaveState({ busy: false, message: "Changes saved.", error: "" });
                         } catch (err) {
@@ -1992,8 +1960,8 @@ function TechnicianWorkspace() {
                         color: "#fff",
                         fontWeight: 800,
                         fontSize: "14px",
-                        cursor: !canSaveProfile || saveState.busy ? "not-allowed" : "pointer",
-                        opacity: !canSaveProfile || saveState.busy ? 0.6 : 1,
+                        cursor: !canSavePhone || saveState.busy ? "not-allowed" : "pointer",
+                        opacity: !canSavePhone || saveState.busy ? 0.6 : 1,
                       }}
                     >
                       {saveState.busy ? "Saving…" : "Save changes"}

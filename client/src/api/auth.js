@@ -4,11 +4,6 @@ export function signIn(payload) {
   return apiPost("/api/auth/signin", payload);
 }
 
-/** Returns { allowed: boolean } — staff email account with verified technician email (when applicable), not Google-only */
-export function checkForgotPasswordEligibility(payload) {
-  return apiPost("/api/auth/forgot-password/check", payload);
-}
-
 /** Admin/technician email accounts — sends OTP to email */
 export function requestForgotPassword(payload) {
   return apiPost("/api/auth/forgot-password", payload);
@@ -25,11 +20,6 @@ export function fetchCurrentUser() {
 
 export function updateProfilePhone(payload) {
   return apiPatch("/api/auth/profile", payload);
-}
-
-/** @param {{ disabledCategories: string[] }} payload — USER only; category ids: BOOKING, TICKET */
-export function updateNotificationPreferences(payload) {
-  return apiPatch("/api/auth/profile/notification-preferences", payload);
 }
 
 export function changeMyPassword(payload) {

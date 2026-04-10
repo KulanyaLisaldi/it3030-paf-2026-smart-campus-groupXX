@@ -64,12 +64,6 @@ public class User {
 
     private Instant technicianVerificationExpiresAt;
 
-    /**
-     * For {@link UserRole#USER}: in-app notification categories the user has turned off (e.g. BOOKING, TICKET).
-     * Null or empty means all categories are enabled.
-     */
-    private List<String> notificationDisabledCategories;
-
     public User() {
     }
 
@@ -257,13 +251,5 @@ public class User {
     /** Effective role for authorization (never null). */
     public UserRole getEffectiveRole() {
         return role != null ? role : UserRole.USER;
-    }
-
-    public List<String> getNotificationDisabledCategories() {
-        return notificationDisabledCategories;
-    }
-
-    public void setNotificationDisabledCategories(List<String> notificationDisabledCategories) {
-        this.notificationDisabledCategories = notificationDisabledCategories;
     }
 }

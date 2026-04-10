@@ -1,10 +1,6 @@
-/** Plus Jakarta Sans + Inter — loaded in index.html */
-export const APP_SANS_STACK =
-  '"Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-
-/** Page shells, account layout, modals — consistent UI typography */
-export const appSansSurfaceStyle = {
-  fontFamily: APP_SANS_STACK,
-  fontFeatureSettings: '"liga" 1, "kern" 1',
-  WebkitFontSmoothing: "antialiased",
-};
+/**
+ * Inter + system fallbacks — shared across user ticket pages, admin ticket dashboard, technician dashboard.
+ * Inter is loaded from `client/index.html` (Google Fonts).
+ */
+export const appFontFamily =
+  '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';

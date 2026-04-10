@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { checkForgotPasswordEligibility, completeForgotPassword, requestForgotPassword, signIn } from '../api/auth';
+import { completeForgotPassword, requestForgotPassword, signIn } from '../api/auth';
 import { getAuthToken, setAuthToken } from '../api/http';
 import { persistCampusUser, readCampusUser } from '../utils/campusUserStorage';
 import { navigateAfterAuth, navigateAfterLogin } from '../utils/authRedirect';
 import PasswordInput from '../components/PasswordInput';
-import { appSansSurfaceStyle } from '../utils/appFont';
 
 const ACCENT = '#FA8112';
 const ACCENT_SOFT = '#FCA311';
@@ -30,7 +29,6 @@ const SignIn = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
-  const [forgotEligibilityLoading, setForgotEligibilityLoading] = useState(false);
   const [infoMessage, setInfoMessage] = useState('');
 
   useEffect(() => {
@@ -60,7 +58,6 @@ const SignIn = () => {
     background: `linear-gradient(145deg, ${NAVY_DEEP} 0%, ${NAVY} 45%, #1a2744 100%)`,
     color: '#f8fafc',
     position: 'relative',
-    ...appSansSurfaceStyle,
   };
 
   const backToHomeStyle = {
@@ -125,7 +122,6 @@ const SignIn = () => {
     margin: '0 0 16px 0',
     lineHeight: 1.1,
     color: '#ffffff',
-    letterSpacing: '-0.03em',
   };
 
   const welcomeRuleStyle = {
@@ -186,7 +182,7 @@ const SignIn = () => {
     fontWeight: 800,
     color: '#ffffff',
     margin: '0 0 28px 0',
-    letterSpacing: '-0.03em',
+    letterSpacing: '-0.02em',
   };
 
   const inputContainerStyle = {
@@ -209,7 +205,6 @@ const SignIn = () => {
     border: '2px solid rgba(245, 231, 198, 0.35)',
     borderRadius: 999,
     fontSize: 15,
-    fontFamily: 'inherit',
     color: '#0f172a',
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
     outline: 'none',
@@ -328,37 +323,14 @@ const SignIn = () => {
     window.location.assign(`${apiOrigin.replace(/\/$/, '')}/oauth2/authorization/google`);
   };
 
-  const INVALID_FORGOT_EMAIL_MESSAGE = 'Please enter a valid email.';
-
-  const openForgotPassword = async () => {
+  const openForgotPassword = () => {
     setError('');
     setInfoMessage('');
-    const em = (email || '').trim();
-    if (!em) {
-      setError('Enter your email address first.');
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
-      setError(INVALID_FORGOT_EMAIL_MESSAGE);
-      return;
-    }
-    setForgotEligibilityLoading(true);
-    try {
-      const res = await checkForgotPasswordEligibility({ email: em });
-      if (!res?.allowed) {
-        setError(INVALID_FORGOT_EMAIL_MESSAGE);
-        return;
-      }
-      setForgotEmail(em);
-      setResetCode('');
-      setNewPassword('');
-      setConfirmNewPassword('');
-      setAuthView('forgotRequest');
-    } catch {
-      setError(INVALID_FORGOT_EMAIL_MESSAGE);
-    } finally {
-      setForgotEligibilityLoading(false);
-    }
+    setForgotEmail(email.trim());
+    setResetCode('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+    setAuthView('forgotRequest');
   };
 
   const backToSignIn = () => {
@@ -595,17 +567,8 @@ const SignIn = () => {
                     required
                   />
                   <div style={forgotLinkSignInRowStyle}>
-                    <button
-                      type="button"
-                      style={{
-                        ...forgotLinkStyle,
-                        cursor: forgotEligibilityLoading ? 'wait' : 'pointer',
-                        opacity: forgotEligibilityLoading ? 0.75 : 1,
-                      }}
-                      onClick={openForgotPassword}
-                      disabled={forgotEligibilityLoading}
-                    >
-                      {forgotEligibilityLoading ? 'Checking…' : 'Forgot password?'}
+                    <button type="button" style={forgotLinkStyle} onClick={openForgotPassword}>
+                      Forgot password?
                     </button>
                   </div>
                 </div>
