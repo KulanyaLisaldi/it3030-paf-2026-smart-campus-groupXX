@@ -258,6 +258,11 @@ export default function AdminResourcesTable() {
   const [locationFilter, setLocationFilter] = useState("");
   const [resourceTablePage, setResourceTablePage] = useState(1);
 
+
+
+  {/*cRead- GET*/}
+
+
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -320,6 +325,11 @@ export default function AdminResourcesTable() {
     return { total, active, outOfService, totalRooms, totalEquipment };
   }, [resources]);
 
+
+
+
+ {/*update - PATCH*/}
+
   const onToggleStatus = async (resource) => {
     const next = resource.status === "ACTIVE" ? "OUT_OF_SERVICE" : "ACTIVE";
     const ok = window.confirm(`Change status to ${next} for ${resource.name || resource.code || "this resource"}?`);
@@ -334,6 +344,9 @@ export default function AdminResourcesTable() {
       setBusyId("");
     }
   };
+
+   {/*delete- DELETET*/}
+
 
   const onDelete = async (resource) => {
     const ok = window.confirm(`Delete ${resource.name || resource.code || "this resource"}? This cannot be undone.`);
@@ -442,6 +455,11 @@ export default function AdminResourcesTable() {
     }
   }, [editFormData, editResourceId, load, navigate]);
 
+
+
+
+  
+  {/*create- POST*/}
   const handleCreateResource = async (e) => {
     setCreateImageError("");
     if (formData.availabilityStart >= formData.availabilityEnd) {
@@ -504,6 +522,9 @@ export default function AdminResourcesTable() {
       setCreateBusy(false);
     }
   };
+
+
+{/*Update - PUT*/}
 
   const handleEditResource = async (e) => {
     if (editFormData.availabilityStart >= editFormData.availabilityEnd) {
