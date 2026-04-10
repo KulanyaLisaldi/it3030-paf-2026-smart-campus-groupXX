@@ -8,6 +8,7 @@ import {
 } from "../../api/notifications";
 import { getNotificationActionPath } from "../../utils/notificationDeepLink";
 import { getNotificationDisplayTitle } from "../../utils/notificationDisplayTitle";
+import { NOTIFICATION_UI_FONT, notificationUiRootStyle } from "../../utils/notificationTypography";
 
 const PAGE_SIZE = 15;
 
@@ -46,6 +47,7 @@ const pagerBtn = (disabled) => ({
   padding: "8px 14px",
   fontSize: 13,
   fontWeight: 700,
+  fontFamily: "inherit",
   cursor: disabled ? "not-allowed" : "pointer",
 });
 
@@ -127,9 +129,19 @@ export default function NotificationListView() {
   const canNext = totalPages > 0 && page < totalPages - 1;
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
+    <div
+      style={{
+        ...notificationUiRootStyle,
+        width: "100%",
+        boxSizing: "border-box",
+        background: "#fff",
+        border: "1px solid #e5e7eb",
+        borderRadius: 12,
+        overflow: "hidden",
+      }}
+    >
       <div style={{ padding: "12px 14px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#475569" }}>{unreadCount} unread</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#475569", letterSpacing: "-0.01em" }}>{unreadCount} unread</span>
         <button
           type="button"
           onClick={markAll}
@@ -142,6 +154,7 @@ export default function NotificationListView() {
             padding: "6px 10px",
             fontSize: 12,
             fontWeight: 700,
+            fontFamily: "inherit",
             cursor: busyReadAll || unreadCount < 1 ? "not-allowed" : "pointer",
             opacity: busyReadAll || unreadCount < 1 ? 0.6 : 1,
           }}
@@ -167,14 +180,24 @@ export default function NotificationListView() {
               cursor: "pointer",
               display: "grid",
               gap: 6,
-              fontFamily: "inherit",
+              fontFamily: NOTIFICATION_UI_FONT,
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: n.read ? 700 : 800, color: "#111827", lineHeight: 1.35 }}>{getNotificationDisplayTitle(n)}</span>
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: n.read ? 650 : 700,
+                  color: "#111827",
+                  lineHeight: 1.35,
+                  letterSpacing: "-0.015em",
+                }}
+              >
+                {getNotificationDisplayTitle(n)}
+              </span>
               {!n.read && <span style={{ width: 8, height: 8, borderRadius: 999, background: "#ef4444" }} />}
             </div>
-            <span style={{ fontSize: 13, color: "#374151", lineHeight: 1.45 }}>{n.message || ""}</span>
+            <span style={{ fontSize: 13, color: "#374151", lineHeight: 1.5, fontWeight: 450 }}>{n.message || ""}</span>
             <div
               style={{
                 display: "flex",
@@ -184,7 +207,7 @@ export default function NotificationListView() {
                 marginTop: 2,
               }}
             >
-              <span style={{ fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>{prettyTimeDetailed(n.createdAt)}</span>
+              <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 500, letterSpacing: "0.01em" }}>{prettyTimeDetailed(n.createdAt)}</span>
               <span style={viewFullLinkStyle}>View full notification</span>
             </div>
           </button>

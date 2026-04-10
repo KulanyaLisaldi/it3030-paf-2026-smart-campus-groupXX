@@ -877,6 +877,8 @@ function TechnicianWorkspace() {
   const avatarFileRef = useRef(null);
 
   const [phoneDraft, setPhoneDraft] = useState("");
+  const [firstNameDraft, setFirstNameDraft] = useState("");
+  const [lastNameDraft, setLastNameDraft] = useState("");
   const [saveState, setSaveState] = useState({ busy: false, message: "", error: "" });
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarRemoveBusy, setAvatarRemoveBusy] = useState(false);
@@ -1037,6 +1039,8 @@ function TechnicianWorkspace() {
   useEffect(() => {
     if (!profileModalOpen) return;
     setPhoneDraft(phoneFromServer(techUser?.phoneNumber));
+    setFirstNameDraft((techUser?.firstName ?? "").trim());
+    setLastNameDraft((techUser?.lastName ?? "").trim());
     setSaveState({ busy: false, message: "", error: "" });
     setAvatarBusy(false);
     setAvatarRemoveBusy(false);
@@ -1201,11 +1205,18 @@ function TechnicianWorkspace() {
     });
   };
 
-  const serverPhone = phoneFromServer(techUser?.phoneNumber);
-  const canSavePhone = useMemo(() => {
+  const canSaveProfile = useMemo(() => {
+    const serverPhone = phoneFromServer(techUser?.phoneNumber);
+    const serverFirst = (techUser?.firstName ?? "").trim();
+    const serverLast = (techUser?.lastName ?? "").trim();
+    const fn = firstNameDraft.trim();
+    const ln = lastNameDraft.trim();
     if (!isValidProfilePhone(phoneDraft)) return false;
-    return phoneDraft !== serverPhone;
-  }, [phoneDraft, serverPhone]);
+    if (!fn || fn.length > 100 || !ln || ln.length > 100) return false;
+    if (phoneDraft !== serverPhone) return true;
+    if (fn !== serverFirst || ln !== serverLast) return true;
+    return false;
+  }, [phoneDraft, firstNameDraft, lastNameDraft, techUser]);
 
   return (
     <>
@@ -1920,32 +1931,44 @@ function TechnicianWorkspace() {
                       <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#374151", marginBottom: "6px" }}>First name</label>
                       <input
                         type="text"
-                        value={techUser?.firstName || ""}
-                        readOnly
-                        disabled
-                        style={{ ...selectStyle, backgroundColor: "#f3f4f6", color: "#374151", padding: "10px 12px" }}
+                        value={firstNameDraft}
+                        maxLength={100}
+                        onChange={(e) => {
+                          setFirstNameDraft(e.target.value);
+                          setSaveState((s) => ({ ...s, message: "", error: "" }));
+                        }}
+                        autoComplete="given-name"
+                        style={{ ...selectStyle, padding: "10px 12px" }}
                       />
                     </div>
                     <div>
                       <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#374151", marginBottom: "6px" }}>Last name</label>
                       <input
                         type="text"
-                        value={techUser?.lastName || ""}
-                        readOnly
-                        disabled
-                        style={{ ...selectStyle, backgroundColor: "#f3f4f6", color: "#374151", padding: "10px 12px" }}
+                        value={lastNameDraft}
+                        maxLength={100}
+                        onChange={(e) => {
+                          setLastNameDraft(e.target.value);
+                          setSaveState((s) => ({ ...s, message: "", error: "" }));
+                        }}
+                        autoComplete="family-name"
+                        style={{ ...selectStyle, padding: "10px 12px" }}
                       />
                     </div>
                   </div>
                   <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                     <button
                       type="button"
-                      disabled={!canSavePhone || saveState.busy}
+                      disabled={!canSaveProfile || saveState.busy}
                       onClick={async () => {
-                        if (!canSavePhone) return;
+                        if (!canSaveProfile) return;
                         setSaveState({ busy: true, message: "", error: "" });
                         try {
-                          const updated = await updateProfilePhone({ phoneNumber: phoneDraft });
+                          const updated = await updateProfilePhone({
+                            phoneNumber: phoneDraft,
+                            firstName: firstNameDraft.trim(),
+                            lastName: lastNameDraft.trim(),
+                          });
                           persistCampusUser(updated);
                           setSaveState({ busy: false, message: "Changes saved.", error: "" });
                         } catch (err) {
@@ -1960,8 +1983,8 @@ function TechnicianWorkspace() {
                         color: "#fff",
                         fontWeight: 800,
                         fontSize: "14px",
-                        cursor: !canSavePhone || saveState.busy ? "not-allowed" : "pointer",
-                        opacity: !canSavePhone || saveState.busy ? 0.6 : 1,
+                        cursor: !canSaveProfile || saveState.busy ? "not-allowed" : "pointer",
+                        opacity: !canSaveProfile || saveState.busy ? 0.6 : 1,
                       }}
                     >
                       {saveState.busy ? "Saving…" : "Save changes"}

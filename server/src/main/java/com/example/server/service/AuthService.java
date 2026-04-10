@@ -7,7 +7,9 @@ import com.example.server.dto.auth.AuthUserResponse;
 import com.example.server.dto.auth.StaffSignInResult;
 import com.example.server.dto.auth.ChangePasswordRequest;
 import com.example.server.dto.auth.SignInRequest;
+import com.example.server.dto.auth.UpdateNotificationPreferencesRequest;
 import com.example.server.dto.auth.UpdateProfileRequest;
+import com.example.server.notification.UserNotificationCategories;
 import com.example.server.dto.auth.VerifyPasswordChangeRequest;
 import com.example.server.model.Ticket;
 import com.example.server.model.User;
@@ -437,6 +439,39 @@ public class AuthService {
         });
     }
 
+    public Optional<AuthUserResponse> updateNotificationPreferences(String userId, UpdateNotificationPreferencesRequest request) {
+        Optional<User> maybe = userRepo.findById(userId);
+        if (maybe.isEmpty()) {
+            return Optional.empty();
+        }
+        User user = maybe.get();
+        if (user.getEffectiveRole() != UserRole.USER) {
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Notification preferences are available for student accounts only."
+            );
+        }
+        List<String> raw = request.getDisabledCategories();
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        if (raw != null) {
+            for (String c : raw) {
+                if (c == null) {
+                    continue;
+                }
+                String u = c.trim().toUpperCase(Locale.ROOT);
+                if (u.isEmpty()) {
+                    continue;
+                }
+                if (!UserNotificationCategories.ALLOWED.contains(u)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown notification category: " + c);
+                }
+                normalized.add(u);
+            }
+        }
+        user.setNotificationDisabledCategories(new ArrayList<>(normalized));
+        return Optional.of(toUserResponse(userRepo.save(user)));
+    }
+
     public boolean changePassword(String userId, ChangePasswordRequest request) {
         Optional<User> maybe = userRepo.findById(userId);
         if (maybe.isEmpty()) {
@@ -826,7 +861,7 @@ public class AuthService {
                 ? Boolean.TRUE
                 : user.getTechnicianEmailVerified();
         }
-        return new AuthUserResponse(
+        AuthUserResponse resp = new AuthUserResponse(
             user.getId(),
             user.getFirstName(),
             user.getLastName(),
@@ -840,5 +875,12 @@ public class AuthService {
             technicianAvailable,
             technicianEmailVerified
         );
+        if (user.getEffectiveRole() == UserRole.USER) {
+            List<String> disabled = user.getNotificationDisabledCategories();
+            resp.setNotificationDisabledCategories(
+                disabled == null || disabled.isEmpty() ? List.of() : new ArrayList<>(disabled)
+            );
+        }
+        return resp;
     }
 }

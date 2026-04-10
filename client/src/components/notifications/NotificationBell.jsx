@@ -11,6 +11,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from "../../api/notifications";
+import { notificationUiRootStyle } from "../../utils/notificationTypography";
 
 function BellIcon({ size = 18 }) {
   return (
@@ -224,6 +225,7 @@ export default function NotificationBell({
       {open && (
         <div
           style={{
+            ...notificationUiRootStyle,
             position: "absolute",
             top: `calc(100% + ${panelTopOffset}px)`,
             right: 0,
@@ -240,7 +242,7 @@ export default function NotificationBell({
           }}
         >
           <div style={{ padding: "12px 14px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: "#111827" }}>Notifications</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#111827", letterSpacing: "-0.02em" }}>Notifications</div>
             <button
               type="button"
               onClick={handleMarkAll}
@@ -253,6 +255,7 @@ export default function NotificationBell({
                 padding: "6px 10px",
                 fontSize: 12,
                 fontWeight: 700,
+                fontFamily: "inherit",
                 cursor: busyReadAll || unreadCount < 1 ? "not-allowed" : "pointer",
                 opacity: busyReadAll || unreadCount < 1 ? 0.6 : 1,
               }}
@@ -285,10 +288,20 @@ export default function NotificationBell({
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: n.read ? 700 : 800, color: "#111827", lineHeight: 1.35 }}>{getNotificationDisplayTitle(n)}</span>
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: n.read ? 650 : 700,
+                        color: "#111827",
+                        lineHeight: 1.35,
+                        letterSpacing: "-0.015em",
+                      }}
+                    >
+                      {getNotificationDisplayTitle(n)}
+                    </span>
                     {!n.read && <span style={{ width: 8, height: 8, borderRadius: 999, background: "#ef4444", flexShrink: 0 }} />}
                   </div>
-                  <span style={{ fontSize: 12, color: "#374151", lineHeight: 1.45 }}>{n.message || ""}</span>
+                  <span style={{ fontSize: 12, color: "#374151", lineHeight: 1.5, fontWeight: 450 }}>{n.message || ""}</span>
                   <div
                     style={{
                       display: "flex",
@@ -298,7 +311,7 @@ export default function NotificationBell({
                       marginTop: 2,
                     }}
                   >
-                    <span style={{ fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>{prettyTimeDetailed(n.createdAt)}</span>
+                    <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 500, letterSpacing: "0.01em" }}>{prettyTimeDetailed(n.createdAt)}</span>
                     <span style={viewFullLinkStyle}>View full notification</span>
                   </div>
                 </button>
