@@ -29,6 +29,12 @@ public class Booking {
     private String verificationMethod;
     private String reviewReason;
     private String cancellationReason;
+    private Boolean outsideAvailability;
+    private String rescheduledBy;
+    private String rescheduleReason;
+    private String previousStartTime;
+    private String previousEndTime;
+    private Boolean pendingUserRescheduleDecision;
     private String createdBy;
     private Instant createdAt;
     private Instant updatedAt;
@@ -187,6 +193,54 @@ public class Booking {
 
     public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public Boolean getOutsideAvailability() {
+        return outsideAvailability;
+    }
+
+    public void setOutsideAvailability(Boolean outsideAvailability) {
+        this.outsideAvailability = outsideAvailability;
+    }
+
+    public String getRescheduledBy() {
+        return rescheduledBy;
+    }
+
+    public void setRescheduledBy(String rescheduledBy) {
+        this.rescheduledBy = rescheduledBy;
+    }
+
+    public String getRescheduleReason() {
+        return rescheduleReason;
+    }
+
+    public void setRescheduleReason(String rescheduleReason) {
+        this.rescheduleReason = rescheduleReason;
+    }
+
+    public String getPreviousStartTime() {
+        return previousStartTime;
+    }
+
+    public void setPreviousStartTime(String previousStartTime) {
+        this.previousStartTime = previousStartTime;
+    }
+
+    public String getPreviousEndTime() {
+        return previousEndTime;
+    }
+
+    public void setPreviousEndTime(String previousEndTime) {
+        this.previousEndTime = previousEndTime;
+    }
+
+    public Boolean getPendingUserRescheduleDecision() {
+        return pendingUserRescheduleDecision;
+    }
+
+    public void setPendingUserRescheduleDecision(Boolean pendingUserRescheduleDecision) {
+        this.pendingUserRescheduleDecision = pendingUserRescheduleDecision;
     }
 
     public Instant getCreatedAt() {

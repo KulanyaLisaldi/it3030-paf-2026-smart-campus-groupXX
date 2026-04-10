@@ -6,6 +6,7 @@ import com.example.server.dto.booking.AdminBookingActionRequest;
 import com.example.server.dto.booking.AdminBookingRowResponse;
 import com.example.server.dto.booking.BookingCheckInValidationResponse;
 import com.example.server.dto.booking.CheckInValidateRequest;
+import com.example.server.dto.booking.RescheduleBookingRequest;
 import com.example.server.dto.booking.UpdateMyBookingRequest;
 import com.example.server.model.Booking;
 import com.example.server.service.BookingService;
@@ -73,9 +74,10 @@ public class BookingController {
         @RequestParam(value = "resourceType", required = false) String resourceType,
         @RequestParam(value = "resource", required = false) String resource,
         @RequestParam(value = "user", required = false) String user,
-        @RequestParam(value = "approvalState", required = false) String approvalState
+        @RequestParam(value = "approvalState", required = false) String approvalState,
+        @RequestParam(value = "conflict", required = false) String conflict
     ) {
-        return bookingService.getAllBookingsForAdmin(status, date, resourceType, resource, user, approvalState);
+        return bookingService.getAllBookingsForAdmin(status, date, resourceType, resource, user, approvalState, conflict);
     }
 
     @RequestMapping(value = "/admin/{id}/approve", method = {RequestMethod.PATCH, RequestMethod.POST})
@@ -109,13 +111,24 @@ public class BookingController {
             .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found")));
     }
 
+    @PatchMapping("/admin/{id}/reschedule")
+    public ResponseEntity<?> rescheduleBookingByAdmin(
+        Authentication authentication,
+        @PathVariable("id") String id,
+        @Valid @RequestBody RescheduleBookingRequest request
+    ) {
+        return bookingService.rescheduleBookingByAdmin(id, request, authentication.getName())
+            .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Booking rescheduled successfully", "booking", updated)))
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found")));
+    }
+
     @DeleteMapping("/admin/{id}")
     public ResponseEntity<?> deleteCancelledBookingByAdmin(@PathVariable("id") String id) {
         boolean deleted = bookingService.deleteCancelledBookingByAdmin(id);
         if (!deleted) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found"));
         }
-        return ResponseEntity.ok(Map.of("message", "Cancelled booking deleted successfully"));
+        return ResponseEntity.ok(Map.of("message", "Booking deleted successfully"));
     }
 
     @PostMapping("/admin/checkin/validate")
@@ -154,6 +167,27 @@ public class BookingController {
     ) {
         return bookingService.cancelMyBooking(id, authentication.getName(), request.getReason())
             .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Booking cancelled successfully", "booking", updated)))
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found")));
+    }
+
+    @PatchMapping("/{id}/accept-reschedule")
+    public ResponseEntity<?> acceptRescheduledBooking(
+        Authentication authentication,
+        @PathVariable("id") String id
+    ) {
+        return bookingService.acceptRescheduledBookingByUser(id, authentication.getName())
+            .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Reschedule accepted", "booking", updated)))
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found")));
+    }
+
+    @PatchMapping("/{id}/choose-slot")
+    public ResponseEntity<?> chooseAnotherSlotAfterAdminReschedule(
+        Authentication authentication,
+        @PathVariable("id") String id,
+        @Valid @RequestBody RescheduleBookingRequest request
+    ) {
+        return bookingService.chooseAnotherSlotAfterAdminReschedule(id, authentication.getName(), request)
+            .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Booking updated with selected slot", "booking", updated)))
             .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Booking not found")));
     }
 

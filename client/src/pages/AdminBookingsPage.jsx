@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import AdminLayout from "../components/admin/AdminLayout.jsx";
 import { appFontFamily } from "../utils/appFont";
-import { cancelBookingByAdmin, deleteBookingByAdmin, getAdminBookings, approveBookingByAdmin, rejectBookingByAdmin } from "../api/bookings";
+import { cancelBookingByAdmin, deleteBookingByAdmin, getAdminBookings, approveBookingByAdmin, rejectBookingByAdmin, getBookedSlots, rescheduleBookingByAdmin } from "../api/bookings";
+import { getResourceById } from "../api/resources";
 import {
   Bar,
   BarChart,
@@ -95,7 +96,7 @@ function canCancel(status) {
 }
 function canDelete(status) {
   const s = String(status || "").toUpperCase();
-  return s === "REJECTED" || s === "CANCELLED";
+  return s === "REJECTED" || s === "CANCELLED" || s === "CHECKED_IN";
 }
 function cancellationOrRejectionReason(row) {
   const status = String(row?.status || "").toUpperCase();
@@ -143,6 +144,37 @@ function formatHourLabel(startTime) {
   return `${normalized}:00 ${suffix}`;
 }
 
+function toMinutes(hhmm) {
+  const [h, m] = String(hhmm || "").split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  return h * 60 + m;
+}
+
+function toHHMM(totalMinutes) {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function parseAvailabilityWindow(raw) {
+  const text = String(raw || "").trim();
+  const parts = text.split("-");
+  if (parts.length !== 2) return { start: "08:00", end: "18:00" };
+  return { start: parts[0], end: parts[1] };
+}
+
+function areContiguousSlots(slots, slotDurationMinutes) {
+  if (!Array.isArray(slots) || slots.length <= 1) return true;
+  const ordered = [...slots].sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
+  for (let i = 1; i < ordered.length; i += 1) {
+    const prevStart = toMinutes(ordered[i - 1].startTime);
+    const currentStart = toMinutes(ordered[i].startTime);
+    if (prevStart == null || currentStart == null) return false;
+    if (currentStart - prevStart !== slotDurationMinutes) return false;
+  }
+  return true;
+}
+
 function monthKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
@@ -163,6 +195,7 @@ export default function AdminBookingsPage() {
     resource: "",
     user: "",
     approvalState: "ALL",
+    conflict: "ALL",
   });
   const [activeTab, setActiveTab] = useState("dashboard");
   const [detailsPage, setDetailsPage] = useState(1);
@@ -174,6 +207,14 @@ export default function AdminBookingsPage() {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [calendarDetailsDate, setCalendarDetailsDate] = useState("");
+  const [rescheduleDrawer, setRescheduleDrawer] = useState({ open: false, row: null });
+  const [rescheduleDraft, setRescheduleDraft] = useState({ bookingDate: "", reason: "" });
+  const [rescheduleSelectedSlotKeys, setRescheduleSelectedSlotKeys] = useState([]);
+  const [rescheduleSlots, setRescheduleSlots] = useState([]);
+  const [rescheduleBookedRanges, setRescheduleBookedRanges] = useState([]);
+  const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  const [rescheduleSaving, setRescheduleSaving] = useState(false);
+  const [rescheduleError, setRescheduleError] = useState("");
 
   const loadRows = async (nextFilters = filters) => {
     setLoading(true);
@@ -197,6 +238,10 @@ export default function AdminBookingsPage() {
   }, [filters]);
   useEffect(() => {
     const tab = (new URLSearchParams(location.search).get("tab") || "overview").toLowerCase();
+    const conflict = (new URLSearchParams(location.search).get("conflict") || "").toUpperCase();
+    if (conflict === "ONLY" || conflict === "VALID") {
+      setFilters((prev) => ({ ...prev, conflict }));
+    }
     if (tab === "calendar") {
       setActiveTab("calendar");
       return;
@@ -485,6 +530,115 @@ export default function AdminBookingsPage() {
     }
   };
 
+  const openRescheduleDrawer = (row) => {
+    setRescheduleDrawer({ open: true, row });
+    setRescheduleDraft({
+      bookingDate: String(row?.bookingDate || ""),
+      reason: "Resource availability window was changed.",
+    });
+    setRescheduleSelectedSlotKeys([]);
+    setRescheduleSlots([]);
+    setRescheduleBookedRanges([]);
+    setRescheduleError("");
+  };
+
+  useEffect(() => {
+    const row = rescheduleDrawer.row;
+    if (!rescheduleDrawer.open || !row?.resourceId || !rescheduleDraft.bookingDate) return;
+    let cancelled = false;
+    const loadRescheduleData = async () => {
+      setRescheduleLoading(true);
+      setRescheduleError("");
+      try {
+        const [resource, booked] = await Promise.all([
+          getResourceById(row.resourceId),
+          getBookedSlots({ resourceId: row.resourceId, bookingDate: rescheduleDraft.bookingDate, excludeBookingId: row.id }),
+        ]);
+        const window = parseAvailabilityWindow(resource?.availability || resource?.availabilityText || "");
+        const startMin = toMinutes(window.start);
+        const endMin = toMinutes(window.end);
+        const slots = [];
+        if (startMin != null && endMin != null && startMin < endMin) {
+          let cursor = startMin;
+          while (cursor + 60 <= endMin) {
+            const s = toHHMM(cursor);
+            const e = toHHMM(cursor + 60);
+            slots.push({ key: `${s}-${e}`, startTime: s, endTime: e });
+            cursor += 60;
+          }
+        }
+        if (!cancelled) {
+          setRescheduleSlots(slots);
+          setRescheduleBookedRanges(Array.isArray(booked?.bookedSlots) ? booked.bookedSlots : []);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setRescheduleError(e?.message || "Could not load reschedule slots.");
+          setRescheduleSlots([]);
+          setRescheduleBookedRanges([]);
+        }
+      } finally {
+        if (!cancelled) setRescheduleLoading(false);
+      }
+    };
+    void loadRescheduleData();
+    return () => { cancelled = true; };
+  }, [rescheduleDrawer.open, rescheduleDrawer.row, rescheduleDraft.bookingDate]);
+
+  const rescheduleSlotBusyMap = useMemo(() => {
+    const map = {};
+    for (const slot of rescheduleSlots) {
+      const s = toMinutes(slot.startTime);
+      const e = toMinutes(slot.endTime);
+      map[slot.key] = rescheduleBookedRanges.some((r) => {
+        const rs = toMinutes(r.startTime);
+        const re = toMinutes(r.endTime);
+        if (s == null || e == null || rs == null || re == null) return false;
+        return s < re && e > rs;
+      });
+    }
+    return map;
+  }, [rescheduleSlots, rescheduleBookedRanges]);
+
+  const handleAdminRescheduleSave = async () => {
+    const row = rescheduleDrawer.row;
+    if (!row?.id) return;
+    if (!rescheduleSelectedSlotKeys.length) {
+      setRescheduleError("Please select one or more continuous available slots.");
+      return;
+    }
+    const selectedSlots = rescheduleSlots
+      .filter((slot) => rescheduleSelectedSlotKeys.includes(slot.key))
+      .sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
+    if (!selectedSlots.length) {
+      setRescheduleError("Please select one or more continuous available slots.");
+      return;
+    }
+    const startTime = selectedSlots[0].startTime;
+    const endTime = selectedSlots[selectedSlots.length - 1].endTime;
+    setRescheduleSaving(true);
+    setRescheduleError("");
+    try {
+      const response = await rescheduleBookingByAdmin(row.id, {
+        bookingDate: rescheduleDraft.bookingDate,
+        startTime,
+        endTime,
+        reason: rescheduleDraft.reason,
+      });
+      const updated = response?.booking;
+      if (updated?.id) {
+        setRows((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+      } else {
+        await loadRows();
+      }
+      setRescheduleDrawer({ open: false, row: null });
+    } catch (e) {
+      setRescheduleError(e?.message || "Could not reschedule booking.");
+    } finally {
+      setRescheduleSaving(false);
+    }
+  };
+
   return (
     <AdminLayout activeSection="bookings" pageTitle={null} description={null}>
       <div style={{ fontFamily: appFontFamily }}>
@@ -645,7 +799,7 @@ export default function AdminBookingsPage() {
           {activeTab === "details" && (
             <>
       <section style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 10 }}>
           <select value={filters.status} onChange={(e) => setFilters((s) => ({ ...s, status: e.target.value }))} style={inputStyle}>
             <option value="ALL">Status: All</option>
             <option value="PENDING">Pending</option>
@@ -668,12 +822,17 @@ export default function AdminBookingsPage() {
             <option value="REJECTED">Rejected</option>
             <option value="CHECKED_IN">Checked In</option>
           </select>
+          <select value={filters.conflict} onChange={(e) => setFilters((s) => ({ ...s, conflict: e.target.value }))} style={inputStyle}>
+            <option value="ALL">Conflict: All</option>
+            <option value="ONLY">Conflicted bookings</option>
+            <option value="VALID">Valid bookings</option>
+          </select>
         </div>
         <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
           <button
             type="button"
             onClick={() => {
-              setFilters({ status: "ALL", date: "", resourceType: "ALL", resource: "", user: "", approvalState: "ALL" });
+              setFilters({ status: "ALL", date: "", resourceType: "ALL", resource: "", user: "", approvalState: "ALL", conflict: "ALL" });
             }}
             style={{ ...buttonStyle, background: "#fff", color: "#0f172a", border: "1px solid #FFDDB8" }}
           >
@@ -688,17 +847,17 @@ export default function AdminBookingsPage() {
         <table style={{ width: "max-content", minWidth: 1160, borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#f8fafc", color: "#334155", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              {["Booked By", "Resource Name", "Resource Type", "Date", "Start Time", "End Time", "Status", "Requested On", "Actions"].map((h) => (
+              {["Booked By", "Resource Name", "Resource Type", "Date", "Start Time", "End Time", "Status", "Conflict", "Requested On", "Actions"].map((h) => (
                 <th key={h} style={{ textAlign: "left", padding: "12px 10px", backgroundColor: "#FAF3E1", color: "#374151", fontWeight: 800, fontSize: "13px", borderBottom: "1px solid #F5E7C6" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={9} style={{ padding: 16, color: "#64748b" }}>No bookings found for the selected filters.</td></tr>
+              <tr><td colSpan={10} style={{ padding: 16, color: "#64748b" }}>No bookings found for the selected filters.</td></tr>
             )}
             {paginatedDetailsRows.map((row) => (
-              <tr key={row.id} id={row.id ? `admin-booking-row-${row.id}` : undefined} style={{ borderBottom: "1px solid #FFDDB8" }}>
+              <tr key={row.id} id={row.id ? `admin-booking-row-${row.id}` : undefined} style={{ borderBottom: "1px solid #FFDDB8", background: row.outsideAvailability ? "#fff1f2" : "#fff" }}>
                 <td style={{ padding: "10px", fontWeight: 700, color: "#0f172a" }}>{row.userName || "—"}</td>
                 <td style={{ padding: "10px" }}>{row.resourceName || "—"}</td>
                 <td style={{ padding: "10px" }}>{row.resourceType || "—"}</td>
@@ -706,29 +865,49 @@ export default function AdminBookingsPage() {
                 <td style={{ padding: "10px" }}>{row.startTime || "—"}</td>
                 <td style={{ padding: "10px" }}>{row.endTime || "—"}</td>
                 <td style={{ padding: "10px" }}><span style={{ ...statusChip(row.status), display: "inline-flex", padding: "4px 9px", borderRadius: 999, fontWeight: 800, fontSize: 11 }}>{row.status || "PENDING"}</span></td>
+                <td style={{ padding: "10px" }}>
+                  <span style={{ display: "inline-flex", padding: "4px 9px", borderRadius: 999, fontWeight: 800, fontSize: 11, background: row.outsideAvailability ? "#fee2e2" : "#dcfce7", color: row.outsideAvailability ? "#b91c1c" : "#166534" }}>
+                    {row.outsideAvailability ? "Conflict" : "Valid"}
+                  </span>
+                </td>
                 <td style={{ padding: "10px" }}>{fmtDateTime(row.createdAt)}</td>
                 <td style={{ padding: "10px" }}>
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                    <button type="button" onClick={() => setViewRow(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#fff", border: "1px solid #FFDDB8", color: "#0f172a", textAlign: "center" }}>View</button>
-                    {canApprove(row.status) && (
-                      <button type="button" disabled={busyId === row.id} onClick={() => void handleApproveDirect(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#16a34a", color: "#fff", textAlign: "center" }}>
-                        Approve
-                      </button>
-                    )}
-                    {canReject(row.status) && (
-                      <button type="button" disabled={busyId === row.id} onClick={() => openAction("reject", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#dc2626", color: "#fff", textAlign: "center" }}>
-                        Reject
-                      </button>
-                    )}
-                    {canCancel(row.status) && (
-                      <button type="button" disabled={busyId === row.id} onClick={() => openAction("cancel", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#111827", color: "#fff", textAlign: "center" }}>
-                        Cancel
-                      </button>
-                    )}
-                    {canDelete(row.status) && (
-                      <button type="button" disabled={busyId === row.id} onClick={() => openAction("delete", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#dc2626", color: "#fff", textAlign: "center" }}>
-                        Delete
-                      </button>
+                    {row.outsideAvailability ? (
+                      <>
+                        {["APPROVED", "PENDING"].includes(String(row.status || "").toUpperCase()) && (
+                          <button type="button" disabled={busyId === row.id} onClick={() => openAction("cancel", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#111827", color: "#fff", textAlign: "center" }}>
+                            Cancel
+                          </button>
+                        )}
+                        <button type="button" disabled={busyId === row.id} onClick={() => openRescheduleDrawer(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#2563eb", color: "#fff", textAlign: "center" }}>
+                          Reschedule
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button type="button" onClick={() => setViewRow(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#fff", border: "1px solid #FFDDB8", color: "#0f172a", textAlign: "center" }}>View</button>
+                        {canApprove(row.status) && (
+                          <button type="button" disabled={busyId === row.id} onClick={() => void handleApproveDirect(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#16a34a", color: "#fff", textAlign: "center" }}>
+                            Approve
+                          </button>
+                        )}
+                        {canReject(row.status) && (
+                          <button type="button" disabled={busyId === row.id} onClick={() => openAction("reject", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#dc2626", color: "#fff", textAlign: "center" }}>
+                            Reject
+                          </button>
+                        )}
+                        {canCancel(row.status) && (
+                          <button type="button" disabled={busyId === row.id} onClick={() => openAction("cancel", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#111827", color: "#fff", textAlign: "center" }}>
+                            Cancel
+                          </button>
+                        )}
+                        {canDelete(row.status) && (
+                          <button type="button" disabled={busyId === row.id} onClick={() => openAction("delete", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#dc2626", color: "#fff", textAlign: "center" }}>
+                            Delete
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </td>
@@ -875,6 +1054,75 @@ export default function AdminBookingsPage() {
         </div>
       )}
 
+      {rescheduleDrawer.open && rescheduleDrawer.row && (
+        <div role="dialog" aria-modal="true" onClick={() => (rescheduleSaving ? null : setRescheduleDrawer({ open: false, row: null }))} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "20px", zIndex: 1330 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", backgroundColor: "#fff", borderRadius: "14px", border: "1px solid #FFDDB8", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)", padding: "18px" }}>
+            <h3 style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 800, color: "#111827" }}>Reschedule Booking</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px", fontSize: 14, color: "#334155" }}>
+              <div><strong>Booking ID:</strong> {rescheduleDrawer.row.id}</div>
+              <div><strong>Resource:</strong> {rescheduleDrawer.row.resourceName || "—"}</div>
+              <div><strong>Current Date:</strong> {rescheduleDrawer.row.bookingDate || "—"}</div>
+              <div><strong>Old Time:</strong> {rescheduleDrawer.row.startTime || "—"} - {rescheduleDrawer.row.endTime || "—"}</div>
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <label style={{ display: "block", fontWeight: 700, fontSize: 13, marginBottom: 6 }}>New date</label>
+              <input
+                type="date"
+                value={rescheduleDraft.bookingDate}
+                onChange={(e) => {
+                  setRescheduleDraft((s) => ({ ...s, bookingDate: e.target.value }));
+                  setRescheduleSelectedSlotKeys([]);
+                }}
+                style={{ ...inputStyle, height: 38 }}
+              />
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <label style={{ display: "block", fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Reason for reschedule</label>
+              <textarea rows={3} value={rescheduleDraft.reason} onChange={(e) => setRescheduleDraft((s) => ({ ...s, reason: e.target.value }))} style={{ width: "100%", border: "1px solid #FFDDB8", borderRadius: 10, padding: "8px 10px", boxSizing: "border-box" }} />
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <label style={{ display: "block", fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Available slots</label>
+              {rescheduleLoading ? <div style={{ fontSize: 13, color: "#64748b" }}>Loading slots...</div> : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 8 }}>
+                  {rescheduleSlots.map((slot) => {
+                    const blocked = !!rescheduleSlotBusyMap[slot.key];
+                    const active = rescheduleSelectedSlotKeys.includes(slot.key);
+                    return (
+                      <button
+                        key={slot.key}
+                        type="button"
+                        disabled={blocked}
+                        onClick={() => {
+                          if (blocked) return;
+                          setRescheduleSelectedSlotKeys((prev) => {
+                            const next = prev.includes(slot.key) ? prev.filter((k) => k !== slot.key) : [...prev, slot.key];
+                            const nextSlots = rescheduleSlots.filter((s) => next.includes(s.key));
+                            if (!areContiguousSlots(nextSlots, 60)) {
+                              setRescheduleError("Please select only continuous time slots.");
+                              return prev;
+                            }
+                            setRescheduleError("");
+                            return next;
+                          });
+                        }}
+                        style={{ height: 34, borderRadius: 8, border: active ? "2px solid #0369a1" : "1px solid #d1d5db", background: blocked ? "#e5e7eb" : active ? "#e0f2fe" : "#fff", cursor: blocked ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 12 }}
+                      >
+                        {slot.startTime}-{slot.endTime}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            {rescheduleError && <p style={{ margin: "10px 0 0", color: "#b91c1c", fontWeight: 700, fontSize: 13 }}>{rescheduleError}</p>}
+            <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button type="button" onClick={() => setRescheduleDrawer({ open: false, row: null })} disabled={rescheduleSaving} style={{ ...buttonStyle, background: "#fff", color: "#0f172a", border: "1px solid #FFDDB8" }}>Close</button>
+              <button type="button" onClick={handleAdminRescheduleSave} disabled={rescheduleSaving} style={{ ...buttonStyle, background: "#2563eb", color: "#fff" }}>{rescheduleSaving ? "Saving..." : "Save Reschedule"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {viewRow && (
         <div role="dialog" aria-modal="true" onClick={() => setViewRow(null)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", zIndex: 1300 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: "760px", backgroundColor: "#fff", borderRadius: "14px", border: "1px solid #FFDDB8", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.2)", padding: "18px" }}>
@@ -887,6 +1135,7 @@ export default function AdminBookingsPage() {
               <div><strong>Date:</strong> {fmtDate(viewRow.bookingDate)}</div>
               <div><strong>Time:</strong> {viewRow.startTime || "—"} - {viewRow.endTime || "—"}</div>
               <div><strong>Status:</strong> {viewRow.status || "PENDING"}</div>
+              <div><strong>Conflict:</strong> {viewRow.outsideAvailability ? "Outside availability window" : "Valid"}</div>
               <div><strong>Requested On:</strong> {fmtDateTime(viewRow.createdAt)}</div>
               <div style={{ gridColumn: "1 / -1" }}><strong>Purpose:</strong> {viewRow.purpose || "—"}</div>
               <div><strong>Expected Attendees:</strong> {viewRow.expectedAttendees ?? "—"}</div>

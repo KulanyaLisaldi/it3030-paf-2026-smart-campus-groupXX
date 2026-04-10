@@ -20,6 +20,12 @@ public class AdminBookingRowResponse {
     private final String additionalNotes;
     private final String reviewReason;
     private final String cancellationReason;
+    private final boolean outsideAvailability;
+    private final String rescheduledBy;
+    private final String rescheduleReason;
+    private final String previousStartTime;
+    private final String previousEndTime;
+    private final boolean pendingUserRescheduleDecision;
     private final Instant createdAt;
     private final Instant updatedAt;
 
@@ -39,6 +45,12 @@ public class AdminBookingRowResponse {
         this.additionalNotes = booking.getAdditionalNotes();
         this.reviewReason = booking.getReviewReason();
         this.cancellationReason = booking.getCancellationReason();
+        this.outsideAvailability = Boolean.TRUE.equals(booking.getOutsideAvailability());
+        this.rescheduledBy = booking.getRescheduledBy();
+        this.rescheduleReason = booking.getRescheduleReason();
+        this.previousStartTime = booking.getPreviousStartTime();
+        this.previousEndTime = booking.getPreviousEndTime();
+        this.pendingUserRescheduleDecision = Boolean.TRUE.equals(booking.getPendingUserRescheduleDecision());
         this.createdAt = booking.getCreatedAt();
         this.updatedAt = booking.getUpdatedAt();
     }
@@ -58,6 +70,12 @@ public class AdminBookingRowResponse {
     public String getAdditionalNotes() { return additionalNotes; }
     public String getReviewReason() { return reviewReason; }
     public String getCancellationReason() { return cancellationReason; }
+    public boolean isOutsideAvailability() { return outsideAvailability; }
+    public String getRescheduledBy() { return rescheduledBy; }
+    public String getRescheduleReason() { return rescheduleReason; }
+    public String getPreviousStartTime() { return previousStartTime; }
+    public String getPreviousEndTime() { return previousEndTime; }
+    public boolean isPendingUserRescheduleDecision() { return pendingUserRescheduleDecision; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

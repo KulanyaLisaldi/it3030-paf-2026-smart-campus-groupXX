@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { createResource, deleteResource, getAdminResources, updateResource, updateResourceStatus } from "../../api/adminResources";
+import { useNavigate } from "react-router-dom";
+import { createResource, deleteResource, getAdminResources, previewResourceAvailabilityConflicts, updateResource, updateResourceStatus } from "../../api/adminResources";
 
 const pageCardStyle = {
   maxWidth: "100%",
@@ -222,6 +223,7 @@ function resourceWithSanitizedImages(resource) {
 }
 
 export default function AdminResourcesTable() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [resources, setResources] = useState([]);
@@ -234,6 +236,13 @@ export default function AdminResourcesTable() {
   const [editBusy, setEditBusy] = useState(false);
   const [createError, setCreateError] = useState("");
   const [editError, setEditError] = useState("");
+  const [availabilityConflictDialog, setAvailabilityConflictDialog] = useState({
+    open: false,
+    affectedBookings: 0,
+    oldAvailability: "",
+    newAvailability: "",
+    conflictingBookings: [],
+  });
   const [formData, setFormData] = useState({
     resourceCode: "",
     resourceName: "",
@@ -423,6 +432,35 @@ export default function AdminResourcesTable() {
     setEditError("");
   };
 
+  const submitEditResourceWithConflictAction = useCallback(async (conflictAction = "MARK_CONFLICTS", redirectToBookings = false) => {
+    try {
+      setEditBusy(true);
+      setEditError("");
+      const capacityNumber = Number(editFormData.capacity);
+      const payload = new FormData();
+      payload.append("name", editFormData.resourceName.trim());
+      payload.append("type", editFormData.resourceType);
+      payload.append("capacity", String(capacityNumber));
+      payload.append("location", editFormData.location.trim());
+      payload.append("description", editFormData.description.trim());
+      payload.append("availability", availabilityText(editFormData.availabilityStart, editFormData.availabilityEnd));
+      payload.append("status", editFormData.status);
+      payload.append("conflictAction", conflictAction);
+      for (const kept of editFormData.imageUrls) payload.append("keptImageUrls", kept);
+      for (const imageFile of editFormData.newImageFiles) payload.append("images", imageFile);
+      const updated = await updateResource(editResourceId, payload);
+      if (updated?.resource) setSelectedResource(updated.resource);
+      setEditDrawerOpen(false);
+      setAvailabilityConflictDialog({ open: false, affectedBookings: 0, oldAvailability: "", newAvailability: "", conflictingBookings: [] });
+      await load();
+      if (redirectToBookings) navigate("/adminbookings?tab=details&conflict=ONLY");
+    } catch (err) {
+      setEditError(err?.message || "Could not update resource.");
+    } finally {
+      setEditBusy(false);
+    }
+  }, [editFormData, editResourceId, load, navigate]);
+
   const handleCreateResource = async (e) => {
     if (formData.availabilityStart >= formData.availabilityEnd) {
       setCreateError("Availability end time must be later than start time.");
@@ -501,30 +539,26 @@ export default function AdminResourcesTable() {
       return;
     }
 
-    const payload = new FormData();
-    payload.append("name", editFormData.resourceName.trim());
-    payload.append("type", editFormData.resourceType);
-    payload.append("capacity", String(capacityNumber));
-    payload.append("location", editFormData.location.trim());
-    payload.append("description", editFormData.description.trim());
-    payload.append("availability", availabilityText(editFormData.availabilityStart, editFormData.availabilityEnd));
-    payload.append("status", editFormData.status);
-    for (const kept of editFormData.imageUrls) {
-      payload.append("keptImageUrls", kept);
-    }
-    for (const imageFile of editFormData.newImageFiles) {
-      payload.append("images", imageFile);
-    }
-
-    setEditBusy(true);
     setEditError("");
     try {
-      const updated = await updateResource(editResourceId, payload);
-      if (updated?.resource) {
-        setSelectedResource(updated.resource);
+      const oldAvailability = availabilityText(parseAvailabilityRange(selectedResource?.availability || "").start, parseAvailabilityRange(selectedResource?.availability || "").end);
+      const newAvailability = availabilityText(editFormData.availabilityStart, editFormData.availabilityEnd);
+      const isAvailabilityChanged = oldAvailability !== newAvailability;
+      if (isAvailabilityChanged) {
+        const preview = await previewResourceAvailabilityConflicts(editResourceId, newAvailability);
+        const conflicts = Array.isArray(preview?.conflictingBookings) ? preview.conflictingBookings : [];
+        if (conflicts.length > 0) {
+          setAvailabilityConflictDialog({
+            open: true,
+            affectedBookings: Number(preview?.affectedBookings || conflicts.length),
+            oldAvailability: String(preview?.oldAvailability || oldAvailability),
+            newAvailability: String(preview?.newAvailability || newAvailability),
+            conflictingBookings: conflicts,
+          });
+          return;
+        }
       }
-      setEditDrawerOpen(false);
-      await load();
+      await submitEditResourceWithConflictAction("MARK_CONFLICTS", false);
     } catch (err) {
       if (String(editResourceId).startsWith("tmp-")) {
         setResources((prev) => prev.map((r) => {
@@ -547,8 +581,6 @@ export default function AdminResourcesTable() {
       } else {
         setEditError(err?.message || "Could not update resource.");
       }
-    } finally {
-      setEditBusy(false);
     }
   };
 
@@ -1046,6 +1078,45 @@ export default function AdminResourcesTable() {
                 </button>
               </div>
             </aside>
+          </div>
+        </div>
+      )}
+
+      {availabilityConflictDialog.open && (
+        <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 1100, backgroundColor: "rgba(15,23,42,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
+          <div style={{ width: "100%", maxWidth: 840, background: "#fff", borderRadius: 14, border: "1px solid #fecaca", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 18 }}>
+            <h3 style={{ margin: "0 0 8px", color: "#991b1b", fontSize: 20, fontWeight: 900 }}>Availability conflict detected</h3>
+            <p style={{ margin: 0, color: "#334155", fontWeight: 600 }}>
+              This availability change conflicts with {availabilityConflictDialog.affectedBookings} existing bookings. Those bookings remain active unless you cancel or reschedule them.
+            </p>
+            <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 13 }}>
+              <div><strong>Old window:</strong> {availabilityConflictDialog.oldAvailability || "—"}</div>
+              <div><strong>New window:</strong> {availabilityConflictDialog.newAvailability || "—"}</div>
+            </div>
+            <div style={{ marginTop: 12, maxHeight: 220, overflowY: "auto", border: "1px solid #fee2e2", borderRadius: 10 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: "#fff1f2" }}>
+                    {["Booking ID", "Date", "Start", "End", "Status"].map((h) => <th key={h} style={{ textAlign: "left", padding: "8px 10px", borderBottom: "1px solid #fee2e2" }}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {availabilityConflictDialog.conflictingBookings.map((b) => (
+                    <tr key={b.bookingId}>
+                      <td style={{ padding: "7px 10px", borderBottom: "1px solid #fef2f2" }}>{b.bookingId}</td>
+                      <td style={{ padding: "7px 10px", borderBottom: "1px solid #fef2f2" }}>{b.bookingDate}</td>
+                      <td style={{ padding: "7px 10px", borderBottom: "1px solid #fef2f2" }}>{b.startTime}</td>
+                      <td style={{ padding: "7px 10px", borderBottom: "1px solid #fef2f2" }}>{b.endTime}</td>
+                      <td style={{ padding: "7px 10px", borderBottom: "1px solid #fef2f2" }}>{b.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <button type="button" style={smallBtnStyle()} onClick={() => setAvailabilityConflictDialog({ open: false, affectedBookings: 0, oldAvailability: "", newAvailability: "", conflictingBookings: [] })}>Close</button>
+              <button type="button" style={{ ...smallBtnStyle("primary"), ...primaryActionBtnStyle }} onClick={() => void submitEditResourceWithConflictAction("MARK_CONFLICTS", true)}>Save and mark conflicts</button>
+            </div>
           </div>
         </div>
       )}
