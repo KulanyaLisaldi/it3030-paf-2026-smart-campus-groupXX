@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { setAuthToken } from "../../api/http";
 import { persistCampusUser } from "../../utils/campusUserStorage";
 import campusSyncLogo from "../../assets/campus-sync-logo.png";
-import { appSansSurfaceStyle } from "../../utils/appFont";
 
 const pageWrap = {
   height: "100vh",
@@ -11,7 +10,7 @@ const pageWrap = {
   display: "flex",
   overflow: "hidden",
   backgroundColor: "#f3f4f6",
-  ...appSansSurfaceStyle,
+  fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
 };
 
 const sidebarStyle = {

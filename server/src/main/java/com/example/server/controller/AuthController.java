@@ -75,15 +75,6 @@ public class AuthController {
     }
 
     /**
-     * Pre-check for the SPA before opening the forgot-password step: only verified email/password staff accounts qualify.
-     */
-    @PostMapping("/forgot-password/check")
-    public ResponseEntity<Map<String, Boolean>> checkForgotPasswordEligibility(@Valid @RequestBody ForgotPasswordRequest request) {
-        boolean allowed = authService.isEligibleForForgotPassword(request.getEmail());
-        return ResponseEntity.ok(Map.of("allowed", allowed));
-    }
-
-    /**
      * Admin/technician email accounts only. Always returns a generic success message when the request is valid
      * to avoid leaking whether an email is registered.
      */

@@ -7,10 +7,8 @@ import com.example.server.dto.auth.AuthUserResponse;
 import com.example.server.dto.auth.StaffSignInResult;
 import com.example.server.dto.auth.ChangePasswordRequest;
 import com.example.server.dto.auth.SignInRequest;
-import com.example.server.dto.auth.UpdateNotificationPreferencesRequest;
 import com.example.server.dto.auth.UpdateProfileRequest;
 import com.example.server.dto.auth.VerifyPasswordChangeRequest;
-import com.example.server.notification.UserNotificationCategories;
 import com.example.server.model.Ticket;
 import com.example.server.model.User;
 import com.example.server.model.UserRole;
@@ -439,39 +437,6 @@ public class AuthService {
         });
     }
 
-    public Optional<AuthUserResponse> updateNotificationPreferences(String userId, UpdateNotificationPreferencesRequest request) {
-        Optional<User> maybe = userRepo.findById(userId);
-        if (maybe.isEmpty()) {
-            return Optional.empty();
-        }
-        User user = maybe.get();
-        if (user.getEffectiveRole() != UserRole.USER) {
-            throw new ResponseStatusException(
-                HttpStatus.FORBIDDEN,
-                "Notification preferences are available for student accounts only."
-            );
-        }
-        List<String> raw = request.getDisabledCategories();
-        LinkedHashSet<String> normalized = new LinkedHashSet<>();
-        if (raw != null) {
-            for (String c : raw) {
-                if (c == null) {
-                    continue;
-                }
-                String u = c.trim().toUpperCase(Locale.ROOT);
-                if (u.isEmpty()) {
-                    continue;
-                }
-                if (!UserNotificationCategories.ALLOWED.contains(u)) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown notification category: " + c);
-                }
-                normalized.add(u);
-            }
-        }
-        user.setNotificationDisabledCategories(new ArrayList<>(normalized));
-        return Optional.of(toUserResponse(userRepo.save(user)));
-    }
-
     public boolean changePassword(String userId, ChangePasswordRequest request) {
         Optional<User> maybe = userRepo.findById(userId);
         if (maybe.isEmpty()) {
@@ -572,49 +537,27 @@ public class AuthService {
     }
 
     /**
-     * Whether this email may use the staff forgot-password flow (matches {@link #requestForgotPassword(String)} rules).
-     */
-    public boolean isEligibleForForgotPassword(String rawEmail) {
-        return findUserEligibleForForgotPassword(rawEmail).isPresent();
-    }
-
-    private Optional<User> findUserEligibleForForgotPassword(String rawEmail) {
-        String email = normalizeEmail(rawEmail);
-        if (email.isEmpty()) {
-            return Optional.empty();
-        }
-        Optional<User> maybe = userRepo.findByEmail(email);
-        if (maybe.isEmpty()) {
-            return Optional.empty();
-        }
-        User user = maybe.get();
-        if (user.isDisabled()) {
-            return Optional.empty();
-        }
-        UserRole role = user.getEffectiveRole();
-        if (role != UserRole.ADMIN && role != UserRole.TECHNICIAN) {
-            return Optional.empty();
-        }
-        if (user.getGoogleSubject() != null && !user.getGoogleSubject().isBlank()) {
-            return Optional.empty();
-        }
-        if (role == UserRole.TECHNICIAN && Boolean.FALSE.equals(user.getTechnicianEmailVerified())) {
-            return Optional.empty();
-        }
-        return Optional.of(user);
-    }
-
-    /**
      * Sends a 6-digit OTP to the email for admin/technician accounts that use email/password (not Google).
      * Uses {@link User#getPasswordChangePendingHash()} == null to distinguish forgot-password OTP from
      * logged-in password-change OTP (which stages the new hash in pending).
      */
     public void requestForgotPassword(String rawEmail) {
-        Optional<User> maybeUser = findUserEligibleForForgotPassword(rawEmail);
-        if (maybeUser.isEmpty()) {
+        String email = normalizeEmail(rawEmail);
+        Optional<User> maybe = userRepo.findByEmail(email);
+        if (maybe.isEmpty()) {
             return;
         }
-        User user = maybeUser.get();
+        User user = maybe.get();
+        if (user.isDisabled()) {
+            return;
+        }
+        UserRole role = user.getEffectiveRole();
+        if (role != UserRole.ADMIN && role != UserRole.TECHNICIAN) {
+            return;
+        }
+        if (user.getGoogleSubject() != null && !user.getGoogleSubject().isBlank()) {
+            return;
+        }
 
         String code = String.format("%06d", new Random().nextInt(1_000_000));
         user.setPasswordChangeOtpHash(sha256Hex(code));
@@ -641,9 +584,6 @@ public class AuthService {
         User user = maybe.get();
         UserRole role = user.getEffectiveRole();
         if (role != UserRole.ADMIN && role != UserRole.TECHNICIAN) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired verification code");
-        }
-        if (role == UserRole.TECHNICIAN && Boolean.FALSE.equals(user.getTechnicianEmailVerified())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired verification code");
         }
         if (user.getGoogleSubject() != null && !user.getGoogleSubject().isBlank()) {
@@ -886,7 +826,7 @@ public class AuthService {
                 ? Boolean.TRUE
                 : user.getTechnicianEmailVerified();
         }
-        AuthUserResponse resp = new AuthUserResponse(
+        return new AuthUserResponse(
             user.getId(),
             user.getFirstName(),
             user.getLastName(),
@@ -900,12 +840,5 @@ public class AuthService {
             technicianAvailable,
             technicianEmailVerified
         );
-        if (user.getEffectiveRole() == UserRole.USER) {
-            List<String> disabled = user.getNotificationDisabledCategories();
-            resp.setNotificationDisabledCategories(
-                disabled == null || disabled.isEmpty() ? List.of() : new ArrayList<>(disabled)
-            );
-        }
-        return resp;
     }
 }
