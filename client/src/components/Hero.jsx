@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { getAuthToken } from '../api/http';
 import { getTopUsedResources } from '../api/resources';
+import { rememberPostLoginPath } from '../utils/authRedirect';
 
 const FEATURE_CARDS = [
   {
@@ -61,6 +63,21 @@ const Hero = () => {
     const id = window.setInterval(goNext, AUTO_ADVANCE_MS);
     return () => window.clearInterval(id);
   }, [paused, goNext]);
+
+  const goBookFromTopResource = useCallback(
+    (resourceId) => {
+      const target = resourceId
+        ? `/book-resource?resourceId=${encodeURIComponent(resourceId)}`
+        : '/resources';
+      if (!getAuthToken()) {
+        rememberPostLoginPath(target);
+        navigate('/signin', { state: { from: target } });
+        return;
+      }
+      navigate(target);
+    },
+    [navigate]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -307,7 +324,7 @@ const Hero = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => navigate('/resources')}
+                          onClick={() => goBookFromTopResource(item.resourceId)}
                           className="h-11 rounded-xl border-none bg-[#FA8112] text-base font-bold text-white shadow-[0_8px_20px_rgba(250,129,18,0.28)]"
                         >
                           Book Now

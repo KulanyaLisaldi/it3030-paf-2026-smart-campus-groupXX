@@ -5,8 +5,10 @@ import com.example.server.dto.resource.TopResourceResponse;
 import com.example.server.dto.resource.UpdateResourceRequest;
 import com.example.server.model.Booking;
 import com.example.server.model.Resource;
+import com.example.server.model.User;
 import com.example.server.repository.BookingRepo;
 import com.example.server.repository.ResourceRepo;
+import com.example.server.repository.UserRepo;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,7 +19,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
@@ -43,10 +44,14 @@ public class ResourceService {
 
     private final ResourceRepo resourceRepo;
     private final BookingRepo bookingRepo;
+    private final UserRepo userRepo;
+    private final NotificationService notificationService;
 
-    public ResourceService(ResourceRepo resourceRepo, BookingRepo bookingRepo) {
+    public ResourceService(ResourceRepo resourceRepo, BookingRepo bookingRepo, UserRepo userRepo, NotificationService notificationService) {
         this.resourceRepo = resourceRepo;
         this.bookingRepo = bookingRepo;
+        this.userRepo = userRepo;
+        this.notificationService = notificationService;
     }
 
     public Resource create(CreateResourceRequest request) throws IOException {
@@ -97,6 +102,7 @@ public class ResourceService {
         String status = safeTrim(rawStatus).toUpperCase(Locale.ROOT);
 
         validate(type, status, capacity);
+        validateAvailabilityFormat(availability);
 
         if (resourceRepo.findByCodeIgnoreCase(code).isPresent()) {
             throw new IllegalArgumentException("Resource code already exists");
@@ -196,13 +202,14 @@ public class ResourceService {
         validate(type, status, capacity);
 
         Resource resource = maybe.get();
+        String newAvailability = safeTrim(request.getAvailability());
+        validateAvailabilityFormat(newAvailability);
         resource.setName(safeTrim(request.getName()));
         resource.setType(type);
         resource.setCapacity(capacity);
         resource.setLocation(safeTrim(request.getLocation()));
         resource.setDescription(safeTrim(request.getDescription()));
         String oldAvailability = safeTrim(resource.getAvailability());
-        String newAvailability = safeTrim(request.getAvailability());
         resource.setAvailability(newAvailability);
         resource.setStatus(status);
         resource.setUpdatedAt(Instant.now());
@@ -239,13 +246,14 @@ public class ResourceService {
         validate(normalizedType, normalizedStatus, capacity);
 
         Resource resource = maybe.get();
+        String newAvailability = safeTrim(availability);
+        validateAvailabilityFormat(newAvailability);
         resource.setName(safeTrim(name));
         resource.setType(normalizedType);
         resource.setCapacity(capacity);
         resource.setLocation(safeTrim(location));
         resource.setDescription(safeTrim(description));
         String oldAvailability = safeTrim(resource.getAvailability());
-        String newAvailability = safeTrim(availability);
         resource.setAvailability(newAvailability);
         resource.setStatus(normalizedStatus);
 
@@ -343,6 +351,15 @@ public class ResourceService {
         }
     }
 
+    /** Ensures non-empty availability is HH:mm-HH:mm with start strictly before end. */
+    private void validateAvailabilityFormat(String rawAvailability) {
+        String value = safeTrim(rawAvailability);
+        if (value.isEmpty()) {
+            return;
+        }
+        parseAvailabilityWindow(value);
+    }
+
     private String safeTrim(String value) {
         return value == null ? "" : value.trim();
     }
@@ -353,6 +370,18 @@ public class ResourceService {
             return "";
         }
         return trimmed;
+    }
+
+    private Optional<String> resolveBookingOwnerUserId(Booking booking) {
+        String ownerRef = safeTrim(booking == null ? "" : booking.getCreatedBy());
+        if (ownerRef.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<User> byId = userRepo.findById(ownerRef);
+        if (byId.isPresent()) {
+            return Optional.ofNullable(byId.get().getId());
+        }
+        return userRepo.findByEmail(ownerRef.toLowerCase(Locale.ROOT)).map(User::getId);
     }
 
     private List<String> saveImages(MultipartFile[] images) throws IOException {
@@ -427,7 +456,20 @@ public class ResourceService {
                 String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
                 if ("PENDING".equals(status) || "APPROVED".equals(status)) {
                     booking.setStatus("CANCELLED");
-                    booking.setReviewReason("Cancelled due to updated resource availability window");
+                    String cancellationMessage = "We sincerely apologize for the inconvenience. Your booking has been cancelled due to maintenance requirements. Kindly reschedule your booking at your earliest convenience.\n\nThank you for your understanding.\n\nBest regards,\nAdmin";
+                    booking.setCancellationReason(cancellationMessage);
+                    booking.setReviewReason("");
+                    resolveBookingOwnerUserId(booking).ifPresent(userId ->
+                        notificationService.createAndPush(
+                            userId,
+                            "BOOKING_CANCELLED_BY_ADMIN",
+                            "Booking Cancelled",
+                            cancellationMessage,
+                            "BOOKING",
+                            safeTrim(booking.getId()),
+                            "/account/bookings"
+                        )
+                    );
                 }
             }
             booking.setUpdatedAt(Instant.now());
@@ -446,10 +488,8 @@ public class ResourceService {
         );
         List<Booking> changed = new java.util.ArrayList<>();
         List<Map<String, String>> conflicts = new java.util.ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
         for (Booking booking : candidates) {
-            boolean isFuture = isFutureBooking(booking, now);
-            boolean isOutside = isFuture && isOutsideWindow(booking, window);
+            boolean isOutside = isOutsideWindow(booking, window);
             boolean oldFlag = Boolean.TRUE.equals(booking.getOutsideAvailability());
             if (oldFlag != isOutside) {
                 booking.setOutsideAvailability(isOutside);
@@ -468,16 +508,6 @@ public class ResourceService {
             }
         }
         return new BookingConflictResult(conflicts.size(), conflicts, changed);
-    }
-
-    private boolean isFutureBooking(Booking booking, LocalDateTime now) {
-        try {
-            LocalDate date = LocalDate.parse(safeTrim(booking.getBookingDate()));
-            LocalTime start = LocalTime.parse(safeTrim(booking.getStartTime()));
-            return LocalDateTime.of(date, start).isAfter(now);
-        } catch (DateTimeParseException ex) {
-            return false;
-        }
     }
 
     private boolean isOutsideWindow(Booking booking, AvailabilityWindow window) {
