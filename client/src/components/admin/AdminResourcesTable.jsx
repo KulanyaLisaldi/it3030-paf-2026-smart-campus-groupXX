@@ -454,6 +454,10 @@ export default function AdminResourcesTable() {
       setCreateError("Capacity must be a valid number.");
       return;
     }
+    if (!Array.isArray(formData.resourceImageFiles) || formData.resourceImageFiles.length === 0) {
+      setCreateError("At least one resource image is required.");
+      return;
+    }
 
     const payload = new FormData();
     payload.append("code", formData.resourceCode.trim());
@@ -803,6 +807,7 @@ export default function AdminResourcesTable() {
                   type="file"
                   accept="image/*"
                   multiple
+                  required={formData.resourceImageFiles.length === 0}
                   style={{ ...filterInputStyle, height: "auto", padding: "10px" }}
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
