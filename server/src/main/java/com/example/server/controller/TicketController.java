@@ -66,9 +66,10 @@ public class TicketController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateTicket(
         @PathVariable("id") String id,
-        @Valid @RequestBody UpdateTicketRequest request
+        @Valid @RequestBody UpdateTicketRequest request,
+        Authentication authentication
     ) {
-        return ticketService.updateTicket(id, request)
+        return ticketService.updateTicket(id, request, authentication)
             .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Ticket updated successfully", "ticket", updated)))
             .orElseGet(() -> ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
@@ -77,8 +78,8 @@ public class TicketController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteTicket(@PathVariable("id") String id) {
-        boolean deleted = ticketDetailsService.deleteTicket(id);
+    public ResponseEntity<?> deleteTicket(@PathVariable("id") String id, Authentication authentication) {
+        boolean deleted = ticketDetailsService.deleteTicket(id, authentication);
         if (!deleted) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Ticket not found"));
         }
@@ -86,8 +87,8 @@ public class TicketController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getTicketDetails(@PathVariable("id") String id) {
-        return ticketDetailsService.getTicketDetails(id)
+    public ResponseEntity<?> getTicketDetails(@PathVariable("id") String id, Authentication authentication) {
+        return ticketDetailsService.getTicketDetails(id, authentication)
             .<ResponseEntity<?>>map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
@@ -116,9 +117,10 @@ public class TicketController {
     public ResponseEntity<?> updateTicketComment(
         @PathVariable("id") String id,
         @PathVariable("commentId") String commentId,
-        @Valid @RequestBody UpdateTicketCommentRequest request
+        @Valid @RequestBody UpdateTicketCommentRequest request,
+        Authentication authentication
     ) {
-        return ticketDetailsService.updateComment(id, commentId, request)
+        return ticketDetailsService.updateComment(id, commentId, request, authentication)
             .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of("message", "Comment updated successfully", "comment", updated)))
             .orElseGet(() -> ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
@@ -129,9 +131,10 @@ public class TicketController {
     @DeleteMapping("/{id}/comments/{commentId}")
     public ResponseEntity<?> deleteTicketComment(
         @PathVariable("id") String id,
-        @PathVariable("commentId") String commentId
+        @PathVariable("commentId") String commentId,
+        Authentication authentication
     ) {
-        boolean deleted = ticketDetailsService.deleteComment(id, commentId);
+        boolean deleted = ticketDetailsService.deleteComment(id, commentId, authentication);
         if (!deleted) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Ticket or comment not found"));
         }

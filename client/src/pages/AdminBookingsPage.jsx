@@ -875,14 +875,27 @@ export default function AdminBookingsPage() {
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                     {row.outsideAvailability ? (
                       <>
-                        {["APPROVED", "PENDING"].includes(String(row.status || "").toUpperCase()) && (
-                          <button type="button" disabled={busyId === row.id} onClick={() => openAction("cancel", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#111827", color: "#fff", textAlign: "center" }}>
-                            Cancel
-                          </button>
+                        {String(row.status || "").toUpperCase() === "CANCELLED" ? (
+                          <>
+                            <button type="button" onClick={() => setViewRow(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#fff", border: "1px solid #FFDDB8", color: "#0f172a", textAlign: "center" }}>
+                              View
+                            </button>
+                            <button type="button" disabled={busyId === row.id} onClick={() => openAction("delete", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#dc2626", color: "#fff", textAlign: "center" }}>
+                              Delete
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {["APPROVED", "PENDING"].includes(String(row.status || "").toUpperCase()) && (
+                              <button type="button" disabled={busyId === row.id} onClick={() => openAction("cancel", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#111827", color: "#fff", textAlign: "center" }}>
+                                Cancel
+                              </button>
+                            )}
+                            <button type="button" disabled={busyId === row.id} onClick={() => openRescheduleDrawer(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#2563eb", color: "#fff", textAlign: "center" }}>
+                              Reschedule
+                            </button>
+                          </>
                         )}
-                        <button type="button" disabled={busyId === row.id} onClick={() => openRescheduleDrawer(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#2563eb", color: "#fff", textAlign: "center" }}>
-                          Reschedule
-                        </button>
                       </>
                     ) : (
                       <>

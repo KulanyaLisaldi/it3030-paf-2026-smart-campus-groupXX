@@ -187,7 +187,19 @@ public class TicketChatService {
 
     private boolean isTicketOwner(Ticket ticket, String userId) {
         String createdBy = ticket.getCreatedBy();
-        return createdBy != null && !createdBy.isBlank() && createdBy.trim().equals(userId);
+        if (createdBy == null || createdBy.isBlank()) {
+            return false;
+        }
+        String ownerRef = createdBy.trim();
+        if (ownerRef.equals(userId)) {
+            return true;
+        }
+        Optional<User> user = userRepo.findById(userId);
+        if (user.isEmpty()) {
+            return false;
+        }
+        String email = user.get().getEmail();
+        return email != null && !email.isBlank() && ownerRef.equalsIgnoreCase(email.trim());
     }
 
     private boolean isAssignedToTechnician(Ticket ticket, String userId) {

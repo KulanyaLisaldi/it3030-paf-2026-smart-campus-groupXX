@@ -16,6 +16,7 @@ import com.example.server.repository.UserRepo;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
 
 @Service
 public class TicketDetailsService {
@@ -51,13 +53,14 @@ public class TicketDetailsService {
         this.notificationService = notificationService;
     }
 
-    public Optional<TicketDetailsResponse> getTicketDetails(String ticketId) {
+    public Optional<TicketDetailsResponse> getTicketDetails(String ticketId, Authentication authentication) {
         Optional<Ticket> ticket = ticketRepo.findById(ticketId);
         if (ticket.isEmpty()) {
             return Optional.empty();
         }
 
         Ticket entity = ticket.get();
+        ensureCanAccessTicket(entity, authentication);
         List<TicketComment> comments = commentRepo.findByTicketIdOrderByCreatedAtDesc(ticketId);
         AssignedTechnicianDetails assignee = resolveAssignedTechnician(entity);
         return Optional.of(new TicketDetailsResponse(entity, comments, assignee));
@@ -133,13 +136,14 @@ public class TicketDetailsService {
         if (ticket.isEmpty()) {
             return Optional.empty();
         }
+        ensureCanAccessTicket(ticket.get(), authentication);
 
         validateCommentContent(request.getContent());
 
         TicketComment comment = new TicketComment();
         comment.setTicketId(ticketId);
         comment.setContent(request.getContent().trim());
-        comment.setCreatedBy(request.getCreatedBy().trim());
+        comment.setCreatedBy(resolveActorLabel(authentication, request.getCreatedBy()));
         comment.setCreatedAt(Instant.now());
 
         TicketComment saved = commentRepo.save(comment);
@@ -148,11 +152,12 @@ public class TicketDetailsService {
         return Optional.of(saved);
     }
 
-    public Optional<TicketComment> updateComment(String ticketId, String commentId, UpdateTicketCommentRequest request) {
+    public Optional<TicketComment> updateComment(String ticketId, String commentId, UpdateTicketCommentRequest request, Authentication authentication) {
         Optional<Ticket> ticket = ticketRepo.findById(ticketId);
         if (ticket.isEmpty()) {
             return Optional.empty();
         }
+        ensureCanAccessTicket(ticket.get(), authentication);
 
         Optional<TicketComment> maybeComment = commentRepo.findById(commentId);
         if (maybeComment.isEmpty()) {
@@ -169,11 +174,12 @@ public class TicketDetailsService {
         return Optional.of(commentRepo.save(comment));
     }
 
-    public boolean deleteComment(String ticketId, String commentId) {
+    public boolean deleteComment(String ticketId, String commentId, Authentication authentication) {
         Optional<Ticket> ticket = ticketRepo.findById(ticketId);
         if (ticket.isEmpty()) {
             return false;
         }
+        ensureCanAccessTicket(ticket.get(), authentication);
 
         Optional<TicketComment> maybeComment = commentRepo.findById(commentId);
         if (maybeComment.isEmpty()) {
@@ -189,11 +195,12 @@ public class TicketDetailsService {
         return true;
     }
 
-    public boolean deleteTicket(String ticketId) {
+    public boolean deleteTicket(String ticketId, Authentication authentication) {
         Optional<Ticket> maybeTicket = ticketRepo.findById(ticketId);
         if (maybeTicket.isEmpty()) {
             return false;
         }
+        ensureCanDeleteTicket(maybeTicket.get(), authentication);
 
         commentRepo.deleteByTicketId(ticketId);
         ticketChatRepo.deleteByTicketId(ticketId);
@@ -212,6 +219,84 @@ public class TicketDetailsService {
         if (trimmed.matches(".*(.)\\1{3,}.*")) {
             throw new IllegalArgumentException("Comment cannot repeat the same character many times");
         }
+    }
+
+    private void ensureCanAccessTicket(Ticket ticket, Authentication authentication) {
+        if (hasRole(authentication, "ROLE_ADMIN")) {
+            return;
+        }
+        String actorUserId = safeTrim(authentication == null ? "" : authentication.getName());
+        if (actorUserId.isEmpty()) {
+            throw new ResponseStatusException(FORBIDDEN, "Forbidden");
+        }
+        if (isTicketOwner(ticket, actorUserId) || isAssignedTechnician(ticket, actorUserId)) {
+            return;
+        }
+        throw new ResponseStatusException(FORBIDDEN, "Forbidden");
+    }
+
+    private void ensureCanDeleteTicket(Ticket ticket, Authentication authentication) {
+        if (hasRole(authentication, "ROLE_ADMIN")) {
+            return;
+        }
+        String actorUserId = safeTrim(authentication == null ? "" : authentication.getName());
+        if (actorUserId.isEmpty() || !isTicketOwner(ticket, actorUserId)) {
+            throw new ResponseStatusException(FORBIDDEN, "Forbidden");
+        }
+    }
+
+    private boolean isAssignedTechnician(Ticket ticket, String actorUserId) {
+        String assigneeRef = safeTrim(ticket == null ? "" : ticket.getAssignedTechnicianId());
+        if (assigneeRef.isEmpty()) {
+            return false;
+        }
+        if (assigneeRef.equals(actorUserId)) {
+            return true;
+        }
+        Optional<User> actor = userRepo.findById(actorUserId);
+        if (actor.isEmpty()) {
+            return false;
+        }
+        String actorEmail = safeTrim(actor.get().getEmail());
+        return !actorEmail.isEmpty() && assigneeRef.equalsIgnoreCase(actorEmail);
+    }
+
+    private boolean isTicketOwner(Ticket ticket, String actorUserId) {
+        String ownerRef = safeTrim(ticket == null ? "" : ticket.getCreatedBy());
+        if (ownerRef.isEmpty()) {
+            return false;
+        }
+        if (ownerRef.equals(actorUserId)) {
+            return true;
+        }
+        Optional<User> actor = userRepo.findById(actorUserId);
+        if (actor.isEmpty()) {
+            return false;
+        }
+        String actorEmail = safeTrim(actor.get().getEmail());
+        return !actorEmail.isEmpty() && ownerRef.equalsIgnoreCase(actorEmail);
+    }
+
+    private String resolveActorLabel(Authentication authentication, String fallback) {
+        String actorUserId = safeTrim(authentication == null ? "" : authentication.getName());
+        if (actorUserId.isEmpty()) {
+            String trimmedFallback = safeTrim(fallback);
+            return trimmedFallback.isEmpty() ? "Unknown" : trimmedFallback;
+        }
+        Optional<User> actor = userRepo.findById(actorUserId);
+        if (actor.isPresent()) {
+            String first = safeTrim(actor.get().getFirstName());
+            String last = safeTrim(actor.get().getLastName());
+            String fullName = (first + " " + last).trim();
+            if (!fullName.isEmpty()) {
+                return fullName;
+            }
+            String email = safeTrim(actor.get().getEmail());
+            if (!email.isEmpty()) {
+                return email;
+            }
+        }
+        return actorUserId;
     }
 
     private void notifyCommentParties(Ticket ticket, TicketComment comment, Authentication authentication) {
