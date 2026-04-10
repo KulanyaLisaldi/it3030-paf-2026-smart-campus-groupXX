@@ -4,6 +4,7 @@ import com.example.server.dto.admin.CreateTechnicianRequest;
 import com.example.server.dto.admin.CreateStaffUserRequest;
 import com.example.server.dto.auth.AuthResponse;
 import com.example.server.dto.auth.AuthUserResponse;
+import com.example.server.dto.auth.StaffSignInResult;
 import com.example.server.dto.auth.ChangePasswordRequest;
 import com.example.server.dto.auth.SignInRequest;
 import com.example.server.dto.auth.UpdateProfileRequest;
@@ -29,6 +30,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -41,6 +43,8 @@ import java.util.UUID;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.Base64;
 
 @Service
 public class AuthService {
@@ -55,6 +59,7 @@ public class AuthService {
     private final TicketChatRepo ticketChatRepo;
     private final PasswordEncoder passwordEncoder;
     private final PasswordOtpEmailService passwordOtpEmailService;
+    private final TechnicianVerificationEmailService technicianVerificationEmailService;
     private final JwtService jwtService;
     private final NotificationService notificationService;
 
@@ -65,6 +70,7 @@ public class AuthService {
         TicketChatRepo ticketChatRepo,
         PasswordEncoder passwordEncoder,
         PasswordOtpEmailService passwordOtpEmailService,
+        TechnicianVerificationEmailService technicianVerificationEmailService,
         JwtService jwtService,
         NotificationService notificationService
     ) {
@@ -74,6 +80,7 @@ public class AuthService {
         this.ticketChatRepo = ticketChatRepo;
         this.passwordEncoder = passwordEncoder;
         this.passwordOtpEmailService = passwordOtpEmailService;
+        this.technicianVerificationEmailService = technicianVerificationEmailService;
         this.jwtService = jwtService;
         this.notificationService = notificationService;
     }
@@ -82,39 +89,98 @@ public class AuthService {
      * Email/password sign-in for {@link UserRole#ADMIN} and {@link UserRole#TECHNICIAN} only.
      * Regular {@link UserRole#USER} accounts must use Google.
      */
-    public Optional<AuthResponse> login(SignInRequest request) {
+    public StaffSignInResult staffLogin(SignInRequest request) {
         String email = normalizeEmail(request.getEmail());
         Optional<User> maybeUser = userRepo.findByEmail(email);
 
         if (maybeUser.isEmpty()) {
-            return Optional.empty();
+            return StaffSignInResult.invalidCredentials();
         }
 
         User user = maybeUser.get();
         if (user.isDisabled()) {
-            return Optional.empty();
+            return StaffSignInResult.invalidCredentials();
         }
         UserRole effective = user.getEffectiveRole();
         if (effective != UserRole.ADMIN && effective != UserRole.TECHNICIAN) {
-            return Optional.empty();
+            return StaffSignInResult.invalidCredentials();
         }
 
         String hash = user.getPasswordHash();
         if (hash == null || hash.isBlank()) {
-            return Optional.empty();
+            return StaffSignInResult.invalidCredentials();
         }
         if (!passwordEncoder.matches(request.getPassword(), hash)) {
-            return Optional.empty();
+            return StaffSignInResult.invalidCredentials();
         }
 
-        // Record successful sign-in
+        if (effective == UserRole.TECHNICIAN && Boolean.FALSE.equals(user.getTechnicianEmailVerified())) {
+            return StaffSignInResult.technicianEmailNotVerified();
+        }
+
         user.setLastLoginAt(Instant.now());
         userRepo.save(user);
 
         AuthUserResponse profile = toUserResponse(user);
         AuthResponse response = new AuthResponse("Sign in successful", profile);
         response.setToken(jwtService.generateToken(user));
-        return Optional.of(response);
+        return StaffSignInResult.success(response);
+    }
+
+    /**
+     * Completes technician email verification from the link in the invitation email.
+     */
+    public void verifyTechnicianEmailFromToken(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing verification token");
+        }
+        String tokenHash = sha256Hex(rawToken.trim());
+        Optional<User> maybe = userRepo.findByTechnicianVerificationTokenHash(tokenHash);
+        if (maybe.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired verification link");
+        }
+        User user = maybe.get();
+        if (user.getEffectiveRole() != UserRole.TECHNICIAN) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid verification link");
+        }
+        if (user.getTechnicianVerificationExpiresAt() != null && Instant.now().isAfter(user.getTechnicianVerificationExpiresAt())) {
+            user.setTechnicianVerificationTokenHash(null);
+            user.setTechnicianVerificationExpiresAt(null);
+            userRepo.save(user);
+            throw new ResponseStatusException(HttpStatus.GONE, "Verification link has expired. Ask an administrator to create your account again or contact support.");
+        }
+        user.setTechnicianEmailVerified(true);
+        user.setTechnicianVerificationTokenHash(null);
+        user.setTechnicianVerificationExpiresAt(null);
+        userRepo.save(user);
+    }
+
+    private User persistNewTechnicianWithVerificationEmail(User user, String initialPasswordPlain) {
+        String rawToken = randomUrlSafeToken();
+        user.setTechnicianEmailVerified(false);
+        user.setTechnicianVerificationTokenHash(sha256Hex(rawToken));
+        user.setTechnicianVerificationExpiresAt(Instant.now().plus(48, ChronoUnit.HOURS));
+        User saved = userRepo.save(user);
+        try {
+            technicianVerificationEmailService.sendVerificationEmail(
+                saved.getEmail(),
+                saved.getFirstName(),
+                rawToken,
+                initialPasswordPlain
+            );
+        } catch (Exception e) {
+            userRepo.deleteById(saved.getId());
+            throw new IllegalStateException(
+                "Could not send verification email. Check SMTP settings (MAIL_HOST, MAIL_USERNAME, etc.) and try again."
+            );
+        }
+        return saved;
+    }
+
+    private static String randomUrlSafeToken() {
+        byte[] buf = new byte[32];
+        new SecureRandom().nextBytes(buf);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(buf);
     }
 
     public AuthUserResponse createTechnician(CreateTechnicianRequest request) {
@@ -136,7 +202,7 @@ public class AuthService {
         List<com.example.server.model.TechnicianCategory> specialties = normalizedTechnicianCategories(request);
         user.setTechnicianCategory(specialties.isEmpty() ? request.getCategory() : specialties.get(0));
         user.setTechnicianCategories(specialties);
-        User saved = userRepo.save(user);
+        User saved = persistNewTechnicianWithVerificationEmail(user, request.getPassword());
         return toUserResponse(saved);
     }
 
@@ -168,11 +234,12 @@ public class AuthService {
             }
             user.setTechnicianCategory(specialties.get(0));
             user.setTechnicianCategories(specialties);
-        } else {
-            user.setTechnicianCategory(null);
-            user.setTechnicianCategories(null);
-            user.setTechnicianAvailable(null);
+            User saved = persistNewTechnicianWithVerificationEmail(user, request.getPassword());
+            return toUserResponse(saved);
         }
+        user.setTechnicianCategory(null);
+        user.setTechnicianCategories(null);
+        user.setTechnicianAvailable(null);
         User saved = userRepo.save(user);
         return toUserResponse(saved);
     }
@@ -753,6 +820,12 @@ public class AuthService {
             technicianAvailable = user.getTechnicianAvailable() == null || user.getTechnicianAvailable();
         }
         String provider = (user.getGoogleSubject() != null && !user.getGoogleSubject().isBlank()) ? "Google OAuth" : "Email";
+        Boolean technicianEmailVerified = null;
+        if (user.getEffectiveRole() == UserRole.TECHNICIAN) {
+            technicianEmailVerified = user.getTechnicianEmailVerified() == null
+                ? Boolean.TRUE
+                : user.getTechnicianEmailVerified();
+        }
         return new AuthUserResponse(
             user.getId(),
             user.getFirstName(),
@@ -764,7 +837,8 @@ public class AuthService {
             user.getProfileImageUrl(),
             category,
             categories,
-            technicianAvailable
+            technicianAvailable,
+            technicianEmailVerified
         );
     }
 }

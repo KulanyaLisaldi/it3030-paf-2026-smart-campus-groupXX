@@ -38,6 +38,19 @@ const SignIn = () => {
     navigateAfterAuth(user, navigate);
   }, [navigate]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const verificationError = params.get("verificationError");
+    if (verificationError) {
+      setInfoMessage("");
+      setError(
+        verificationError === "expired"
+          ? "This verification link has expired. Ask an administrator to invite you again."
+          : "This verification link is invalid or has already been used."
+      );
+    }
+  }, [location.search]);
+
   const shellStyle = {
     minHeight: '100vh',
     display: 'flex',

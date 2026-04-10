@@ -68,9 +68,14 @@ public class AdminUsersController {
         }
         try {
             authService.createStaffUser(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(java.util.Map.of("message", "User created"));
+            String msg = request.getRole() == UserRole.TECHNICIAN
+                ? "User created. A verification email was sent to the technician."
+                : "User created";
+            return ResponseEntity.status(HttpStatus.CREATED).body(java.util.Map.of("message", msg));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(java.util.Map.of("message", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Map.of("message", ex.getMessage()));
         }
     }
 
@@ -83,6 +88,20 @@ public class AdminUsersController {
         String lastName = u.getLastName() == null ? "" : u.getLastName().trim();
         String name = (firstName + " " + lastName).trim();
 
+        String technicianEmailVerified = "—";
+        if ("Google OAuth".equals(provider)) {
+            technicianEmailVerified = "Yes";
+        } else if (u.getEffectiveRole() == UserRole.TECHNICIAN) {
+            Boolean v = u.getTechnicianEmailVerified();
+            if (Boolean.TRUE.equals(v)) {
+                technicianEmailVerified = "Yes";
+            } else if (Boolean.FALSE.equals(v)) {
+                technicianEmailVerified = "No";
+            } else {
+                technicianEmailVerified = "Yes";
+            }
+        }
+
         return new AdminUserRowResponse(
             u.getId(),
             firstName,
@@ -94,7 +113,8 @@ public class AdminUsersController {
             accountStatus,
             provider,
             u.getCreatedAt(),
-            u.getLastLoginAt()
+            u.getLastLoginAt(),
+            technicianEmailVerified
         );
     }
 

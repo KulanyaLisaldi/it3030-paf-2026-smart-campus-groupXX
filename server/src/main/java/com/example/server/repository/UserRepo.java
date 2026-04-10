@@ -18,4 +18,6 @@ public interface UserRepo extends MongoRepository<User, String> {
     Optional<User> findByGoogleSubject(String googleSubject);
 
     List<User> findByRole(UserRole role);
+
+    Optional<User> findByTechnicianVerificationTokenHash(String technicianVerificationTokenHash);
 }

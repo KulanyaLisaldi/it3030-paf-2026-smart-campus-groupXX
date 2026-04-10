@@ -1,5 +1,7 @@
 package com.example.server.dto.admin;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.Instant;
 
 public class AdminUserRowResponse {
@@ -15,6 +17,8 @@ public class AdminUserRowResponse {
     private String provider;
     private Instant createdDate;
     private Instant lastLogin;
+    /** For TECHNICIAN: "Yes" / "No"; "—" for other roles. */
+    private String technicianEmailVerified;
 
     public AdminUserRowResponse() {
     }
@@ -30,7 +34,8 @@ public class AdminUserRowResponse {
         String accountStatus,
         String provider,
         Instant createdDate,
-        Instant lastLogin
+        Instant lastLogin,
+        String technicianEmailVerified
     ) {
         this.userId = userId;
         this.firstName = firstName;
@@ -43,6 +48,7 @@ public class AdminUserRowResponse {
         this.provider = provider;
         this.createdDate = createdDate;
         this.lastLogin = lastLogin;
+        this.technicianEmailVerified = technicianEmailVerified;
     }
 
     public String getUserId() {
@@ -87,6 +93,15 @@ public class AdminUserRowResponse {
 
     public Instant getLastLogin() {
         return lastLogin;
+    }
+
+    @JsonProperty("technicianEmailVerified")
+    public String getTechnicianEmailVerified() {
+        return technicianEmailVerified;
+    }
+
+    public void setTechnicianEmailVerified(String technicianEmailVerified) {
+        this.technicianEmailVerified = technicianEmailVerified;
     }
 }
 

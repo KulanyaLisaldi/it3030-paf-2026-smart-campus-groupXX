@@ -167,6 +167,16 @@ function formatDate(value) {
   }
 }
 
+/** Google accounts are verified by Google; email technicians use server field (Yes/No). */
+function emailVerifiedDisplay(u) {
+  if (!u) return "—";
+  const provider = String(u.provider || "").trim().toLowerCase();
+  if (provider.includes("google")) return "Yes";
+  const v = u.technicianEmailVerified;
+  if (v === "Yes" || v === "No") return v;
+  return "—";
+}
+
 function toDateSafe(value) {
   if (!value) return null;
   const d = new Date(value);
@@ -950,6 +960,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                   <th style={thStyle}>Name</th>
                   <th style={thStyle}>Email</th>
                   <th style={thStyle}>Role</th>
+                  <th style={thStyle}>Email verified</th>
                   <th style={thStyle}>Account Status</th>
                   <th style={thStyle}>Provider</th>
                   <th style={thStyle}>Created Date</th>
@@ -960,7 +971,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td style={tdStyle} colSpan={8}>
+                    <td style={tdStyle} colSpan={9}>
                       No users found.
                     </td>
                   </tr>
@@ -977,6 +988,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                     <td style={tdStyle}>
                       <Badge text={u.role || "USER"} style={roleBadgeStyle(u.role)} />
                     </td>
+                    <td style={tdStyle}>{emailVerifiedDisplay(u)}</td>
                     <td style={tdStyle}>
                       <Badge
                         text={(u.accountStatus || "").toUpperCase() === "DISABLED" ? "Suspended" : "Active"}
@@ -1363,6 +1375,12 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               }}
             >
               <div><strong style={{ color: "#0f172a" }}>Email:</strong> {detailsUser.email || "—"}</div>
+              {String(detailsUser.role || "").toUpperCase() === "TECHNICIAN" ||
+              String(detailsUser.provider || "").toLowerCase().includes("google") ? (
+                <div>
+                  <strong style={{ color: "#0f172a" }}>Email verified:</strong> {emailVerifiedDisplay(detailsUser)}
+                </div>
+              ) : null}
               <div><strong style={{ color: "#0f172a" }}>Provider:</strong> {detailsUser.provider || "—"}</div>
               <div><strong style={{ color: "#0f172a" }}>Created date:</strong> {formatDate(detailsUser.createdDate) || "—"}</div>
               <div><strong style={{ color: "#0f172a" }}>Last login:</strong> {formatDate(detailsUser.lastLogin) || "—"}</div>

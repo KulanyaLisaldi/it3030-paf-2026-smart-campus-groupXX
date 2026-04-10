@@ -85,7 +85,11 @@ export default function AdminUsersPage() {
         category: selectedRole === "TECHNICIAN" ? toApiTechnicianCategory(primaryCategoryForApi(selectedCategories)) : null,
         categories: selectedRole === "TECHNICIAN" ? allCategoriesForApi(selectedCategories) : [],
       });
-      setMessage(`${selectedRole === "ADMIN" ? "Admin" : "Technician"} created.`);
+      setMessage(
+        selectedRole === "ADMIN"
+          ? "Admin created."
+          : "Technician created. A verification email was sent to their address — they must verify before signing in."
+      );
       setUsersTableRev((n) => n + 1);
       setAddUserModalOpen(false);
     } catch (err) {

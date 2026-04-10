@@ -2500,7 +2500,9 @@ function AdminTechnicianForm() {
         password: techPassword,
         category: toApiTechnicianCategory(techCategory),
       });
-      setTechMessage("Technician created. They can sign in with email and password.");
+      setTechMessage(
+        "Technician created. A verification email was sent — they must verify before signing in."
+      );
       setTechFirstName("");
       setTechLastName("");
       setTechEmail("");
