@@ -16,6 +16,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.HashSet;
@@ -35,6 +39,7 @@ public class ResourceService {
     private static final List<String> ALLOWED_STATUS = List.of("ACTIVE", "OUT_OF_SERVICE");
     private static final Set<String> COUNTED_BOOKING_STATUSES = Set.of("PENDING", "APPROVED", "CHECKED_IN");
     private static final int MAX_IMAGES = 3;
+    private static final List<String> ACTIVE_BOOKING_STATUSES = List.of("PENDING", "APPROVED", "CHECKED_IN");
 
     private final ResourceRepo resourceRepo;
     private final BookingRepo bookingRepo;
@@ -179,7 +184,7 @@ public class ResourceService {
         }).toList();
     }
 
-    public Optional<Resource> update(String id, UpdateResourceRequest request) {
+    public Optional<AvailabilityUpdateResult> update(String id, UpdateResourceRequest request) {
         Optional<Resource> maybe = resourceRepo.findById(id);
         if (maybe.isEmpty()) {
             return Optional.empty();
@@ -196,13 +201,22 @@ public class ResourceService {
         resource.setCapacity(capacity);
         resource.setLocation(safeTrim(request.getLocation()));
         resource.setDescription(safeTrim(request.getDescription()));
-        resource.setAvailability(safeTrim(request.getAvailability()));
+        String oldAvailability = safeTrim(resource.getAvailability());
+        String newAvailability = safeTrim(request.getAvailability());
+        resource.setAvailability(newAvailability);
         resource.setStatus(status);
         resource.setUpdatedAt(Instant.now());
-        return Optional.of(resourceRepo.save(resource));
+        Resource savedResource = resourceRepo.save(resource);
+        BookingConflictResult bookingConflictResult = applyAvailabilityRule(
+            safeTrim(savedResource.getId()),
+            oldAvailability,
+            newAvailability,
+            safeTrim(request.getConflictAction())
+        );
+        return Optional.of(new AvailabilityUpdateResult(savedResource, oldAvailability, newAvailability, bookingConflictResult));
     }
 
-    public Optional<Resource> updateWithImage(
+    public Optional<AvailabilityUpdateResult> updateWithImage(
         String id,
         String name,
         String type,
@@ -212,7 +226,8 @@ public class ResourceService {
         String availability,
         String status,
         MultipartFile[] images,
-        List<String> keptImageUrls
+        List<String> keptImageUrls,
+        String conflictAction
     ) throws IOException {
         Optional<Resource> maybe = resourceRepo.findById(id);
         if (maybe.isEmpty()) {
@@ -229,7 +244,9 @@ public class ResourceService {
         resource.setCapacity(capacity);
         resource.setLocation(safeTrim(location));
         resource.setDescription(safeTrim(description));
-        resource.setAvailability(safeTrim(availability));
+        String oldAvailability = safeTrim(resource.getAvailability());
+        String newAvailability = safeTrim(availability);
+        resource.setAvailability(newAvailability);
         resource.setStatus(normalizedStatus);
 
         List<String> existing = existingImageUrls(resource);
@@ -259,7 +276,32 @@ public class ResourceService {
         resource.setImageUrl(finalImages.isEmpty() ? "" : finalImages.get(0));
 
         resource.setUpdatedAt(Instant.now());
-        return Optional.of(resourceRepo.save(resource));
+        Resource savedResource = resourceRepo.save(resource);
+        BookingConflictResult bookingConflictResult = applyAvailabilityRule(
+            safeTrim(savedResource.getId()),
+            oldAvailability,
+            newAvailability,
+            safeTrim(conflictAction)
+        );
+        return Optional.of(new AvailabilityUpdateResult(savedResource, oldAvailability, newAvailability, bookingConflictResult));
+    }
+
+    public Optional<AvailabilityPreviewResult> previewAvailabilityConflicts(String id, String proposedAvailability) {
+        Optional<Resource> maybe = resourceRepo.findById(id);
+        if (maybe.isEmpty()) {
+            return Optional.empty();
+        }
+        Resource resource = maybe.get();
+        String oldAvailability = safeTrim(resource.getAvailability());
+        String newAvailability = safeTrim(proposedAvailability);
+        BookingConflictResult bookingConflictResult = evaluateAvailabilityConflicts(safeTrim(resource.getId()), newAvailability);
+        return Optional.of(new AvailabilityPreviewResult(
+            safeTrim(resource.getId()),
+            oldAvailability,
+            newAvailability,
+            bookingConflictResult.affectedCount,
+            bookingConflictResult.conflictingBookings
+        ));
     }
 
     public Optional<Resource> updateStatus(String id, String rawStatus) {
@@ -366,5 +408,183 @@ public class ResourceService {
             return List.of();
         }
         return List.of(single);
+    }
+
+    private BookingConflictResult applyAvailabilityRule(
+        String resourceId,
+        String oldAvailability,
+        String newAvailability,
+        String conflictActionRaw
+    ) {
+        BookingConflictResult result = evaluateAvailabilityConflicts(resourceId, newAvailability);
+        String conflictAction = safeTrim(conflictActionRaw).toUpperCase(Locale.ROOT);
+        boolean cancelConflicts = "CANCEL_CONFLICTING".equals(conflictAction);
+        if (result.changedBookings.isEmpty()) {
+            return result;
+        }
+        for (Booking booking : result.changedBookings) {
+            if (cancelConflicts && Boolean.TRUE.equals(booking.getOutsideAvailability())) {
+                String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
+                if ("PENDING".equals(status) || "APPROVED".equals(status)) {
+                    booking.setStatus("CANCELLED");
+                    booking.setReviewReason("Cancelled due to updated resource availability window");
+                }
+            }
+            booking.setUpdatedAt(Instant.now());
+        }
+        bookingRepo.saveAll(result.changedBookings);
+        return result;
+    }
+
+    private BookingConflictResult evaluateAvailabilityConflicts(String resourceId, String newAvailability) {
+        AvailabilityWindow window = parseAvailabilityWindow(newAvailability);
+        LocalDate today = LocalDate.now();
+        List<Booking> candidates = bookingRepo.findByResourceIdAndStatusInAndBookingDateGreaterThanEqual(
+            resourceId,
+            ACTIVE_BOOKING_STATUSES,
+            today.toString()
+        );
+        List<Booking> changed = new java.util.ArrayList<>();
+        List<Map<String, String>> conflicts = new java.util.ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        for (Booking booking : candidates) {
+            boolean isFuture = isFutureBooking(booking, now);
+            boolean isOutside = isFuture && isOutsideWindow(booking, window);
+            boolean oldFlag = Boolean.TRUE.equals(booking.getOutsideAvailability());
+            if (oldFlag != isOutside) {
+                booking.setOutsideAvailability(isOutside);
+                changed.add(booking);
+            }
+            if (isOutside) {
+                conflicts.add(Map.of(
+                    "bookingId", safeTrim(booking.getId()),
+                    "bookingDate", safeTrim(booking.getBookingDate()),
+                    "startTime", safeTrim(booking.getStartTime()),
+                    "endTime", safeTrim(booking.getEndTime()),
+                    "status", safeTrim(booking.getStatus()),
+                    "resourceName", safeTrim(booking.getResourceName()),
+                    "createdBy", safeTrim(booking.getCreatedBy())
+                ));
+            }
+        }
+        return new BookingConflictResult(conflicts.size(), conflicts, changed);
+    }
+
+    private boolean isFutureBooking(Booking booking, LocalDateTime now) {
+        try {
+            LocalDate date = LocalDate.parse(safeTrim(booking.getBookingDate()));
+            LocalTime start = LocalTime.parse(safeTrim(booking.getStartTime()));
+            return LocalDateTime.of(date, start).isAfter(now);
+        } catch (DateTimeParseException ex) {
+            return false;
+        }
+    }
+
+    private boolean isOutsideWindow(Booking booking, AvailabilityWindow window) {
+        try {
+            LocalTime start = LocalTime.parse(safeTrim(booking.getStartTime()));
+            LocalTime end = LocalTime.parse(safeTrim(booking.getEndTime()));
+            return start.isBefore(window.start) || end.isAfter(window.end);
+        } catch (DateTimeParseException ex) {
+            return false;
+        }
+    }
+
+    private AvailabilityWindow parseAvailabilityWindow(String rawAvailability) {
+        String value = safeTrim(rawAvailability);
+        if (value.isEmpty()) {
+            return new AvailabilityWindow(LocalTime.parse("08:00"), LocalTime.parse("18:00"));
+        }
+        String[] parts = value.split("-");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Availability must be in HH:mm-HH:mm format");
+        }
+        try {
+            LocalTime start = LocalTime.parse(safeTrim(parts[0]));
+            LocalTime end = LocalTime.parse(safeTrim(parts[1]));
+            if (!start.isBefore(end)) {
+                throw new IllegalArgumentException("Availability end time must be later than start time");
+            }
+            return new AvailabilityWindow(start, end);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("Availability must be in HH:mm-HH:mm format");
+        }
+    }
+
+    private static final class AvailabilityWindow {
+        private final LocalTime start;
+        private final LocalTime end;
+
+        private AvailabilityWindow(LocalTime start, LocalTime end) {
+            this.start = start;
+            this.end = end;
+        }
+    }
+
+    private static final class BookingConflictResult {
+        private final int affectedCount;
+        private final List<Map<String, String>> conflictingBookings;
+        private final List<Booking> changedBookings;
+
+        private BookingConflictResult(int affectedCount, List<Map<String, String>> conflictingBookings, List<Booking> changedBookings) {
+            this.affectedCount = affectedCount;
+            this.conflictingBookings = conflictingBookings;
+            this.changedBookings = changedBookings;
+        }
+    }
+
+    public static final class AvailabilityPreviewResult {
+        private final String resourceId;
+        private final String oldAvailability;
+        private final String newAvailability;
+        private final int affectedBookings;
+        private final List<Map<String, String>> conflictingBookings;
+
+        public AvailabilityPreviewResult(
+            String resourceId,
+            String oldAvailability,
+            String newAvailability,
+            int affectedBookings,
+            List<Map<String, String>> conflictingBookings
+        ) {
+            this.resourceId = resourceId;
+            this.oldAvailability = oldAvailability;
+            this.newAvailability = newAvailability;
+            this.affectedBookings = affectedBookings;
+            this.conflictingBookings = conflictingBookings;
+        }
+
+        public String getResourceId() { return resourceId; }
+        public String getOldAvailability() { return oldAvailability; }
+        public String getNewAvailability() { return newAvailability; }
+        public int getAffectedBookings() { return affectedBookings; }
+        public List<Map<String, String>> getConflictingBookings() { return conflictingBookings; }
+    }
+
+    public static final class AvailabilityUpdateResult {
+        private final Resource resource;
+        private final String oldAvailability;
+        private final String newAvailability;
+        private final int affectedBookings;
+        private final List<Map<String, String>> conflictingBookings;
+
+        public AvailabilityUpdateResult(
+            Resource resource,
+            String oldAvailability,
+            String newAvailability,
+            BookingConflictResult bookingConflictResult
+        ) {
+            this.resource = resource;
+            this.oldAvailability = oldAvailability;
+            this.newAvailability = newAvailability;
+            this.affectedBookings = bookingConflictResult.affectedCount;
+            this.conflictingBookings = bookingConflictResult.conflictingBookings;
+        }
+
+        public Resource getResource() { return resource; }
+        public String getOldAvailability() { return oldAvailability; }
+        public String getNewAvailability() { return newAvailability; }
+        public int getAffectedBookings() { return affectedBookings; }
+        public List<Map<String, String>> getConflictingBookings() { return conflictingBookings; }
     }
 }

@@ -31,6 +31,11 @@ export function updateResource(resourceId, payload) {
   return apiPut(`/api/resources/${encodeURIComponent(resourceId)}`, payload);
 }
 
+export function previewResourceAvailabilityConflicts(resourceId, availability) {
+  const params = new URLSearchParams({ availability: String(availability || "") });
+  return apiGet(`/api/resources/${encodeURIComponent(resourceId)}/availability-conflicts/preview?${params.toString()}`);
+}
+
 export function updateResourceStatus(resourceId, payload) {
   return apiPatch(`/api/resources/${encodeURIComponent(resourceId)}/status`, payload);
 }

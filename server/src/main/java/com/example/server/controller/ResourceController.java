@@ -101,7 +101,14 @@ public class ResourceController {
     ) {
         return resourceService.update(id, request)
             .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(
-                Map.of("message", "Resource updated successfully", "resource", updated)
+                Map.of(
+                    "message", "Resource updated successfully",
+                    "resource", updated.getResource(),
+                    "oldAvailability", updated.getOldAvailability(),
+                    "newAvailability", updated.getNewAvailability(),
+                    "affectedBookings", updated.getAffectedBookings(),
+                    "conflictingBookings", updated.getConflictingBookings()
+                )
             ))
             .orElseGet(() -> ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
@@ -120,13 +127,43 @@ public class ResourceController {
         @RequestParam(value = "availability", required = false) String availability,
         @RequestParam("status") String status,
         @RequestParam(value = "images", required = false) MultipartFile[] images,
-        @RequestParam(value = "keptImageUrls", required = false) List<String> keptImageUrls
+        @RequestParam(value = "keptImageUrls", required = false) List<String> keptImageUrls,
+        @RequestParam(value = "conflictAction", required = false) String conflictAction
     ) throws IOException {
         return resourceService.updateWithImage(
-                id, name, type, capacity, location, description, availability, status, images, keptImageUrls
+                id, name, type, capacity, location, description, availability, status, images, keptImageUrls, conflictAction
             )
             .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(
-                Map.of("message", "Resource updated successfully", "resource", updated)
+                Map.of(
+                    "message", "Resource updated successfully",
+                    "resource", updated.getResource(),
+                    "oldAvailability", updated.getOldAvailability(),
+                    "newAvailability", updated.getNewAvailability(),
+                    "affectedBookings", updated.getAffectedBookings(),
+                    "conflictingBookings", updated.getConflictingBookings()
+                )
+            ))
+            .orElseGet(() -> ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", "Resource not found"))
+            );
+    }
+
+    @GetMapping("/{id}/availability-conflicts/preview")
+    public ResponseEntity<?> previewAvailabilityConflicts(
+        @PathVariable("id") String id,
+        @RequestParam("availability") String availability
+    ) {
+        return resourceService.previewAvailabilityConflicts(id, availability)
+            .<ResponseEntity<?>>map(preview -> ResponseEntity.ok(
+                Map.of(
+                    "message", "Availability conflicts analyzed successfully",
+                    "resourceId", preview.getResourceId(),
+                    "oldAvailability", preview.getOldAvailability(),
+                    "newAvailability", preview.getNewAvailability(),
+                    "affectedBookings", preview.getAffectedBookings(),
+                    "conflictingBookings", preview.getConflictingBookings()
+                )
             ))
             .orElseGet(() -> ResponseEntity
                 .status(HttpStatus.NOT_FOUND)

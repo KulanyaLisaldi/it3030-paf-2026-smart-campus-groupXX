@@ -21,6 +21,7 @@ public class UpdateResourceRequest {
 
     private String description;
     private String availability;
+    private String conflictAction;
 
     @NotBlank(message = "Status is required")
     private String status;
@@ -51,5 +52,9 @@ public class UpdateResourceRequest {
 
     public String getStatus() {
         return status;
+    }
+
+    public String getConflictAction() {
+        return conflictAction;
     }
 }

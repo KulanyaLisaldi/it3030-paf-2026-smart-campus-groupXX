@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import QRCode from "qrcode";
-import { cancelMyBooking, getBookedSlots, getMyBookingQr, getMyBookings, updateMyBooking } from "../api/bookings";
+import { cancelMyBooking, chooseAnotherSlot, getBookedSlots, getMyBookingQr, getMyBookings, updateMyBooking } from "../api/bookings";
 import { getAuthToken } from "../api/http";
 import { getResourceById } from "../api/resources";
 import { rememberPostLoginPath } from "../utils/authRedirect";
@@ -105,6 +105,9 @@ function canCancelBooking(booking) {
 }
 function canEditBooking(booking) {
   return String(booking?.status || "").toUpperCase() === "PENDING" && isUpcomingBooking(booking);
+}
+function hasPendingRescheduleDecision(booking) {
+  return Boolean(booking?.pendingUserRescheduleDecision);
 }
 function matchesApprovalStateFilter(statusRaw, filterRaw) {
   const status = String(statusRaw || "").toUpperCase();
@@ -539,14 +542,22 @@ export default function AccountBookingsPage() {
     setEditBusyId(editBookingTarget.id);
     setEditBookingError("");
     try {
-      const response = await updateMyBooking(editBookingTarget.id, {
+      const payload = {
         bookingDate: editBookingDraft.bookingDate,
         startTime: editBookingDraft.startTime,
         endTime: editBookingDraft.endTime,
         purpose: editBookingDraft.purpose.trim(),
         expectedAttendees: editBookingDraft.expectedAttendees === "" ? null : Number(editBookingDraft.expectedAttendees),
         additionalNotes: editBookingDraft.additionalNotes.trim(),
-      });
+      };
+      const response = hasPendingRescheduleDecision(editBookingTarget)
+        ? await chooseAnotherSlot(editBookingTarget.id, {
+            bookingDate: payload.bookingDate,
+            startTime: payload.startTime,
+            endTime: payload.endTime,
+            reason: "User selected another slot",
+          })
+        : await updateMyBooking(editBookingTarget.id, payload);
       const updated = response?.booking;
       if (updated?.id) {
         setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
@@ -560,6 +571,7 @@ export default function AccountBookingsPage() {
       setEditBusyId("");
     }
   };
+
 
   const handleEditSlotClick = (slot) => {
     const booked = !!editSlotStateMap[slot.key];
@@ -623,7 +635,7 @@ export default function AccountBookingsPage() {
         </div>
       </div>
       <div style={{ display: "flex", gap: "8px", marginTop: "12px", flexWrap: "wrap" }}>
-        <button type="button" disabled={!canEditBooking(booking) || editBusyId === booking.id} onClick={() => openEditBooking(booking)} style={{ padding: "7px 12px", borderRadius: "8px", border: "none", backgroundColor: canEditBooking(booking) ? "#FA8112" : "#d1d5db", color: "#fff", fontWeight: 700, fontSize: "13px", cursor: !canEditBooking(booking) || editBusyId === booking.id ? "not-allowed" : "pointer" }}>{editBusyId === booking.id ? "Updating..." : "Edit"}</button>
+        <button type="button" disabled={(!canEditBooking(booking) && !hasPendingRescheduleDecision(booking)) || editBusyId === booking.id} onClick={() => openEditBooking(booking)} style={{ padding: "7px 12px", borderRadius: "8px", border: "none", backgroundColor: (canEditBooking(booking) || hasPendingRescheduleDecision(booking)) ? "#FA8112" : "#d1d5db", color: "#fff", fontWeight: 700, fontSize: "13px", cursor: (!canEditBooking(booking) && !hasPendingRescheduleDecision(booking)) || editBusyId === booking.id ? "not-allowed" : "pointer" }}>{editBusyId === booking.id ? "Updating..." : "Edit"}</button>
         <button type="button" onClick={() => setDetailBooking(booking)} style={{ padding: "7px 12px", borderRadius: "8px", border: "1px solid #d1d5db", backgroundColor: "#fff", color: "#374151", fontWeight: 700, fontSize: "13px", cursor: "pointer" }}>View Details</button>
         <button type="button" disabled={!canCancelBooking(booking) || cancelBusyId === booking.id} onClick={() => { setCancelBookingTarget(booking); setCancelReasonDraft(""); setCancelReasonError(""); }} style={{ padding: "7px 12px", borderRadius: "8px", border: "none", backgroundColor: canCancelBooking(booking) ? "#dc2626" : "#d1d5db", color: "#fff", fontWeight: 700, fontSize: "13px", cursor: !canCancelBooking(booking) || cancelBusyId === booking.id ? "not-allowed" : "pointer" }}>{cancelBusyId === booking.id ? "Cancelling..." : "Cancel Booking"}</button>
       </div>

@@ -3,9 +3,14 @@ package com.example.server.service;
 import com.example.server.dto.ticket.CreateTicketRequest;
 import com.example.server.dto.ticket.UpdateTicketRequest;
 import com.example.server.model.Ticket;
+import com.example.server.model.User;
 import com.example.server.model.UserRole;
 import com.example.server.repository.TicketRepo;
+import com.example.server.repository.UserRepo;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -16,8 +21,10 @@ import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
 
 @Service
 public class TicketService {
@@ -36,10 +43,12 @@ public class TicketService {
 
     private final TicketRepo ticketRepo;
     private final NotificationService notificationService;
+    private final UserRepo userRepo;
 
-    public TicketService(TicketRepo ticketRepo, NotificationService notificationService) {
+    public TicketService(TicketRepo ticketRepo, NotificationService notificationService, UserRepo userRepo) {
         this.ticketRepo = ticketRepo;
         this.notificationService = notificationService;
+        this.userRepo = userRepo;
     }
 
     public Ticket createTicket(CreateTicketRequest request, MultipartFile[] attachments, String reporterUserId) throws IOException {
@@ -80,7 +89,7 @@ public class TicketService {
         return ticketRepo.findByCreatedByOrderByCreatedAtDesc(createdBy);
     }
 
-    public Optional<Ticket> updateTicket(String ticketId, UpdateTicketRequest request) {
+    public Optional<Ticket> updateTicket(String ticketId, UpdateTicketRequest request, Authentication authentication) {
         validateFields(request.getCategory(), request.getPriority());
         Optional<Ticket> maybeTicket = ticketRepo.findById(ticketId);
         if (maybeTicket.isEmpty()) {
@@ -88,6 +97,7 @@ public class TicketService {
         }
 
         Ticket ticket = maybeTicket.get();
+        ensureCanEditTicket(ticket, authentication);
         ticket.setFullName(request.getFullName().trim());
         ticket.setEmail(request.getEmail().trim().toLowerCase());
         ticket.setPhoneNumber(request.getPhoneNumber().trim());
@@ -98,6 +108,39 @@ public class TicketService {
         ticket.setPriority(request.getPriority().trim());
 
         return Optional.of(ticketRepo.save(ticket));
+    }
+
+    private void ensureCanEditTicket(Ticket ticket, Authentication authentication) {
+        if (hasRole(authentication, "ROLE_ADMIN")) {
+            return;
+        }
+        String actorUserId = safeTrim(authentication == null ? "" : authentication.getName());
+        if (actorUserId.isEmpty()) {
+            throw new ResponseStatusException(FORBIDDEN, "Forbidden");
+        }
+        String createdBy = safeTrim(ticket.getCreatedBy());
+        if (createdBy.equals(actorUserId)) {
+            return;
+        }
+        Optional<User> actor = userRepo.findById(actorUserId);
+        if (actor.isPresent()) {
+            String email = safeTrim(actor.get().getEmail()).toLowerCase(Locale.ROOT);
+            if (!email.isEmpty() && createdBy.equalsIgnoreCase(email)) {
+                return;
+            }
+        }
+        throw new ResponseStatusException(FORBIDDEN, "Forbidden");
+    }
+
+    private static boolean hasRole(Authentication authentication, String roleAuthority) {
+        if (authentication == null) return false;
+        return authentication.getAuthorities().stream()
+            .map(GrantedAuthority::getAuthority)
+            .anyMatch(roleAuthority::equals);
+    }
+
+    private static String safeTrim(String raw) {
+        return raw == null ? "" : raw.trim();
     }
 
     private void validateRequest(CreateTicketRequest request) {

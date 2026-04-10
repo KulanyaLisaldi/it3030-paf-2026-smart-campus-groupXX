@@ -35,6 +35,14 @@ export function cancelMyBooking(bookingId, reason) {
   return apiPatch(`/api/bookings/${encodeURIComponent(bookingId)}/cancel`, { reason });
 }
 
+export function acceptRescheduledBooking(bookingId) {
+  return apiPatch(`/api/bookings/${encodeURIComponent(bookingId)}/accept-reschedule`, {});
+}
+
+export function chooseAnotherSlot(bookingId, payload) {
+  return apiPatch(`/api/bookings/${encodeURIComponent(bookingId)}/choose-slot`, payload);
+}
+
 export function getAdminBookings(filters = {}) {
   const params = new URLSearchParams();
   if (filters.status && filters.status !== "ALL") params.set("status", String(filters.status));
@@ -43,6 +51,7 @@ export function getAdminBookings(filters = {}) {
   if (filters.resource) params.set("resource", String(filters.resource));
   if (filters.user) params.set("user", String(filters.user));
   if (filters.approvalState && filters.approvalState !== "ALL") params.set("approvalState", String(filters.approvalState));
+  if (filters.conflict && filters.conflict !== "ALL") params.set("conflict", String(filters.conflict));
   const qs = params.toString();
   return apiGet(`/api/bookings/admin${qs ? `?${qs}` : ""}`);
 }
@@ -57,6 +66,10 @@ export function rejectBookingByAdmin(bookingId, reason) {
 
 export function cancelBookingByAdmin(bookingId, reason) {
   return apiPatch(`/api/bookings/admin/${encodeURIComponent(bookingId)}/cancel`, { reason });
+}
+
+export function rescheduleBookingByAdmin(bookingId, payload) {
+  return apiPatch(`/api/bookings/admin/${encodeURIComponent(bookingId)}/reschedule`, payload);
 }
 
 export function deleteBookingByAdmin(bookingId) {

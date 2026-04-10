@@ -2,6 +2,7 @@ package com.example.server.service;
 
 import com.example.server.dto.booking.CreateBookingRequest;
 import com.example.server.dto.booking.AdminBookingRowResponse;
+import com.example.server.dto.booking.RescheduleBookingRequest;
 import com.example.server.dto.booking.UpdateMyBookingRequest;
 import com.example.server.model.Booking;
 import com.example.server.model.Resource;
@@ -95,6 +96,8 @@ public class BookingService {
         booking.setExpectedAttendees(expectedAttendees);
         booking.setAdditionalNotes(additionalNotes);
         booking.setStatus("PENDING");
+        booking.setOutsideAvailability(false);
+        booking.setPendingUserRescheduleDecision(false);
         booking.setCheckInStatus("NOT_CHECKED_IN");
         booking.setCreatedBy(createdBy.trim());
         booking.setCreatedAt(Instant.now());
@@ -123,7 +126,8 @@ public class BookingService {
         String resourceTypeRaw,
         String resourceRaw,
         String userRaw,
-        String approvalStateRaw
+        String approvalStateRaw,
+        String conflictRaw
     ) {
         rejectExpiredPendingBookings();
         String statusFilter = safeTrim(statusRaw).toUpperCase(Locale.ROOT);
@@ -132,6 +136,7 @@ public class BookingService {
         String resourceFilter = safeTrim(resourceRaw).toLowerCase(Locale.ROOT);
         String userFilter = safeTrim(userRaw).toLowerCase(Locale.ROOT);
         String approvalStateFilter = safeTrim(approvalStateRaw).toUpperCase(Locale.ROOT);
+        String conflictFilter = safeTrim(conflictRaw).toUpperCase(Locale.ROOT);
 
         if (!dateFilter.isEmpty()) {
             try {
@@ -180,6 +185,7 @@ public class BookingService {
                     || safeTrim(row.getUserName()).toLowerCase(Locale.ROOT).contains(userFilter);
             })
             .filter(row -> matchesApprovalStateFilter(safeTrim(row.getStatus()).toUpperCase(Locale.ROOT), approvalStateFilter))
+            .filter(row -> matchesConflictFilter(row.isOutsideAvailability(), conflictFilter))
             .toList();
     }
 
@@ -294,8 +300,8 @@ public class BookingService {
         }
         Booking booking = maybe.get();
         String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
-        if (!"APPROVED".equals(status)) {
-            throw new IllegalArgumentException("Only approved bookings can be cancelled");
+        if (!"APPROVED".equals(status) && !"PENDING".equals(status)) {
+            throw new IllegalArgumentException("Only pending or approved bookings can be cancelled");
         }
         String reason = safeTrim(reasonRaw);
         if (reason.isEmpty()) {
@@ -327,8 +333,8 @@ public class BookingService {
         }
         Booking booking = maybe.get();
         String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
-        if (!"CANCELLED".equals(status) && !"REJECTED".equals(status)) {
-            throw new IllegalArgumentException("Only rejected or cancelled bookings can be deleted");
+        if (!"CANCELLED".equals(status) && !"REJECTED".equals(status) && !"CHECKED_IN".equals(status)) {
+            throw new IllegalArgumentException("Only rejected, cancelled, or checked-in bookings can be deleted");
         }
         bookingRepo.deleteById(bookingId);
         return true;
@@ -430,6 +436,8 @@ public class BookingService {
         booking.setExpectedAttendees(expectedAttendees);
         booking.setAdditionalNotes(additionalNotes);
         booking.setStatus("PENDING");
+        booking.setOutsideAvailability(false);
+        booking.setPendingUserRescheduleDecision(false);
         booking.setUpdatedAt(Instant.now());
         Booking saved = bookingRepo.save(booking);
         String resourceLabel = safeTrim(saved.getResourceName());
@@ -455,6 +463,134 @@ public class BookingService {
         validateDateAndTime(date, start, end);
         resourceRepo.findById(rid).orElseThrow(() -> new IllegalArgumentException("Selected resource does not exist"));
         return !hasConflict(rid, date, start, end);
+    }
+
+    public Optional<Booking> rescheduleBookingByAdmin(String bookingId, RescheduleBookingRequest request, String adminUserId) {
+        Optional<Booking> maybe = bookingRepo.findById(bookingId);
+        if (maybe.isEmpty()) {
+            return Optional.empty();
+        }
+        Booking booking = maybe.get();
+        String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
+        if (!canRescheduleStatus(status)) {
+            throw new IllegalArgumentException("Only pending or approved bookings can be rescheduled");
+        }
+
+        String bookingDate = safeTrim(request.getBookingDate());
+        String startTime = safeTrim(request.getStartTime());
+        String endTime = safeTrim(request.getEndTime());
+        String reason = safeTrim(request.getReason());
+        validateDateAndTime(bookingDate, startTime, endTime);
+
+        if (hasConflictExcludingBooking(safeTrim(booking.getId()), safeTrim(booking.getResourceId()), bookingDate, startTime, endTime)) {
+            throw new IllegalArgumentException("Selected time slot is not available");
+        }
+
+        String oldDate = safeTrim(booking.getBookingDate());
+        String oldStart = safeTrim(booking.getStartTime());
+        String oldEnd = safeTrim(booking.getEndTime());
+
+        booking.setPreviousStartTime(oldStart);
+        booking.setPreviousEndTime(oldEnd);
+        booking.setBookingDate(bookingDate);
+        booking.setStartTime(startTime);
+        booking.setEndTime(endTime);
+        booking.setOutsideAvailability(false);
+        booking.setRescheduledBy("ADMIN");
+        booking.setRescheduleReason(reason);
+        booking.setPendingUserRescheduleDecision(true);
+        booking.setUpdatedAt(Instant.now());
+        Booking saved = bookingRepo.save(booking);
+
+        String notifyReason = reason.isEmpty() ? "Resource availability window was changed." : reason;
+        resolveUserIdFromRef(saved.getCreatedBy()).ifPresent(ownerId ->
+            notificationService.createAndPush(
+                ownerId,
+                "BOOKING_RESCHEDULED",
+                "Booking Rescheduled",
+                "Your booking for " + safeTrim(saved.getResourceName()) + " on " + oldDate
+                    + " was rescheduled from " + oldStart + "-" + oldEnd + " to " + startTime + "-" + endTime
+                    + " due to an availability update by admin. Reason: " + notifyReason
+                    + " If you do not agree with the new time, you may choose another available slot.",
+                "BOOKING",
+                safeTrim(saved.getId()),
+                "/account/bookings?openBooking=" + safeTrim(saved.getId())
+            )
+        );
+        return Optional.of(saved);
+    }
+
+    public Optional<Booking> acceptRescheduledBookingByUser(String bookingId, String createdBy) {
+        Optional<Booking> maybe = bookingRepo.findById(bookingId);
+        if (maybe.isEmpty()) return Optional.empty();
+        Booking booking = maybe.get();
+        if (!safeTrim(booking.getCreatedBy()).equals(safeTrim(createdBy))) {
+            throw new IllegalArgumentException("You can update only your own bookings");
+        }
+        if (!Boolean.TRUE.equals(booking.getPendingUserRescheduleDecision())) {
+            throw new IllegalArgumentException("No pending reschedule decision for this booking");
+        }
+        booking.setPendingUserRescheduleDecision(false);
+        booking.setUpdatedAt(Instant.now());
+        Booking saved = bookingRepo.save(booking);
+        notificationService.createForRole(
+            UserRole.ADMIN,
+            "BOOKING_RESCHEDULE_ACCEPTED",
+            "Reschedule accepted",
+            "User accepted the rescheduled booking for " + safeTrim(saved.getResourceName()) + ".",
+            "BOOKING",
+            safeTrim(saved.getId()),
+            "/adminbookings?tab=details&openBooking=" + safeTrim(saved.getId())
+        );
+        return Optional.of(saved);
+    }
+
+    public Optional<Booking> chooseAnotherSlotAfterAdminReschedule(String bookingId, String createdBy, RescheduleBookingRequest request) {
+        Optional<Booking> maybe = bookingRepo.findById(bookingId);
+        if (maybe.isEmpty()) return Optional.empty();
+        Booking booking = maybe.get();
+        if (!safeTrim(booking.getCreatedBy()).equals(safeTrim(createdBy))) {
+            throw new IllegalArgumentException("You can update only your own bookings");
+        }
+        if (!Boolean.TRUE.equals(booking.getPendingUserRescheduleDecision())) {
+            throw new IllegalArgumentException("No pending reschedule decision for this booking");
+        }
+        String status = safeTrim(booking.getStatus()).toUpperCase(Locale.ROOT);
+        if (!canRescheduleStatus(status)) {
+            throw new IllegalArgumentException("Only pending or approved bookings can be rescheduled");
+        }
+
+        String bookingDate = safeTrim(request.getBookingDate());
+        String startTime = safeTrim(request.getStartTime());
+        String endTime = safeTrim(request.getEndTime());
+        validateDateAndTime(bookingDate, startTime, endTime);
+        if (hasConflictExcludingBooking(safeTrim(booking.getId()), safeTrim(booking.getResourceId()), bookingDate, startTime, endTime)) {
+            throw new IllegalArgumentException("Selected time slot is not available");
+        }
+
+        String oldStart = safeTrim(booking.getStartTime());
+        String oldEnd = safeTrim(booking.getEndTime());
+        booking.setPreviousStartTime(oldStart);
+        booking.setPreviousEndTime(oldEnd);
+        booking.setBookingDate(bookingDate);
+        booking.setStartTime(startTime);
+        booking.setEndTime(endTime);
+        booking.setOutsideAvailability(false);
+        booking.setRescheduledBy("USER");
+        booking.setPendingUserRescheduleDecision(false);
+        booking.setUpdatedAt(Instant.now());
+        Booking saved = bookingRepo.save(booking);
+
+        notificationService.createForRole(
+            UserRole.ADMIN,
+            "BOOKING_RESCHEDULED_BY_USER",
+            "Booking changed by user",
+            "User selected a new slot for " + safeTrim(saved.getResourceName()) + ": " + startTime + "-" + endTime + ".",
+            "BOOKING",
+            safeTrim(saved.getId()),
+            "/adminbookings?tab=details&openBooking=" + safeTrim(saved.getId())
+        );
+        return Optional.of(saved);
     }
 
     public List<Booking> getBookedSlots(String resourceId, String bookingDate, String excludeBookingId) {
@@ -742,6 +878,17 @@ public class BookingService {
             case "CHECKED_IN" -> "CHECKED_IN".equals(status);
             default -> true;
         };
+    }
+
+    private boolean canRescheduleStatus(String status) {
+        return "PENDING".equals(status) || "APPROVED".equals(status);
+    }
+
+    private boolean matchesConflictFilter(boolean outsideAvailability, String filter) {
+        if (filter.isEmpty() || "ALL".equals(filter)) return true;
+        if ("ONLY".equals(filter) || "CONFLICTED".equals(filter)) return outsideAvailability;
+        if ("VALID".equals(filter)) return !outsideAvailability;
+        return true;
     }
 
     private String userDisplayName(User user) {
