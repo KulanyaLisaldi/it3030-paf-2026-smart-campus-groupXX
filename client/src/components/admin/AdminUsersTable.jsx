@@ -46,7 +46,7 @@ const pageCardStyle = {
 /** Matches AdminBookingsPage booking-details table (horizontal scroll + min width). */
 const tableStyle = {
   width: "max-content",
-  minWidth: 1160,
+  minWidth: 1320,
   borderCollapse: "collapse",
   fontSize: "13px",
 };
@@ -76,18 +76,73 @@ const userTablePaginationFooterStyle = {
   flexWrap: "wrap",
 };
 
-/** View action — same border treatment as AdminBookingsPage row actions. */
-const userTableViewBtnStyle = {
-  padding: "8px 10px",
-  borderRadius: "10px",
-  border: `1px solid ${BOOKING_TABLE_BORDER}`,
-  fontWeight: 800,
-  fontSize: "12px",
-  cursor: "pointer",
+/** Aligned with AdminResourcesTable row actions */
+const bookingTableButtonStyle = { height: 38, borderRadius: 9, border: "none", padding: "0 12px", fontWeight: 700, cursor: "pointer" };
+const bookingTableActionStyle = { height: 32, width: 108, borderRadius: 8, fontSize: 12, boxSizing: "border-box", textAlign: "center" };
+
+function statusToggleStyle(active, disabled) {
+  return {
+    width: 46,
+    height: 26,
+    borderRadius: 999,
+    border: active ? "1px solid #FFDDB8" : "1px solid #fecaca",
+    background: active ? "#FFF4E6" : "#fee2e2",
+    padding: 2,
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.7 : 1,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: active ? "flex-end" : "flex-start",
+    transition: "all 0.15s ease",
+    boxSizing: "border-box",
+  };
+}
+
+const statusToggleKnobStyle = {
+  width: 20,
+  height: 20,
+  borderRadius: "50%",
   background: "#fff",
-  color: "#0f172a",
-  textAlign: "center",
+  border: "1px solid #FFDDB8",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
 };
+
+const editRequiredMarkStyle = { color: "#f0a8a8", fontWeight: 800, marginLeft: 2 };
+const editFieldErrorStyle = {
+  margin: "6px 0 0",
+  color: "#e57373",
+  fontSize: 12,
+  fontWeight: 600,
+  fontStyle: "normal",
+  lineHeight: 1.4,
+  letterSpacing: "normal",
+};
+
+function EditUserFieldError({ message }) {
+  if (!message) return null;
+  return <p style={editFieldErrorStyle} role="alert">{message}</p>;
+}
+
+function buildEditUserFieldErrors({ editFirstName, editLastName, editEmail, editPhoneNumber, selectedUser }) {
+  const e = {};
+  if (!String(editFirstName || "").trim()) e.firstName = "First name is required.";
+  if (!String(editLastName || "").trim()) e.lastName = "Last name is required.";
+  const em = String(editEmail || "").trim();
+  const selectedProvider = String(selectedUser?.provider || "");
+  if (!em) e.email = "Work email is required.";
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) e.email = "Enter a valid email address.";
+  else if (selectedProvider === "Google OAuth" && em.toLowerCase() !== String(selectedUser?.email || "").toLowerCase()) {
+    e.email = "Google OAuth account email cannot be changed.";
+  }
+  if (editPhoneNumber && !isValidProfilePhone(editPhoneNumber)) {
+    e.phoneNumber = `Phone must be exactly ${PROFILE_PHONE_DIGITS} digits or leave empty.`;
+  }
+  return e;
+}
+
+/** User details drawer: label vs value text */
+const detailsDrawerLabelColor = "#64748b";
+const detailsDrawerValueColor = "#1e293b";
 
 const thStyle = {
   textAlign: "left",
@@ -111,7 +166,7 @@ const rowStyle = (isHovered) => ({
   backgroundColor: isHovered ? "#f8fafc" : "#ffffff",
   transition: "background-color 0.16s ease",
 });
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 20;
 
 const smallBtnStyle = (variant = "neutral") => {
   const base = {
@@ -152,17 +207,6 @@ const summaryCardBaseStyle = {
 };
 const summaryLabelStyle = { fontSize: "11px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" };
 const summaryValueStyle = { fontSize: "26px", fontWeight: 800, color: "#14213D", marginTop: 4 };
-
-function DeleteIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M4 7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M9 7V5h6v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M7 7l1 12h8l1-12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M10 11v5M14 11v5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 function CloseIcon() {
   return (
@@ -254,7 +298,43 @@ function Badge({ text, style }) {
   );
 }
 
-export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onRequestRefresh }) {
+const ROLE_PIE_RADIAN = Math.PI / 180;
+
+function roleChartLabelName(name) {
+  const u = String(name || "").toUpperCase();
+  if (u === "ADMIN") return "Admins";
+  if (u === "TECHNICIAN") return "Technicians";
+  if (u === "USER") return "Users";
+  return String(name || "");
+}
+
+/** Outside labels + leader lines (segment-colored), matching resource-type doughnut style. */
+function renderUserRolePieLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent, name, fill }) {
+  if (cx == null || cy == null || !percent || percent < 0.001) return null;
+  const sin = Math.sin(-ROLE_PIE_RADIAN * midAngle);
+  const cos = Math.cos(-ROLE_PIE_RADIAN * midAngle);
+  const sx = cx + (outerRadius + 8) * cos;
+  const sy = cy + (outerRadius + 8) * sin;
+  const mx = cx + (outerRadius + 30) * cos;
+  const my = cy + (outerRadius + 30) * sin;
+  const ex = mx + (cos >= 0 ? 1 : -1) * 16;
+  const ey = my;
+  const textAnchor = cos >= 0 ? "start" : "end";
+  const pct = `${Math.round(percent * 100)}%`;
+  const label = `${roleChartLabelName(name)}: ${pct}`;
+  const textX = ex + (cos >= 0 ? 10 : -10);
+
+  return (
+    <g>
+      <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" strokeWidth={1.5} />
+      <text x={textX} y={ey} dy={3} textAnchor={textAnchor} fill={fill} style={{ fontSize: 12, fontWeight: 700 }}>
+        {label}
+      </text>
+    </g>
+  );
+}
+
+export default function AdminUsersTable({ onOpenAddUser, refreshKey = 0, onRequestRefresh }) {
   const location = useLocation();
   const currentUserId = useMemo(() => {
     const me = readCampusUser();
@@ -284,9 +364,9 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
   const [resetPasswordDraft, setResetPasswordDraft] = useState("");
   const [resetBusy, setResetBusy] = useState(false);
   const [resetMessage, setResetMessage] = useState("");
+  const [editFieldErrors, setEditFieldErrors] = useState({});
   const [hoveredRowId, setHoveredRowId] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [addUserMenuOpen, setAddUserMenuOpen] = useState(false);
   const [mainTab, setMainTab] = useState(() => {
     const tab = new URLSearchParams(window.location.search).get("tab");
     return tab === "details" || tab === "all-users" ? "allUsers" : "dashboard";
@@ -315,35 +395,32 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     setResetPasswordDraft("");
     setResetMessage("");
     setActionError("");
+    setEditFieldErrors({});
   }, [editPanelOpen, selectedUser]);
 
   const refresh = () => {
     if (typeof onRequestRefresh === "function") onRequestRefresh();
   };
 
+  const clearEditFieldErrors = () => setEditFieldErrors({});
+
   const handleEditSave = async () => {
     if (!selectedUser) return;
     const selectedRoleUpper = String(selectedUser.role || "").toUpperCase();
-    const selectedProvider = String(selectedUser.provider || "");
     const phoneDigits = editPhoneNumber || "";
     const emailDraft = String(editEmail || "").trim();
-    if (!emailDraft) {
-      setActionError("Email is required.");
+    const vErrs = buildEditUserFieldErrors({
+      editFirstName,
+      editLastName,
+      editEmail,
+      editPhoneNumber,
+      selectedUser,
+    });
+    if (Object.keys(vErrs).length) {
+      setEditFieldErrors(vErrs);
       return;
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(emailDraft)) {
-      setActionError("Enter a valid email address.");
-      return;
-    }
-    if (selectedProvider === "Google OAuth" && emailDraft.toLowerCase() !== String(selectedUser.email || "").toLowerCase()) {
-      setActionError("Google OAuth account email cannot be changed.");
-      return;
-    }
-    if (phoneDigits && !isValidProfilePhone(phoneDigits)) {
-      setActionError("Phone number must be exactly 10 digits or left empty.");
-      return;
-    }
+    setEditFieldErrors({});
     setActionBusy(true);
     setActionError("");
     try {
@@ -373,7 +450,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
       setEditPanelOpen(false);
       refresh();
     } catch (e) {
-      setActionError(e.message || "Failed to update user.");
+      setEditFieldErrors({ general: e.message || "Failed to update user." });
     } finally {
       setActionBusy(false);
     }
@@ -560,6 +637,21 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
     [summary.activeUsers, summary.suspendedUsers]
   );
 
+  /** Google OAuth vs email (local) accounts — pairs with leaderboard row. */
+  const signInProviderChartData = useMemo(() => {
+    const rows = Array.isArray(users) ? users : [];
+    let google = 0;
+    let emailLocal = 0;
+    rows.forEach((u) => {
+      if (String(u.provider || "") === "Google OAuth") google += 1;
+      else emailLocal += 1;
+    });
+    return [
+      { name: "Google", count: google, color: "#1565c0" },
+      { name: "Email", count: emailLocal, color: "#FA8112" },
+    ];
+  }, [users]);
+
   const loginActivityChartData = useMemo(() => {
     const rows = Array.isArray(users) ? users : [];
     const days = [];
@@ -637,7 +729,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
             display: "grid",
             gridTemplateColumns: "repeat(6, minmax(120px, 1fr))",
             gap: 12,
-            marginBottom: 14,
+            marginBottom: 28,
           }}
         >
           <div style={{ ...summaryCardBaseStyle, borderLeft: "6px solid #14213D" }}>
@@ -681,24 +773,33 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
             boxSizing: "border-box",
           }}
         >
-          <div style={{ fontSize: 16, fontWeight: 900, color: "#14213D", marginBottom: 4 }}>User analytics overview</div>
-          <p style={{ margin: "0 0 14px 0", fontSize: 13, color: "#64748b", fontWeight: 600, lineHeight: 1.5 }}>
-            Role distribution, growth trend, account status split, and recent login activity.
-          </p>
+          <div style={{ fontSize: 16, fontWeight: 900, color: "#14213D", marginBottom: 14 }}>User analytics overview</div>
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-              gap: 14,
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              columnGap: 12,
+              rowGap: 36,
               alignItems: "stretch",
             }}
           >
             <div style={{ border: `1px solid ${BORDER_LIGHT_ORANGE}`, borderRadius: 12, background: "#fff", padding: 12, minHeight: 290 }}>
               <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", marginBottom: 8 }}>Users by role</div>
-              <div style={{ width: "100%", height: 230 }}>
+              <div style={{ width: "100%", height: 268 }}>
                 <ResponsiveContainer>
-                  <PieChart>
-                    <Pie data={roleChartData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={3}>
+                  <PieChart margin={{ top: 18, right: 88, bottom: 4, left: 88 }}>
+                    <Pie
+                      data={roleChartData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={52}
+                      outerRadius={78}
+                      paddingAngle={2}
+                      stroke="#fff"
+                      strokeWidth={2}
+                      label={renderUserRolePieLabel}
+                      labelLine={false}
+                    >
                       {roleChartData.map((entry) => (
                         <Cell key={entry.name} fill={entry.color} />
                       ))}
@@ -735,7 +836,15 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                       />
                     </Pie>
                     <Tooltip />
-                    <Legend verticalAlign="bottom" height={24} />
+                    <Legend
+                      verticalAlign="bottom"
+                      layout="horizontal"
+                      align="center"
+                      iconType="circle"
+                      iconSize={8}
+                      wrapperStyle={{ paddingTop: 10, fontSize: 12, fontWeight: 600, color: "#334155" }}
+                      formatter={(value) => roleChartLabelName(value)}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -799,12 +908,34 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               </p>
               <div style={{ width: "100%", height: 230 }}>
                 <ResponsiveContainer>
-                  <BarChart data={topActiveUsersChartData} layout="vertical" margin={{ top: 8, right: 12, left: 16, bottom: 4 }}>
+                  <BarChart data={topActiveUsersChartData} layout="vertical" margin={{ top: 8, right: 12, left: 8, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} />
-                    <YAxis type="category" dataKey="user" width={90} tick={{ fontSize: 11 }} />
+                    <YAxis type="category" dataKey="user" width={72} tick={{ fontSize: 10 }} />
                     <Tooltip formatter={(value) => [`${value}`, "Activity score"]} labelFormatter={(_, payload) => payload?.[0]?.payload?.lastLoginLabel || ""} />
                     <Bar dataKey="score" fill="#14213D" radius={[0, 8, 8, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div style={{ border: `1px solid ${BORDER_LIGHT_ORANGE}`, borderRadius: 12, background: "#fff", padding: 12, minHeight: 300 }}>
+              <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", marginBottom: 4 }}>Sign-in method</div>
+              <p style={{ margin: "0 0 8px 0", color: "#64748b", fontSize: 12, fontWeight: 600 }}>
+                Google OAuth vs email (local) accounts — aligns with the Google users summary metric.
+              </p>
+              <div style={{ width: "100%", height: 230 }}>
+                <ResponsiveContainer>
+                  <BarChart data={signInProviderChartData} margin={{ top: 8, right: 10, left: 0, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(value) => [`${value}`, "Users"]} />
+                    <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                      {signInProviderChartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -815,6 +946,31 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
 
       {!loading && !error && mainTab === "allUsers" && (
       <>
+      {actionError ? (
+        <div
+          style={{
+            marginBottom: 10,
+            padding: "10px 12px",
+            borderRadius: 12,
+            border: "1px solid #fecaca",
+            background: "#fef2f2",
+            color: "#b91c1c",
+            fontWeight: 700,
+            fontSize: 13,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+          role="alert"
+        >
+          <span>{actionError}</span>
+          <button type="button" onClick={() => setActionError("")} style={{ ...smallBtnStyle("neutral"), flexShrink: 0 }}>
+            Dismiss
+          </button>
+        </div>
+      ) : null}
       <div
         style={{
           display: "grid",
@@ -911,59 +1067,28 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#475569", marginBottom: 6 }}>Add User</label>
-          <div style={{ position: "relative" }}>
-            <button
-              type="button"
-              onClick={() => setAddUserMenuOpen((v) => !v)}
-              style={{ ...smallBtnStyle("neutral"), width: "100%", padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}
-              aria-haspopup="menu"
-              aria-expanded={addUserMenuOpen}
-            >
-              <span>Add User</span>
-              <span style={{ fontSize: 10, color: "#64748b" }}>{addUserMenuOpen ? "▲" : "▼"}</span>
-            </button>
-            {addUserMenuOpen && (
-              <div
-                role="menu"
-                style={{
-                  position: "absolute",
-                  top: "calc(100% + 6px)",
-                  left: 0,
-                  right: 0,
-                  zIndex: 30,
-                  background: "#fff",
-                  border: `1px solid ${BORDER_LIGHT_ORANGE}`,
-                  borderRadius: 10,
-                  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.12)",
-                  overflow: "hidden",
-                }}
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setAddUserMenuOpen(false);
-                    onAddTechnician?.("ADMIN");
-                  }}
-                  style={{ width: "100%", textAlign: "left", padding: "10px 12px", border: "none", borderBottom: `1px solid ${BORDER_LIGHT_ORANGE}`, background: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", color: "#0f172a" }}
-                >
-                  ADMIN
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setAddUserMenuOpen(false);
-                    onAddTechnician?.("TECHNICIAN");
-                  }}
-                  style={{ width: "100%", textAlign: "left", padding: "10px 12px", border: "none", background: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", color: "#0f172a" }}
-                >
-                  TECHNICIAN
-                </button>
-              </div>
-            )}
-          </div>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 900, color: "#475569", marginBottom: 6, visibility: "hidden" }} aria-hidden="true">
+            Add
+          </label>
+          <button
+            type="button"
+            onClick={() => onOpenAddUser?.()}
+            aria-label="Open add user form"
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "none",
+              background: "#FA8112",
+              color: "#fff",
+              fontWeight: 800,
+              fontSize: 12,
+              cursor: "pointer",
+              boxSizing: "border-box",
+            }}
+          >
+            + Add User
+          </button>
         </div>
       </div>
 
@@ -1020,7 +1145,11 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                         <button
                           type="button"
                           style={{
-                            ...userTableViewBtnStyle,
+                            ...bookingTableButtonStyle,
+                            ...bookingTableActionStyle,
+                            background: "#fff",
+                            border: "1px solid #FFDDB8",
+                            color: "#0f172a",
                             opacity: actionBusy ? 0.5 : 1,
                             cursor: actionBusy ? "not-allowed" : "pointer",
                           }}
@@ -1037,6 +1166,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                           const isSelf = currentUserId && u.userId === currentUserId;
                           const canToggle = !isAdminRow && !isSelf;
                           const isSuspended = (u.accountStatus || "") === "Disabled";
+                          const accountActive = !isSuspended;
                           const toggleTitle = isAdminRow
                             ? "Admin account cannot be deactivated"
                             : isSelf
@@ -1045,23 +1175,40 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                                 ? "Activate account"
                                 : "Deactivate account";
                           return (
-                            <button
-                              type="button"
-                              style={
-                                !canToggle
-                                  ? { ...smallBtnStyle("neutral"), opacity: 0.55, cursor: "not-allowed" }
-                                  : isSuspended
-                                    ? smallBtnStyle("primary")
-                                    : smallBtnStyle("danger")
-                              }
-                              disabled={actionBusy || !canToggle}
-                              title={toggleTitle}
-                              onClick={() => handleToggleDisabled(u)}
-                            >
-                              {isSuspended ? "Activate" : "Deactivate"}
-                            </button>
+                            <div style={{ display: "inline-flex", alignItems: "center" }}>
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={accountActive}
+                                aria-label={toggleTitle}
+                                style={statusToggleStyle(accountActive, actionBusy || !canToggle)}
+                                disabled={actionBusy || !canToggle}
+                                title={toggleTitle}
+                                onClick={() => handleToggleDisabled(u)}
+                              >
+                                <span style={statusToggleKnobStyle} />
+                              </button>
+                            </div>
                           );
                         })()}
+                        {(u.role || "").toUpperCase() !== "ADMIN" ? (
+                          <button
+                            type="button"
+                            style={{
+                              ...bookingTableButtonStyle,
+                              ...bookingTableActionStyle,
+                              background: "#dc2626",
+                              color: "#fff",
+                              border: "none",
+                              opacity: actionBusy ? 0.7 : 1,
+                            }}
+                            disabled={actionBusy}
+                            title="Delete user"
+                            onClick={() => handleDeleteUser(u)}
+                          >
+                            Delete
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -1175,24 +1322,49 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                     <div>
                       <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
                         First name
+                        <span style={editRequiredMarkStyle} aria-hidden="true">*</span>
                       </label>
-                      <input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} style={modalInputStyle} placeholder="First name" />
+                      <input
+                        value={editFirstName}
+                        onChange={(e) => {
+                          setEditFirstName(e.target.value);
+                          clearEditFieldErrors();
+                        }}
+                        style={modalInputStyle}
+                        placeholder="First name"
+                      />
+                      <EditUserFieldError message={editFieldErrors.firstName} />
                     </div>
                     <div>
                       <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
                         Last name
+                        <span style={editRequiredMarkStyle} aria-hidden="true">*</span>
                       </label>
-                      <input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} style={modalInputStyle} placeholder="Last name" />
+                      <input
+                        value={editLastName}
+                        onChange={(e) => {
+                          setEditLastName(e.target.value);
+                          clearEditFieldErrors();
+                        }}
+                        style={modalInputStyle}
+                        placeholder="Last name"
+                      />
+                      <EditUserFieldError message={editFieldErrors.lastName} />
                     </div>
                   </div>
 
                   <div>
                     <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
-                      Email {String(selectedUser.provider || "") === "Google OAuth" ? <span style={{ fontWeight: 500, color: "#9ca3af" }}>(read-only for Google OAuth)</span> : null}
+                      Work email
+                      <span style={editRequiredMarkStyle} aria-hidden="true">*</span>
+                      {String(selectedUser.provider || "") === "Google OAuth" ? <span style={{ fontWeight: 500, color: "#9ca3af" }}> (read-only)</span> : null}
                     </label>
                     <input
                       value={editEmail}
-                      onChange={(e) => setEditEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEditEmail(e.target.value);
+                        clearEditFieldErrors();
+                      }}
                       readOnly={String(selectedUser.provider || "") === "Google OAuth"}
                       style={{
                         ...modalInputStyle,
@@ -1200,6 +1372,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                         color: String(selectedUser.provider || "") === "Google OAuth" ? "#475569" : "#0f172a",
                       }}
                     />
+                    <EditUserFieldError message={editFieldErrors.email} />
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -1209,7 +1382,10 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                       </label>
                       <select
                         value={editRole}
-                        onChange={(e) => setEditRole(e.target.value)}
+                        onChange={(e) => {
+                          setEditRole(e.target.value);
+                          clearEditFieldErrors();
+                        }}
                         disabled={String(selectedUser.role || "").toUpperCase() === "ADMIN"}
                         style={{ ...modalInputStyle, cursor: "pointer", backgroundColor: String(selectedUser.role || "").toUpperCase() === "ADMIN" ? "#f8fafc" : "#fff" }}
                       >
@@ -1224,7 +1400,10 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                       </label>
                       <select
                         value={editAccountStatus}
-                        onChange={(e) => setEditAccountStatus(e.target.value)}
+                        onChange={(e) => {
+                          setEditAccountStatus(e.target.value);
+                          clearEditFieldErrors();
+                        }}
                         disabled={String(selectedUser.role || "").toUpperCase() === "ADMIN" || (currentUserId && selectedUser.userId === currentUserId)}
                         style={{ ...modalInputStyle, cursor: "pointer", backgroundColor: (String(selectedUser.role || "").toUpperCase() === "ADMIN" || (currentUserId && selectedUser.userId === currentUserId)) ? "#f8fafc" : "#fff" }}
                       >
@@ -1252,13 +1431,17 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                       inputMode="numeric"
                       maxLength={PROFILE_PHONE_DIGITS}
                       value={editPhoneNumber}
-                      onChange={(e) => setEditPhoneNumber(sanitizeProfilePhoneInput(e.target.value))}
+                      onChange={(e) => {
+                        setEditPhoneNumber(sanitizeProfilePhoneInput(e.target.value));
+                        clearEditFieldErrors();
+                      }}
                       style={modalInputStyle}
                       placeholder="0771234567"
                     />
                     <p style={{ margin: "6px 0 0 0", fontSize: "11px", color: "#64748b", fontWeight: 600 }}>
                       Optional. {PROFILE_PHONE_DIGITS} digits only.
                     </p>
+                    <EditUserFieldError message={editFieldErrors.phoneNumber} />
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -1315,9 +1498,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                     </div>
                   ) : null}
 
-                  {actionError && (
-                    <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 900 }}>{actionError}</p>
-                  )}
+                  <EditUserFieldError message={editFieldErrors.general} />
 
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                     <button type="button" onClick={() => setEditPanelOpen(false)} style={smallBtnStyle("neutral")}>Cancel</button>
@@ -1376,7 +1557,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                 {String(detailsUser.name || detailsUser.email || "U").trim().charAt(0).toUpperCase()}
               </div>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{detailsUser.name || "—"}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: detailsDrawerValueColor }}>{detailsUser.name || "—"}</div>
                 <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                   <Badge text={detailsUser.role || "USER"} style={roleBadgeStyle(detailsUser.role)} />
                   <Badge
@@ -1396,56 +1577,58 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                 border: `1px solid ${BORDER_LIGHT_ORANGE}`,
                 borderRadius: 12,
                 padding: 12,
+                fontSize: 14,
+                lineHeight: 1.5,
               }}
             >
-              <div><strong style={{ color: "#0f172a" }}>Email:</strong> {detailsUser.email || "—"}</div>
+              <div>
+                <strong style={{ color: detailsDrawerLabelColor }}>Email:</strong>{" "}
+                <span style={{ color: detailsDrawerValueColor, fontWeight: 600 }}>{detailsUser.email || "—"}</span>
+              </div>
               {String(detailsUser.role || "").toUpperCase() === "TECHNICIAN" ||
               String(detailsUser.provider || "").toLowerCase().includes("google") ? (
                 <div>
-                  <strong style={{ color: "#0f172a" }}>Email verified:</strong> {emailVerifiedDisplay(detailsUser)}
+                  <strong style={{ color: detailsDrawerLabelColor }}>Email verified:</strong>{" "}
+                  <span style={{ color: detailsDrawerValueColor, fontWeight: 600 }}>{emailVerifiedDisplay(detailsUser)}</span>
                 </div>
               ) : null}
-              <div><strong style={{ color: "#0f172a" }}>Provider:</strong> {detailsUser.provider || "—"}</div>
-              <div><strong style={{ color: "#0f172a" }}>Created date:</strong> {formatDate(detailsUser.createdDate) || "—"}</div>
-              <div><strong style={{ color: "#0f172a" }}>Last login:</strong> {formatDate(detailsUser.lastLogin) || "—"}</div>
-              <div><strong style={{ color: "#0f172a" }}>User ID:</strong> {detailsUser.userId || "—"}</div>
+              <div>
+                <strong style={{ color: detailsDrawerLabelColor }}>Provider:</strong>{" "}
+                <span style={{ color: detailsDrawerValueColor, fontWeight: 600 }}>{detailsUser.provider || "—"}</span>
+              </div>
+              <div>
+                <strong style={{ color: detailsDrawerLabelColor }}>Created date:</strong>{" "}
+                <span style={{ color: detailsDrawerValueColor, fontWeight: 600 }}>{formatDate(detailsUser.createdDate) || "—"}</span>
+              </div>
+              <div>
+                <strong style={{ color: detailsDrawerLabelColor }}>Last login:</strong>{" "}
+                <span style={{ color: detailsDrawerValueColor, fontWeight: 600 }}>{formatDate(detailsUser.lastLogin) || "—"}</span>
+              </div>
+              <div>
+                <strong style={{ color: detailsDrawerLabelColor }}>User ID:</strong>{" "}
+                <span style={{ color: detailsDrawerValueColor, fontWeight: 600, wordBreak: "break-all" }}>{detailsUser.userId || "—"}</span>
+              </div>
             </div>
 
-            <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 6, flexWrap: "wrap" }}>
+            <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
               <button
                 type="button"
-                style={smallBtnStyle("primary")}
+                style={{
+                  ...bookingTableButtonStyle,
+                  ...bookingTableActionStyle,
+                  background: "#FA8112",
+                  color: "#fff",
+                  border: "none",
+                }}
                 onClick={() => {
+                  setActionError("");
                   setSelectedUser(detailsUser);
                   setEditPanelOpen(true);
                 }}
               >
                 Edit User
               </button>
-              <button
-                type="button"
-                style={smallBtnStyle((detailsUser.accountStatus || "") === "Disabled" ? "primary" : "danger")}
-                disabled={actionBusy || (detailsUser.role || "").toUpperCase() === "ADMIN" || (currentUserId && detailsUser.userId === currentUserId)}
-                title={(detailsUser.role || "").toUpperCase() === "ADMIN" ? "Admin account cannot be deactivated" : "Toggle account status"}
-                onClick={() => handleToggleDisabled(detailsUser)}
-              >
-                {(detailsUser.accountStatus || "") === "Disabled" ? "Activate" : "Deactivate"}
-              </button>
-              {(detailsUser.role || "").toUpperCase() !== "ADMIN" ? (
-                <button
-                  type="button"
-                  style={smallBtnStyle("danger")}
-                  disabled={actionBusy}
-                  onClick={() => handleDeleteUser(detailsUser)}
-                >
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <DeleteIcon />
-                    Delete
-                  </span>
-                </button>
-              ) : null}
             </div>
-            {actionError && <p style={{ marginTop: 10, marginBottom: 0, color: "#b91c1c", fontSize: 13, fontWeight: 800 }}>{actionError}</p>}
           </div>
           </div>
         </div>

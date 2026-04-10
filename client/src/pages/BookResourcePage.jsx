@@ -141,7 +141,7 @@ export default function BookResourcePage() {
   const [loadError, setLoadError] = useState("");
   const [form, setForm] = useState({
     resourceId: preselectedResourceId,
-    bookingDate: "",
+    bookingDate: todayIsoDate(),
     purpose: "",
     expectedAttendees: "",
     additionalNotes: "",

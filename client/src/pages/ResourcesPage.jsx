@@ -206,7 +206,7 @@ export default function ResourcesPage() {
     { key: "LAB", title: "Lab", subtitle: "Hands-on learning spaces", image: "/resource lab.jpeg" },
     { key: "LECTURE_HALL", title: "Lecture Hall", subtitle: "Large-capacity teaching halls", image: "/resource lec.jpeg" },
     { key: "MEETING_ROOM", title: "Meeting Room", subtitle: "Discussion and teamwork rooms", image: "/resource meeting.jpg" },
-    { key: "EQUIPMENT", title: "Projector", subtitle: "Projectors and related equipment", image: "/resource proj.jpeg" },
+    { key: "EQUIPMENT", title: "Equipment", subtitle: "Projectors and related equipment", image: "/resource proj.jpeg" },
   ];
 
   const syncTypeToUrl = (nextType) => {

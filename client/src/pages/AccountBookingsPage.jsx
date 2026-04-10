@@ -109,14 +109,6 @@ function canEditBooking(booking) {
 function hasPendingRescheduleDecision(booking) {
   return Boolean(booking?.pendingUserRescheduleDecision);
 }
-function matchesApprovalStateFilter(statusRaw, filterRaw) {
-  const status = String(statusRaw || "").toUpperCase();
-  const filter = String(filterRaw || "ALL").toUpperCase();
-  if (!filter || filter === "ALL") return true;
-  if (filter === "UNREVIEWED") return status === "PENDING";
-  if (filter === "REVIEWED") return status === "APPROVED" || status === "REJECTED" || status === "CANCELLED";
-  return status === filter;
-}
 function cancellationOrRejectionReason(booking) {
   const status = String(booking?.status || "").toUpperCase();
   if (status === "REJECTED") return booking?.reviewReason || "";
@@ -222,8 +214,19 @@ export default function AccountBookingsPage() {
     date: "",
     resourceType: "ALL",
     resource: "",
-    approvalState: "ALL",
   });
+
+  useEffect(() => {
+    setFilters((s) => {
+      const st = String(s.status || "ALL").toUpperCase();
+      if (bookingsView === "history") {
+        if (st === "PENDING" || st === "APPROVED") return { ...s, status: "ALL" };
+      } else if (st === "REJECTED" || st === "CANCELLED" || st === "CHECKED_IN") {
+        return { ...s, status: "ALL" };
+      }
+      return s;
+    });
+  }, [bookingsView]);
 
   useEffect(() => {
     if (!getAuthToken()) {
@@ -404,7 +407,6 @@ export default function AccountBookingsPage() {
     if (filters.date && String(booking?.bookingDate || "") !== filters.date) return false;
     if (filters.resourceType !== "ALL" && resourceType !== String(filters.resourceType || "").toUpperCase()) return false;
     if (resourceNeedle && !resourceText.includes(resourceNeedle)) return false;
-    if (!matchesApprovalStateFilter(status, filters.approvalState)) return false;
     return true;
   };
 
@@ -771,31 +773,32 @@ export default function AccountBookingsPage() {
           <section style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 14px 16px", background: "#fff", marginBottom: 12, boxSizing: "border-box", overflow: "hidden" }}>
             <div style={filterBarGrid}>
               <select value={filters.status} onChange={(e) => setFilters((s) => ({ ...s, status: e.target.value }))} className="bookings-filter-select" aria-label="Filter by status">
-                <option value="ALL">Status: All</option>
-                <option value="PENDING">Pending</option>
-                <option value="APPROVED">Approved</option>
-                <option value="REJECTED">Rejected</option>
-                <option value="CANCELLED">Cancelled</option>
+                {bookingsView === "history" ? (
+                  <>
+                    <option value="ALL">Status: All</option>
+                    <option value="CHECKED_IN">Checked in</option>
+                    <option value="REJECTED">Rejected</option>
+                    <option value="CANCELLED">Cancelled</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="ALL">Status: All</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="APPROVED">Approved</option>
+                  </>
+                )}
               </select>
               <input type="date" value={filters.date} onChange={(e) => setFilters((s) => ({ ...s, date: e.target.value }))} className="bookings-filter-date" aria-label="Filter by date" />
               <select value={filters.resourceType} onChange={(e) => setFilters((s) => ({ ...s, resourceType: e.target.value }))} className="bookings-filter-select" aria-label="Filter by resource type">
                 {resourceTypes.map((t) => <option key={t} value={t}>{t === "ALL" ? "Resource Type: All" : t}</option>)}
               </select>
               <input value={filters.resource} onChange={(e) => setFilters((s) => ({ ...s, resource: e.target.value }))} className="bookings-filter-text" placeholder="Resource name/id" aria-label="Filter by resource name or id" />
-              <select value={filters.approvalState} onChange={(e) => setFilters((s) => ({ ...s, approvalState: e.target.value }))} className="bookings-filter-select" aria-label="Filter by approval state">
-                <option value="ALL">Approval State: All</option>
-                <option value="UNREVIEWED">Unreviewed</option>
-                <option value="REVIEWED">Reviewed</option>
-                <option value="APPROVED">Approved</option>
-                <option value="REJECTED">Rejected</option>
-                <option value="CANCELLED">Cancelled</option>
-              </select>
             </div>
             <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
               <button
                 type="button"
                 className="bookings-filter-reset"
-                onClick={() => setFilters({ status: "ALL", date: "", resourceType: "ALL", resource: "", approvalState: "ALL" })}
+                onClick={() => setFilters({ status: "ALL", date: "", resourceType: "ALL", resource: "" })}
               >
                 Reset
               </button>

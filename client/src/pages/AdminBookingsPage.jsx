@@ -195,7 +195,6 @@ export default function AdminBookingsPage() {
     resource: "",
     user: "",
     approvalState: "ALL",
-    conflict: "ALL",
   });
   const [activeTab, setActiveTab] = useState("dashboard");
   const [detailsPage, setDetailsPage] = useState(1);
@@ -238,10 +237,6 @@ export default function AdminBookingsPage() {
   }, [filters]);
   useEffect(() => {
     const tab = (new URLSearchParams(location.search).get("tab") || "overview").toLowerCase();
-    const conflict = (new URLSearchParams(location.search).get("conflict") || "").toUpperCase();
-    if (conflict === "ONLY" || conflict === "VALID") {
-      setFilters((prev) => ({ ...prev, conflict }));
-    }
     if (tab === "calendar") {
       setActiveTab("calendar");
       return;
@@ -642,10 +637,7 @@ export default function AdminBookingsPage() {
   return (
     <AdminLayout activeSection="bookings" pageTitle={null} description={null}>
       <div style={{ fontFamily: appFontFamily }}>
-        <h1 style={{ margin: "0 0 8px 0", fontSize: "26px", fontWeight: 800, color: "#14213D" }}>Booking Management</h1>
-        <p style={{ margin: "0 0 28px 0", fontSize: "14px", color: "#64748b", maxWidth: "640px", lineHeight: 1.5 }}>
-          Review booking requests, approve/reject decisions, monitor conflicts, and manage booking lifecycle.
-        </p>
+        <h1 style={{ margin: "0 0 28px 0", fontSize: "26px", fontWeight: 800, color: "#14213D" }}>Booking Management</h1>
         <section style={panelStyle}>
         <div style={{ display: "grid", gap: 12 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 10, marginBottom: 38 }}>
@@ -799,7 +791,7 @@ export default function AdminBookingsPage() {
           {activeTab === "details" && (
             <>
       <section style={{ border: "1px solid #FFDDB8", borderRadius: 12, padding: 12, background: "#fff" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 10 }}>
           <select value={filters.status} onChange={(e) => setFilters((s) => ({ ...s, status: e.target.value }))} style={inputStyle}>
             <option value="ALL">Status: All</option>
             <option value="PENDING">Pending</option>
@@ -822,17 +814,12 @@ export default function AdminBookingsPage() {
             <option value="REJECTED">Rejected</option>
             <option value="CHECKED_IN">Checked In</option>
           </select>
-          <select value={filters.conflict} onChange={(e) => setFilters((s) => ({ ...s, conflict: e.target.value }))} style={inputStyle}>
-            <option value="ALL">Conflict: All</option>
-            <option value="ONLY">Conflicted bookings</option>
-            <option value="VALID">Valid bookings</option>
-          </select>
         </div>
         <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
           <button
             type="button"
             onClick={() => {
-              setFilters({ status: "ALL", date: "", resourceType: "ALL", resource: "", user: "", approvalState: "ALL", conflict: "ALL" });
+              setFilters({ status: "ALL", date: "", resourceType: "ALL", resource: "", user: "", approvalState: "ALL" });
             }}
             style={{ ...buttonStyle, background: "#fff", color: "#0f172a", border: "1px solid #FFDDB8" }}
           >
@@ -847,17 +834,17 @@ export default function AdminBookingsPage() {
         <table style={{ width: "max-content", minWidth: 1160, borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#f8fafc", color: "#334155", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              {["Booked By", "Resource Name", "Resource Type", "Date", "Start Time", "End Time", "Status", "Conflict", "Requested On", "Actions"].map((h) => (
+              {["Booked By", "Resource Name", "Resource Type", "Date", "Start Time", "End Time", "Status", "Requested On", "Actions"].map((h) => (
                 <th key={h} style={{ textAlign: "left", padding: "12px 10px", backgroundColor: "#FAF3E1", color: "#374151", fontWeight: 800, fontSize: "13px", borderBottom: "1px solid #F5E7C6" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={10} style={{ padding: 16, color: "#64748b" }}>No bookings found for the selected filters.</td></tr>
+              <tr><td colSpan={9} style={{ padding: 16, color: "#64748b" }}>No bookings found for the selected filters.</td></tr>
             )}
             {paginatedDetailsRows.map((row) => (
-              <tr key={row.id} id={row.id ? `admin-booking-row-${row.id}` : undefined} style={{ borderBottom: "1px solid #FFDDB8", background: row.outsideAvailability ? "#fff1f2" : "#fff" }}>
+              <tr key={row.id} id={row.id ? `admin-booking-row-${row.id}` : undefined} style={{ borderBottom: "1px solid #FFDDB8", background: "#fff" }}>
                 <td style={{ padding: "10px", fontWeight: 700, color: "#0f172a" }}>{row.userName || "—"}</td>
                 <td style={{ padding: "10px" }}>{row.resourceName || "—"}</td>
                 <td style={{ padding: "10px" }}>{row.resourceType || "—"}</td>
@@ -865,62 +852,29 @@ export default function AdminBookingsPage() {
                 <td style={{ padding: "10px" }}>{row.startTime || "—"}</td>
                 <td style={{ padding: "10px" }}>{row.endTime || "—"}</td>
                 <td style={{ padding: "10px" }}><span style={{ ...statusChip(row.status), display: "inline-flex", padding: "4px 9px", borderRadius: 999, fontWeight: 800, fontSize: 11 }}>{row.status || "PENDING"}</span></td>
-                <td style={{ padding: "10px" }}>
-                  <span style={{ display: "inline-flex", padding: "4px 9px", borderRadius: 999, fontWeight: 800, fontSize: 11, background: row.outsideAvailability ? "#fee2e2" : "#dcfce7", color: row.outsideAvailability ? "#b91c1c" : "#166534" }}>
-                    {row.outsideAvailability ? "Conflict" : "Valid"}
-                  </span>
-                </td>
                 <td style={{ padding: "10px" }}>{fmtDateTime(row.createdAt)}</td>
                 <td style={{ padding: "10px" }}>
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                    {row.outsideAvailability ? (
-                      <>
-                        {String(row.status || "").toUpperCase() === "CANCELLED" ? (
-                          <>
-                            <button type="button" onClick={() => setViewRow(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#fff", border: "1px solid #FFDDB8", color: "#0f172a", textAlign: "center" }}>
-                              View
-                            </button>
-                            <button type="button" disabled={busyId === row.id} onClick={() => openAction("delete", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#dc2626", color: "#fff", textAlign: "center" }}>
-                              Delete
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            {["APPROVED", "PENDING"].includes(String(row.status || "").toUpperCase()) && (
-                              <button type="button" disabled={busyId === row.id} onClick={() => openAction("cancel", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#111827", color: "#fff", textAlign: "center" }}>
-                                Cancel
-                              </button>
-                            )}
-                            <button type="button" disabled={busyId === row.id} onClick={() => openRescheduleDrawer(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#2563eb", color: "#fff", textAlign: "center" }}>
-                              Reschedule
-                            </button>
-                          </>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <button type="button" onClick={() => setViewRow(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#fff", border: "1px solid #FFDDB8", color: "#0f172a", textAlign: "center" }}>View</button>
-                        {canApprove(row.status) && (
-                          <button type="button" disabled={busyId === row.id} onClick={() => void handleApproveDirect(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#16a34a", color: "#fff", textAlign: "center" }}>
-                            Approve
-                          </button>
-                        )}
-                        {canReject(row.status) && (
-                          <button type="button" disabled={busyId === row.id} onClick={() => openAction("reject", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#dc2626", color: "#fff", textAlign: "center" }}>
-                            Reject
-                          </button>
-                        )}
-                        {canCancel(row.status) && (
-                          <button type="button" disabled={busyId === row.id} onClick={() => openAction("cancel", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#111827", color: "#fff", textAlign: "center" }}>
-                            Cancel
-                          </button>
-                        )}
-                        {canDelete(row.status) && (
-                          <button type="button" disabled={busyId === row.id} onClick={() => openAction("delete", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#dc2626", color: "#fff", textAlign: "center" }}>
-                            Delete
-                          </button>
-                        )}
-                      </>
+                    <button type="button" onClick={() => setViewRow(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#fff", border: "1px solid #FFDDB8", color: "#0f172a", textAlign: "center" }}>View</button>
+                    {canApprove(row.status) && (
+                      <button type="button" disabled={busyId === row.id} onClick={() => void handleApproveDirect(row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#16a34a", color: "#fff", textAlign: "center" }}>
+                        Approve
+                      </button>
+                    )}
+                    {canReject(row.status) && (
+                      <button type="button" disabled={busyId === row.id} onClick={() => openAction("reject", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#dc2626", color: "#fff", textAlign: "center" }}>
+                        Reject
+                      </button>
+                    )}
+                    {canCancel(row.status) && (
+                      <button type="button" disabled={busyId === row.id} onClick={() => openAction("cancel", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#111827", color: "#fff", textAlign: "center" }}>
+                        Cancel
+                      </button>
+                    )}
+                    {canDelete(row.status) && (
+                      <button type="button" disabled={busyId === row.id} onClick={() => openAction("delete", row)} style={{ ...buttonStyle, ...actionControlStyle, background: "#dc2626", color: "#fff", textAlign: "center" }}>
+                        Delete
+                      </button>
                     )}
                   </div>
                 </td>

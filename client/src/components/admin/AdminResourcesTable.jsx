@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { createResource, deleteResource, getAdminResources, previewResourceAvailabilityConflicts, updateResource, updateResourceStatus } from "../../api/adminResources";
 
 const pageCardStyle = {
@@ -22,6 +21,8 @@ const thStyle = {
   whiteSpace: "nowrap",
 };
 const tdStyle = { padding: "10px", borderBottom: "1px solid #eef2f7", color: "#334155", verticalAlign: "top" };
+/** Same pattern as AdminBookingsPage details table — table wider than viewport → horizontal scroll. */
+const RESOURCE_TABLE_MIN_WIDTH = 1160;
 const inputStyle = {
   width: "100%",
   padding: "10px 12px",
@@ -35,7 +36,7 @@ const inputStyle = {
 /** Filter row only — matches page / table light orange border. */
 const filterInputStyle = { ...inputStyle, border: "1px solid #FFDDB8" };
 
-const RESOURCE_TABLE_PAGE_SIZE = 10;
+const RESOURCE_TABLE_PAGE_SIZE = 20;
 const labelStyle = { display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 };
 const summaryGridStyle = { display: "grid", gridTemplateColumns: "repeat(5, minmax(140px, 1fr))", gap: "12px", marginBottom: "14px" };
 /** Matches admin ticket dashboard metric cards: light border + left accent strip. */
@@ -53,6 +54,9 @@ const primaryActionBtnStyle = {
   background: "#FA8112",
   color: "#fff",
 };
+/** Match AdminBookingsPage details table action buttons */
+const bookingTableButtonStyle = { height: 38, borderRadius: 9, border: "none", padding: "0 12px", fontWeight: 700, cursor: "pointer" };
+const bookingTableActionStyle = { height: 32, width: 108, borderRadius: 8, fontSize: 12, boxSizing: "border-box", textAlign: "center" };
 const DEFAULT_AVAILABILITY_START = "08:00";
 const DEFAULT_AVAILABILITY_END = "18:00";
 
@@ -202,6 +206,90 @@ function availabilityText(start, end) {
   return `${s}-${e}`;
 }
 
+/** Parse HTML time value (HH:mm or HH:mm:ss) to minutes since midnight; null if invalid. */
+function availabilityHhmmToMinutes(hhmm) {
+  const s = String(hhmm || "").trim();
+  if (!s) return null;
+  const parts = s.split(":");
+  const h = Number(parts[0]);
+  const m = Number(parts[1] ?? 0);
+  if (!Number.isFinite(h) || !Number.isFinite(m) || m < 0 || m > 59 || h < 0 || h > 23) return null;
+  return h * 60 + m;
+}
+
+/** Field-keyed errors for start/end (ordering message on end). */
+function getAvailabilityFieldErrors(start, end) {
+  const out = {};
+  const s = String(start || "").trim();
+  const t = String(end || "").trim();
+  if (!s) out.availabilityStart = "Start time is required.";
+  if (!t) out.availabilityEnd = "End time is required.";
+  if (out.availabilityStart || out.availabilityEnd) return out;
+  const startMin = availabilityHhmmToMinutes(start);
+  const endMin = availabilityHhmmToMinutes(end);
+  if (startMin == null || endMin == null) {
+    out.availabilityEnd = "Enter valid availability times.";
+    return out;
+  }
+  if (startMin >= endMin) {
+    out.availabilityEnd = "End time must be later than start time.";
+    return out;
+  }
+  return out;
+}
+
+const resourceRequiredMarkStyle = { color: "#f0a8a8", fontWeight: 800, marginLeft: 2 };
+const resourceFieldErrorStyle = {
+  margin: "6px 0 0",
+  color: "#e57373",
+  fontSize: 12,
+  fontWeight: 600,
+  fontStyle: "normal",
+  lineHeight: 1.4,
+  letterSpacing: "normal",
+};
+
+function ResourceFieldError({ message }) {
+  if (!message) return null;
+  return <p style={resourceFieldErrorStyle} role="alert">{message}</p>;
+}
+
+function buildCreateFieldErrors(fd) {
+  const e = {};
+  if (!String(fd.resourceCode || "").trim()) e.resourceCode = "Resource code is required.";
+  if (!String(fd.resourceName || "").trim()) e.resourceName = "Resource name is required.";
+  if (!String(fd.resourceType || "").trim()) e.resourceType = "Resource type is required.";
+  const capRaw = String(fd.capacity ?? "").trim();
+  if (!capRaw) e.capacity = "Capacity is required.";
+  else {
+    const n = Number(capRaw);
+    if (!Number.isFinite(n) || n < 0) e.capacity = "Enter a valid capacity (0 or greater).";
+  }
+  if (!String(fd.location || "").trim()) e.location = "Location is required.";
+  if (!fd.resourceImageFiles?.length) e.resourceImage = "Please upload at least one image.";
+  Object.assign(e, getAvailabilityFieldErrors(fd.availabilityStart, fd.availabilityEnd));
+  if (!String(fd.status || "").trim()) e.status = "Status is required.";
+  return e;
+}
+
+function buildEditFieldErrors(fd) {
+  const e = {};
+  if (!String(fd.resourceName || "").trim()) e.resourceName = "Resource name is required.";
+  if (!String(fd.resourceType || "").trim()) e.resourceType = "Resource type is required.";
+  const capRaw = String(fd.capacity ?? "").trim();
+  if (!capRaw) e.capacity = "Capacity is required.";
+  else {
+    const n = Number(capRaw);
+    if (!Number.isFinite(n) || n < 0) e.capacity = "Enter a valid capacity (0 or greater).";
+  }
+  if (!String(fd.location || "").trim()) e.location = "Location is required.";
+  const hasImage = (Array.isArray(fd.imageUrls) && fd.imageUrls.length > 0) || (Array.isArray(fd.newImageFiles) && fd.newImageFiles.length > 0);
+  if (!hasImage) e.resourceImage = "Add or keep at least one image.";
+  Object.assign(e, getAvailabilityFieldErrors(fd.availabilityStart, fd.availabilityEnd));
+  if (!String(fd.status || "").trim()) e.status = "Status is required.";
+  return e;
+}
+
 /** URLs safe to treat as persisted (server paths). Never blob/data previews — they break after refresh. */
 function sanitizePersistedImageUrls(urls) {
   if (!Array.isArray(urls)) return [];
@@ -223,7 +311,6 @@ function resourceWithSanitizedImages(resource) {
 }
 
 export default function AdminResourcesTable() {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [resources, setResources] = useState([]);
@@ -234,8 +321,8 @@ export default function AdminResourcesTable() {
   const [selectedResource, setSelectedResource] = useState(null);
   const [createBusy, setCreateBusy] = useState(false);
   const [editBusy, setEditBusy] = useState(false);
-  const [createError, setCreateError] = useState("");
-  const [editError, setEditError] = useState("");
+  const [createFieldErrors, setCreateFieldErrors] = useState({});
+  const [editFieldErrors, setEditFieldErrors] = useState({});
   const [availabilityConflictDialog, setAvailabilityConflictDialog] = useState({
     open: false,
     affectedBookings: 0,
@@ -372,7 +459,7 @@ export default function AdminResourcesTable() {
 
   const updateForm = (key, value) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
-    setCreateError("");
+    setCreateFieldErrors({});
   };
 
   const openAddModal = () => {
@@ -389,7 +476,7 @@ export default function AdminResourcesTable() {
       resourceImageFiles: [],
       resourceImagePreviews: [],
     });
-    setCreateError("");
+    setCreateFieldErrors({});
     setAddModalOpen(true);
   };
 
@@ -401,6 +488,7 @@ export default function AdminResourcesTable() {
 
   const openEditDrawer = (resource) => {
     const parsedAvailability = parseAvailabilityRange(resource.availability || resource.availabilityText || "");
+    setViewDrawerOpen(false);
     setSelectedResource(resource);
     setEditResourceId(resource.id || "");
     setEditFormData({
@@ -423,19 +511,25 @@ export default function AdminResourcesTable() {
       newImageFiles: [],
       newImagePreviews: [],
     });
-    setEditError("");
+    setEditFieldErrors({});
     setEditDrawerOpen(true);
   };
 
   const updateEditForm = (key, value) => {
     setEditFormData((prev) => ({ ...prev, [key]: value }));
-    setEditError("");
+    setEditFieldErrors({});
   };
 
-  const submitEditResourceWithConflictAction = useCallback(async (conflictAction = "MARK_CONFLICTS", redirectToBookings = false) => {
+  const submitEditResourceWithConflictAction = useCallback(async (conflictAction = "MARK_CONFLICTS") => {
+    const fieldErrs = buildEditFieldErrors(editFormData);
+    if (Object.keys(fieldErrs).length) {
+      setEditFieldErrors(fieldErrs);
+      setAvailabilityConflictDialog({ open: false, affectedBookings: 0, oldAvailability: "", newAvailability: "", conflictingBookings: [] });
+      return;
+    }
     try {
       setEditBusy(true);
-      setEditError("");
+      setEditFieldErrors({});
       const capacityNumber = Number(editFormData.capacity);
       const payload = new FormData();
       payload.append("name", editFormData.resourceName.trim());
@@ -453,30 +547,21 @@ export default function AdminResourcesTable() {
       setEditDrawerOpen(false);
       setAvailabilityConflictDialog({ open: false, affectedBookings: 0, oldAvailability: "", newAvailability: "", conflictingBookings: [] });
       await load();
-      if (redirectToBookings) navigate("/adminbookings?tab=details&conflict=ONLY");
     } catch (err) {
-      setEditError(err?.message || "Could not update resource.");
+      setEditFieldErrors({ general: err?.message || "Could not update resource." });
     } finally {
       setEditBusy(false);
     }
-  }, [editFormData, editResourceId, load, navigate]);
+  }, [editFormData, editResourceId, load]);
 
   const handleCreateResource = async (e) => {
-    if (formData.availabilityStart >= formData.availabilityEnd) {
-      setCreateError("Availability end time must be later than start time.");
-      return;
-    }
-
     e.preventDefault();
+    const createErrs = buildCreateFieldErrors(formData);
+    if (Object.keys(createErrs).length) {
+      setCreateFieldErrors(createErrs);
+      return;
+    }
     const capacityNumber = Number(formData.capacity);
-    if (!formData.resourceCode.trim() || !formData.resourceName.trim() || !formData.location.trim()) {
-      setCreateError("Resource code, name, and location are required.");
-      return;
-    }
-    if (!Number.isFinite(capacityNumber) || capacityNumber < 0) {
-      setCreateError("Capacity must be a valid number.");
-      return;
-    }
 
     const payload = new FormData();
     payload.append("code", formData.resourceCode.trim());
@@ -492,7 +577,7 @@ export default function AdminResourcesTable() {
     }
 
     setCreateBusy(true);
-    setCreateError("");
+    setCreateFieldErrors({});
     try {
       await createResource(payload);
       setAddModalOpen(false);
@@ -519,27 +604,19 @@ export default function AdminResourcesTable() {
   };
 
   const handleEditResource = async (e) => {
-    if (editFormData.availabilityStart >= editFormData.availabilityEnd) {
-      setEditError("Availability end time must be later than start time.");
-      return;
-    }
-
     e.preventDefault();
-    const capacityNumber = Number(editFormData.capacity);
     if (!editResourceId) {
-      setEditError("Resource id is missing.");
+      setEditFieldErrors({ general: "Resource id is missing." });
       return;
     }
-    if (!editFormData.resourceName.trim() || !editFormData.location.trim()) {
-      setEditError("Resource name and location are required.");
+    const editErrs = buildEditFieldErrors(editFormData);
+    if (Object.keys(editErrs).length) {
+      setEditFieldErrors(editErrs);
       return;
     }
-    if (!Number.isFinite(capacityNumber) || capacityNumber < 0) {
-      setEditError("Capacity must be a valid number.");
-      return;
-    }
+    const capacityNumber = Number(editFormData.capacity);
 
-    setEditError("");
+    setEditFieldErrors({});
     try {
       const oldAvailability = availabilityText(parseAvailabilityRange(selectedResource?.availability || "").start, parseAvailabilityRange(selectedResource?.availability || "").end);
       const newAvailability = availabilityText(editFormData.availabilityStart, editFormData.availabilityEnd);
@@ -558,7 +635,7 @@ export default function AdminResourcesTable() {
           return;
         }
       }
-      await submitEditResourceWithConflictAction("MARK_CONFLICTS", false);
+      await submitEditResourceWithConflictAction("MARK_CONFLICTS");
     } catch (err) {
       if (String(editResourceId).startsWith("tmp-")) {
         setResources((prev) => prev.map((r) => {
@@ -579,7 +656,7 @@ export default function AdminResourcesTable() {
         }));
         setEditDrawerOpen(false);
       } else {
-        setEditError(err?.message || "Could not update resource.");
+        setEditFieldErrors({ general: err?.message || "Could not update resource." });
       }
     }
   };
@@ -639,18 +716,19 @@ export default function AdminResourcesTable() {
       {!loading && error && <p style={{ margin: "0 0 10px 0", color: "#b45309", fontWeight: 800 }}>{error}</p>}
 
       {!loading && (
-        <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #FFDDB8" }}>
-          <table style={tableStyle}>
+        <div style={{ borderRadius: 12, border: "1px solid #FFDDB8", overflow: "hidden" }}>
+          <div style={{ width: "100%", overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
+          <table style={{ ...tableStyle, width: "max-content", minWidth: RESOURCE_TABLE_MIN_WIDTH, borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                <th style={thStyle}>Resource Code</th>
-                <th style={thStyle}>Resource Name</th>
-                <th style={thStyle}>Type</th>
-                <th style={thStyle}>Capacity</th>
-                <th style={thStyle}>Location</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Availability</th>
-                <th style={thStyle}>Actions</th>
+                <th style={{ ...thStyle, minWidth: 120 }}>Resource Code</th>
+                <th style={{ ...thStyle, minWidth: 180 }}>Resource Name</th>
+                <th style={{ ...thStyle, minWidth: 140 }}>Type</th>
+                <th style={{ ...thStyle, minWidth: 88 }}>Capacity</th>
+                <th style={{ ...thStyle, minWidth: 260 }}>Location</th>
+                <th style={{ ...thStyle, minWidth: 130 }}>Status</th>
+                <th style={{ ...thStyle, minWidth: 130 }}>Availability</th>
+                <th style={{ ...thStyle, minWidth: 300 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -661,16 +739,15 @@ export default function AdminResourcesTable() {
               )}
               {paginatedResources.map((r) => (
                 <tr key={r.id || r.code}>
-                  <td style={tdStyle}>{r.code || r.resourceCode || "—"}</td>
-                  <td style={tdStyle}>{r.name || r.resourceName || "—"}</td>
-                  <td style={tdStyle}>{r.type || "—"}</td>
-                  <td style={tdStyle}>{r.capacity ?? "—"}</td>
-                  <td style={tdStyle}>{r.location || "—"}</td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{r.code || r.resourceCode || "—"}</td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{r.name || r.resourceName || "—"}</td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{r.type || "—"}</td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{r.capacity ?? "—"}</td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{r.location || "—"}</td>
                   <td style={tdStyle}><span style={statusPill(r.status || "OUT_OF_SERVICE")}>{r.status || "OUT_OF_SERVICE"}</span></td>
-                  <td style={tdStyle}>{r.availability || r.availabilityText || "—"}</td>
+                  <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{r.availability || r.availabilityText || "—"}</td>
                   <td style={tdStyle}>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button type="button" style={smallBtnStyle()} onClick={() => openViewDrawer(r)}>View</button>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "nowrap", alignItems: "center" }}>
                       <button
                         type="button"
                         disabled={busyId === r.id}
@@ -683,20 +760,16 @@ export default function AdminResourcesTable() {
                           <span style={statusToggleKnobStyle} />
                         </span>
                       </button>
-                      <button type="button" style={{ ...iconOnlyBtnStyle("danger"), opacity: busyId === r.id ? 0.7 : 1 }} disabled={busyId === r.id} onClick={() => onDelete(r)} title="Delete" aria-label="Delete">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
-                          <path d="M3.5 7.5h17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                          <path d="M9 4.5h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                          <path d="M7.5 7.5l1 11a1.5 1.5 0 0 0 1.5 1.36h4a1.5 1.5 0 0 0 1.5-1.36l1-11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          <path d="M10 11v6M12 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                      </button>
+                      <button type="button" onClick={() => openViewDrawer(r)} style={{ ...bookingTableButtonStyle, ...bookingTableActionStyle, background: "#fff", border: "1px solid #FFDDB8", color: "#0f172a" }}>View</button>
+                      <button type="button" onClick={() => openEditDrawer(r)} style={{ ...bookingTableButtonStyle, ...bookingTableActionStyle, background: "#FA8112", color: "#fff", border: "none" }}>Edit</button>
+                      <button type="button" disabled={busyId === r.id} onClick={() => onDelete(r)} style={{ ...bookingTableButtonStyle, ...bookingTableActionStyle, background: "#dc2626", color: "#fff", border: "none", opacity: busyId === r.id ? 0.7 : 1 }}>Delete</button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
           {filtered.length > 0 && (
             <div
               style={{
@@ -783,34 +856,54 @@ export default function AdminResourcesTable() {
             <form onSubmit={handleCreateResource} style={{ padding: "18px 22px 22px", display: "grid", gap: "16px", overflowY: "auto" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
-                  <label style={labelStyle}>Resource Code</label>
-                  <input value={formData.resourceCode} onChange={(e) => updateForm("resourceCode", e.target.value)} style={filterInputStyle} placeholder="LAB-C-204" required />
+                  <label style={labelStyle}>
+                    Resource Code
+                    <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                  </label>
+                  <input value={formData.resourceCode} onChange={(e) => updateForm("resourceCode", e.target.value)} style={filterInputStyle} placeholder="LAB-C-204" />
+                  <ResourceFieldError message={createFieldErrors.resourceCode} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Resource Name</label>
-                  <input value={formData.resourceName} onChange={(e) => updateForm("resourceName", e.target.value)} style={filterInputStyle} placeholder="Computer Lab C204" required />
+                  <label style={labelStyle}>
+                    Resource Name
+                    <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                  </label>
+                  <input value={formData.resourceName} onChange={(e) => updateForm("resourceName", e.target.value)} style={filterInputStyle} placeholder="Computer Lab C204" />
+                  <ResourceFieldError message={createFieldErrors.resourceName} />
                 </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
-                  <label style={labelStyle}>Resource Type</label>
+                  <label style={labelStyle}>
+                    Resource Type
+                    <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                  </label>
                   <select value={formData.resourceType} onChange={(e) => updateForm("resourceType", e.target.value)} style={filterInputStyle}>
                     <option value="LECTURE_HALL">Lecture Hall</option>
                     <option value="LAB">Lab</option>
                     <option value="MEETING_ROOM">Meeting Room</option>
                     <option value="EQUIPMENT">Equipment</option>
                   </select>
+                  <ResourceFieldError message={createFieldErrors.resourceType} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Capacity</label>
-                  <input value={formData.capacity} onChange={(e) => updateForm("capacity", e.target.value.replace(/[^\d]/g, ""))} style={filterInputStyle} placeholder="40" required />
+                  <label style={labelStyle}>
+                    Capacity
+                    <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                  </label>
+                  <input value={formData.capacity} onChange={(e) => updateForm("capacity", e.target.value.replace(/[^\d]/g, ""))} style={filterInputStyle} placeholder="40" />
+                  <ResourceFieldError message={createFieldErrors.capacity} />
                 </div>
               </div>
 
               <div>
-                <label style={labelStyle}>Location</label>
-                <input value={formData.location} onChange={(e) => updateForm("location", e.target.value)} style={filterInputStyle} placeholder="Engineering Block C - Floor 2" required />
+                <label style={labelStyle}>
+                  Location
+                  <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                </label>
+                <input value={formData.location} onChange={(e) => updateForm("location", e.target.value)} style={filterInputStyle} placeholder="Engineering Block C - Floor 2" />
+                <ResourceFieldError message={createFieldErrors.location} />
               </div>
 
               <div>
@@ -819,7 +912,10 @@ export default function AdminResourcesTable() {
               </div>
 
               <div>
-                <label style={labelStyle}>Upload Image</label>
+                <label style={labelStyle}>
+                  Upload Image
+                  <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                </label>
                 <input
                   type="file"
                   accept="image/*"
@@ -843,6 +939,7 @@ export default function AdminResourcesTable() {
                     e.target.value = "";
                   }}
                 />
+                <ResourceFieldError message={createFieldErrors.resourceImage} />
                 {formData.resourceImagePreviews.length > 0 ? (
                   <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(120px, 1fr))", gap: 8 }}>
                     {formData.resourceImagePreviews.map((src, idx) => (
@@ -867,23 +964,35 @@ export default function AdminResourcesTable() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
-                  <label style={labelStyle}>Availability Start</label>
+                  <label style={labelStyle}>
+                    Availability Start
+                    <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                  </label>
                   <input type="time" value={formData.availabilityStart} onChange={(e) => updateForm("availabilityStart", e.target.value)} style={filterInputStyle} />
+                  <ResourceFieldError message={createFieldErrors.availabilityStart} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Availability End</label>
+                  <label style={labelStyle}>
+                    Availability End
+                    <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                  </label>
                   <input type="time" value={formData.availabilityEnd} onChange={(e) => updateForm("availabilityEnd", e.target.value)} style={filterInputStyle} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Status</label>
-                  <select value={formData.status} onChange={(e) => updateForm("status", e.target.value)} style={filterInputStyle}>
-                    <option value="ACTIVE">ACTIVE</option>
-                    <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
-                  </select>
+                  <ResourceFieldError message={createFieldErrors.availabilityEnd} />
                 </div>
               </div>
+              <div>
+                <label style={labelStyle}>
+                  Status
+                  <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                </label>
+                <select value={formData.status} onChange={(e) => updateForm("status", e.target.value)} style={filterInputStyle}>
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
+                </select>
+                <ResourceFieldError message={createFieldErrors.status} />
+              </div>
 
-              {createError ? <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 700 }}>{createError}</p> : null}
+              <ResourceFieldError message={createFieldErrors.general} />
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button type="button" onClick={() => setAddModalOpen(false)} style={smallBtnStyle()}>Cancel</button>
@@ -896,7 +1005,7 @@ export default function AdminResourcesTable() {
         </div>
       )}
 
-      {viewDrawerOpen && (
+      {(viewDrawerOpen || editDrawerOpen) && (
         <div style={{ position: "fixed", inset: 0, zIndex: 1003 }}>
           <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(15,23,42,0.35)" }} onClick={() => { setViewDrawerOpen(false); setEditDrawerOpen(false); }} />
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, padding: "24px", pointerEvents: "none" }}>
@@ -904,7 +1013,7 @@ export default function AdminResourcesTable() {
               <aside style={{ width: "min(520px, 65vw)", maxHeight: "calc(100vh - 48px)", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, boxShadow: "0 24px 80px rgba(0,0,0,0.2)", pointerEvents: "auto", display: "flex", flexDirection: "column", overflow: "hidden" }}>
                 <div style={{ padding: "14px 16px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ fontSize: 18, fontWeight: 900, color: "#111827" }}>Edit Resource</div>
-                  <button type="button" onClick={() => setEditDrawerOpen(false)} style={{ border: "1px solid #e5e7eb", background: "#fff", borderRadius: 999, width: 32, height: 32, fontSize: 20, cursor: "pointer" }}>×</button>
+                  <button type="button" onClick={() => { setEditDrawerOpen(false); }} style={{ border: "1px solid #e5e7eb", background: "#fff", borderRadius: 999, width: 32, height: 32, fontSize: 20, cursor: "pointer" }}>×</button>
                 </div>
                 <form onSubmit={handleEditResource} style={{ padding: 16, overflowY: "auto", display: "grid", gap: 14 }}>
                   <div>
@@ -912,34 +1021,53 @@ export default function AdminResourcesTable() {
                     <input value={editFormData.resourceCode} style={{ ...inputStyle, backgroundColor: "#f3f4f6", color: "#6b7280" }} readOnly disabled />
                   </div>
                   <div>
-                    <label style={labelStyle}>Resource Name</label>
-                    <input value={editFormData.resourceName} onChange={(e) => updateEditForm("resourceName", e.target.value)} style={inputStyle} required />
+                    <label style={labelStyle}>
+                      Resource Name
+                      <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                    </label>
+                    <input value={editFormData.resourceName} onChange={(e) => updateEditForm("resourceName", e.target.value)} style={inputStyle} />
+                    <ResourceFieldError message={editFieldErrors.resourceName} />
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
-                      <label style={labelStyle}>Resource Type</label>
+                      <label style={labelStyle}>
+                        Resource Type
+                        <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                      </label>
                       <select value={editFormData.resourceType} onChange={(e) => updateEditForm("resourceType", e.target.value)} style={inputStyle}>
                         <option value="LECTURE_HALL">Lecture Hall</option>
                         <option value="LAB">Lab</option>
                         <option value="MEETING_ROOM">Meeting Room</option>
                         <option value="EQUIPMENT">Equipment</option>
                       </select>
+                      <ResourceFieldError message={editFieldErrors.resourceType} />
                     </div>
                     <div>
-                      <label style={labelStyle}>Capacity</label>
-                      <input value={editFormData.capacity} onChange={(e) => updateEditForm("capacity", e.target.value.replace(/[^\d]/g, ""))} style={inputStyle} required />
+                      <label style={labelStyle}>
+                        Capacity
+                        <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                      </label>
+                      <input value={editFormData.capacity} onChange={(e) => updateEditForm("capacity", e.target.value.replace(/[^\d]/g, ""))} style={inputStyle} />
+                      <ResourceFieldError message={editFieldErrors.capacity} />
                     </div>
                   </div>
                   <div>
-                    <label style={labelStyle}>Location</label>
-                    <input value={editFormData.location} onChange={(e) => updateEditForm("location", e.target.value)} style={inputStyle} required />
+                    <label style={labelStyle}>
+                      Location
+                      <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                    </label>
+                    <input value={editFormData.location} onChange={(e) => updateEditForm("location", e.target.value)} style={inputStyle} />
+                    <ResourceFieldError message={editFieldErrors.location} />
                   </div>
                   <div>
                     <label style={labelStyle}>Description</label>
                     <textarea value={editFormData.description} onChange={(e) => updateEditForm("description", e.target.value)} style={{ ...inputStyle, minHeight: 82, resize: "vertical" }} />
                   </div>
                   <div>
-                    <label style={labelStyle}>Resource Image</label>
+                    <label style={labelStyle}>
+                      Resource Image
+                      <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                    </label>
                     {[...editFormData.imageUrls, ...editFormData.newImagePreviews].length > 0 ? (
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(110px, 1fr))", gap: 8, marginBottom: 8 }}>
                         {editFormData.imageUrls.map((src, idx) => (
@@ -996,28 +1124,41 @@ export default function AdminResourcesTable() {
                         e.target.value = "";
                       }}
                     />
+                    <ResourceFieldError message={editFieldErrors.resourceImage} />
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
-                      <label style={labelStyle}>Availability Start</label>
+                      <label style={labelStyle}>
+                        Availability Start
+                        <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                      </label>
                       <input type="time" value={editFormData.availabilityStart} onChange={(e) => updateEditForm("availabilityStart", e.target.value)} style={inputStyle} />
+                      <ResourceFieldError message={editFieldErrors.availabilityStart} />
                     </div>
                     <div>
-                      <label style={labelStyle}>Availability End</label>
+                      <label style={labelStyle}>
+                        Availability End
+                        <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                      </label>
                       <input type="time" value={editFormData.availabilityEnd} onChange={(e) => updateEditForm("availabilityEnd", e.target.value)} style={inputStyle} />
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Status</label>
-                      <select value={editFormData.status} onChange={(e) => updateEditForm("status", e.target.value)} style={inputStyle}>
-                        <option value="ACTIVE">ACTIVE</option>
-                        <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
-                      </select>
+                      <ResourceFieldError message={editFieldErrors.availabilityEnd} />
                     </div>
                   </div>
-                  {editError ? <p style={{ margin: 0, color: "#b91c1c", fontSize: 14, fontWeight: 700 }}>{editError}</p> : null}
+                  <div>
+                    <label style={labelStyle}>
+                      Status
+                      <span style={resourceRequiredMarkStyle} aria-hidden="true">*</span>
+                    </label>
+                    <select value={editFormData.status} onChange={(e) => updateEditForm("status", e.target.value)} style={inputStyle}>
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
+                    </select>
+                    <ResourceFieldError message={editFieldErrors.status} />
+                  </div>
+                  <ResourceFieldError message={editFieldErrors.general} />
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                    <button type="button" onClick={() => setEditDrawerOpen(false)} style={smallBtnStyle()}>Cancel</button>
-                    <button type="submit" disabled={editBusy} style={{ ...smallBtnStyle("primary"), ...primaryActionBtnStyle, opacity: editBusy ? 0.7 : 1 }}>
+                    <button type="button" onClick={() => setEditDrawerOpen(false)} style={{ ...bookingTableButtonStyle, background: "#fff", color: "#0f172a", border: "1px solid #FFDDB8", minWidth: 108 }}>Cancel</button>
+                    <button type="submit" disabled={editBusy} style={{ ...bookingTableButtonStyle, background: "#FA8112", color: "#fff", border: "none", opacity: editBusy ? 0.7 : 1, minWidth: 120 }}>
                       {editBusy ? "Saving..." : "Save Changes"}
                     </button>
                   </div>
@@ -1025,16 +1166,28 @@ export default function AdminResourcesTable() {
               </aside>
             )}
 
-            <aside style={{ width: "min(360px, 40vw)", maxHeight: "calc(100vh - 48px)", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, boxShadow: "0 24px 80px rgba(0,0,0,0.2)", pointerEvents: "auto", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            {viewDrawerOpen && (
+            <aside style={{ width: "min(440px, 46vw)", maxHeight: "calc(100vh - 48px)", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, boxShadow: "0 24px 80px rgba(0,0,0,0.2)", pointerEvents: "auto", display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <div style={{ padding: "14px 16px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontSize: 18, fontWeight: 900, color: "#111827" }}>Resource Details</div>
-                <button type="button" onClick={() => { setViewDrawerOpen(false); setEditDrawerOpen(false); }} style={{ border: "1px solid #e5e7eb", background: "#fff", borderRadius: 999, width: 32, height: 32, fontSize: 20, cursor: "pointer" }}>×</button>
+                <button type="button" onClick={() => setViewDrawerOpen(false)} style={{ border: "1px solid #e5e7eb", background: "#fff", borderRadius: 999, width: 32, height: 32, fontSize: 20, cursor: "pointer" }}>×</button>
               </div>
-              <div style={{ padding: 16, overflowY: "auto", flex: 1, display: "grid", gap: 12 }}>
+              <div
+                style={{
+                  padding: 16,
+                  overflowY: "auto",
+                  flex: 1,
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  columnGap: 14,
+                  rowGap: 14,
+                  alignContent: "start",
+                }}
+              >
                 {((Array.isArray(selectedResource?.imageUrls) && selectedResource.imageUrls.length > 0) || selectedResource?.imageUrl) ? (
-                  <div>
+                  <div style={{ gridColumn: "1 / -1" }}>
                     <div style={labelStyle}>Image</div>
-                    <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "repeat(2, minmax(120px, 1fr))", gap: 8 }}>
+                    <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
                       {(Array.isArray(selectedResource?.imageUrls) && selectedResource.imageUrls.length > 0
                         ? selectedResource.imageUrls
                         : [selectedResource?.imageUrl]
@@ -1049,35 +1202,41 @@ export default function AdminResourcesTable() {
                     </div>
                   </div>
                 ) : null}
-                <div><div style={labelStyle}>Resource Code</div><div>{selectedResource?.code || "—"}</div></div>
-                <div><div style={labelStyle}>Name</div><div>{selectedResource?.name || "—"}</div></div>
-                <div><div style={labelStyle}>Type</div><div>{selectedResource?.type || "—"}</div></div>
-                <div><div style={labelStyle}>Capacity</div><div>{selectedResource?.capacity ?? "—"}</div></div>
-                <div><div style={labelStyle}>Location</div><div>{selectedResource?.location || "—"}</div></div>
-                <div><div style={labelStyle}>Description</div><div>{selectedResource?.description || "—"}</div></div>
-                <div><div style={labelStyle}>Availability Windows</div><div>{selectedResource?.availability || "—"}</div></div>
-                <div><div style={labelStyle}>Status</div><div>{selectedResource?.status || "—"}</div></div>
-              </div>
-              <div style={{ padding: 16, borderTop: "1px solid #e5e7eb", display: "flex", gap: 10 }}>
-                <button
-                  type="button"
-                  style={{ ...smallBtnStyle(), flex: 1, padding: "10px 12px", fontWeight: 800 }}
-                  onClick={() => {
-                    setViewDrawerOpen(false);
-                    setEditDrawerOpen(false);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  style={{ ...smallBtnStyle("primary"), ...primaryActionBtnStyle, flex: 1, padding: "10px 12px" }}
-                  onClick={() => openEditDrawer(selectedResource)}
-                >
-                  Edit
-                </button>
+                <div style={{ minWidth: 0 }}>
+                  <div style={labelStyle}>Resource Code</div>
+                  <div style={{ marginTop: 4, color: "#334155", fontWeight: 600, fontSize: 13, wordBreak: "break-word" }}>{selectedResource?.code || "—"}</div>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={labelStyle}>Name</div>
+                  <div style={{ marginTop: 4, color: "#334155", fontWeight: 600, fontSize: 13, wordBreak: "break-word" }}>{selectedResource?.name || "—"}</div>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={labelStyle}>Type</div>
+                  <div style={{ marginTop: 4, color: "#334155", fontWeight: 600, fontSize: 13, wordBreak: "break-word" }}>{selectedResource?.type || "—"}</div>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={labelStyle}>Capacity</div>
+                  <div style={{ marginTop: 4, color: "#334155", fontWeight: 600, fontSize: 13 }}>{selectedResource?.capacity ?? "—"}</div>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={labelStyle}>Location</div>
+                  <div style={{ marginTop: 4, color: "#334155", fontWeight: 600, fontSize: 13, wordBreak: "break-word" }}>{selectedResource?.location || "—"}</div>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={labelStyle}>Availability Windows</div>
+                  <div style={{ marginTop: 4, color: "#334155", fontWeight: 600, fontSize: 13, wordBreak: "break-word" }}>{selectedResource?.availability || "—"}</div>
+                </div>
+                <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
+                  <div style={labelStyle}>Description</div>
+                  <div style={{ marginTop: 4, color: "#334155", fontWeight: 600, fontSize: 13, lineHeight: 1.45, wordBreak: "break-word" }}>{selectedResource?.description || "—"}</div>
+                </div>
+                <div style={{ gridColumn: "1 / -1", minWidth: 0 }}>
+                  <div style={labelStyle}>Status</div>
+                  <div style={{ marginTop: 4, color: "#334155", fontWeight: 600, fontSize: 13 }}>{selectedResource?.status || "—"}</div>
+                </div>
               </div>
             </aside>
+            )}
           </div>
         </div>
       )}
@@ -1087,7 +1246,7 @@ export default function AdminResourcesTable() {
           <div style={{ width: "100%", maxWidth: 840, background: "#fff", borderRadius: 14, border: "1px solid #fecaca", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 18 }}>
             <h3 style={{ margin: "0 0 8px", color: "#991b1b", fontSize: 20, fontWeight: 900 }}>Availability conflict detected</h3>
             <p style={{ margin: 0, color: "#334155", fontWeight: 600 }}>
-              This availability change conflicts with {availabilityConflictDialog.affectedBookings} existing bookings. Those bookings remain active unless you cancel or reschedule them.
+              This availability change conflicts with {availabilityConflictDialog.affectedBookings} existing bookings. You can save and cancel these bookings now.
             </p>
             <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 13 }}>
               <div><strong>Old window:</strong> {availabilityConflictDialog.oldAvailability || "—"}</div>
@@ -1115,7 +1274,7 @@ export default function AdminResourcesTable() {
             </div>
             <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
               <button type="button" style={smallBtnStyle()} onClick={() => setAvailabilityConflictDialog({ open: false, affectedBookings: 0, oldAvailability: "", newAvailability: "", conflictingBookings: [] })}>Close</button>
-              <button type="button" style={{ ...smallBtnStyle("primary"), ...primaryActionBtnStyle }} onClick={() => void submitEditResourceWithConflictAction("MARK_CONFLICTS", true)}>Save and mark conflicts</button>
+              <button type="button" style={{ ...smallBtnStyle("primary"), ...primaryActionBtnStyle }} onClick={() => void submitEditResourceWithConflictAction("CANCEL_CONFLICTING")}>Save and cancel bookings</button>
             </div>
           </div>
         </div>
