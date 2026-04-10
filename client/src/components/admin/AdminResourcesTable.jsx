@@ -11,7 +11,13 @@ const pageCardStyle = {
   padding: "18px",
   boxSizing: "border-box",
 };
-const tableStyle = { width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: "13px" };
+const tableStyle = {
+  width: "100%",
+  minWidth: "1200px",
+  borderCollapse: "separate",
+  borderSpacing: 0,
+  fontSize: "13px",
+};
 const thStyle = {
   textAlign: "left",
   padding: "10px",
