@@ -124,6 +124,7 @@ function EditUserFieldError({ message }) {
 }
 
 function buildEditUserFieldErrors({ editFirstName, editLastName, editEmail, editPhoneNumber, selectedUser }) {
+  if (String(selectedUser?.provider || "") === "Google OAuth") return {};
   const e = {};
   if (!String(editFirstName || "").trim()) e.firstName = "First name is required.";
   if (!String(editLastName || "").trim()) e.lastName = "Last name is required.";
@@ -384,6 +385,15 @@ export default function AdminUsersTable({ onOpenAddUser, refreshKey = 0, onReque
     color: "#0f172a",
   };
 
+  const editIsGoogleOAuth = Boolean(
+    editPanelOpen && selectedUser && String(selectedUser.provider || "") === "Google OAuth"
+  );
+  const editReadOnlyProfileStyle = {
+    ...modalInputStyle,
+    backgroundColor: "#f8fafc",
+    color: "#475569",
+  };
+
   useEffect(() => {
     if (!editPanelOpen || !selectedUser) return;
     setEditFirstName(selectedUser.firstName || "");
@@ -423,15 +433,19 @@ export default function AdminUsersTable({ onOpenAddUser, refreshKey = 0, onReque
     setEditFieldErrors({});
     setActionBusy(true);
     setActionError("");
+    const isGoogleOAuth = String(selectedUser.provider || "") === "Google OAuth";
     try {
-      let updated = await adminUpdateUserProfile(selectedUser.userId, {
-        firstName: editFirstName.trim(),
-        lastName: editLastName.trim(),
-        email: emailDraft,
-        phoneNumber: phoneDigits ? phoneDigits : null,
-      });
-      if (String(updated.role || "").toUpperCase() !== String(editRole || "").toUpperCase()) {
-        updated = await adminChangeUserRole(selectedUser.userId, { role: editRole });
+      let updated = selectedUser;
+      if (!isGoogleOAuth) {
+        updated = await adminUpdateUserProfile(selectedUser.userId, {
+          firstName: editFirstName.trim(),
+          lastName: editLastName.trim(),
+          email: emailDraft,
+          phoneNumber: phoneDigits ? phoneDigits : null,
+        });
+        if (String(updated.role || "").toUpperCase() !== String(editRole || "").toUpperCase()) {
+          updated = await adminChangeUserRole(selectedUser.userId, { role: editRole });
+        }
       }
       const targetDisabled = editAccountStatus === "Disabled";
       const currentDisabled = String(updated.accountStatus || "").toUpperCase() === "DISABLED";
@@ -1322,7 +1336,11 @@ export default function AdminUsersTable({ onOpenAddUser, refreshKey = 0, onReque
                     <div>
                       <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
                         First name
-                        <span style={editRequiredMarkStyle} aria-hidden="true">*</span>
+                        {editIsGoogleOAuth ? (
+                          <span style={{ fontWeight: 500, color: "#9ca3af" }}> (read-only)</span>
+                        ) : (
+                          <span style={editRequiredMarkStyle} aria-hidden="true">*</span>
+                        )}
                       </label>
                       <input
                         value={editFirstName}
@@ -1330,7 +1348,8 @@ export default function AdminUsersTable({ onOpenAddUser, refreshKey = 0, onReque
                           setEditFirstName(e.target.value);
                           clearEditFieldErrors();
                         }}
-                        style={modalInputStyle}
+                        readOnly={editIsGoogleOAuth}
+                        style={editIsGoogleOAuth ? editReadOnlyProfileStyle : modalInputStyle}
                         placeholder="First name"
                       />
                       <EditUserFieldError message={editFieldErrors.firstName} />
@@ -1338,7 +1357,11 @@ export default function AdminUsersTable({ onOpenAddUser, refreshKey = 0, onReque
                     <div>
                       <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
                         Last name
-                        <span style={editRequiredMarkStyle} aria-hidden="true">*</span>
+                        {editIsGoogleOAuth ? (
+                          <span style={{ fontWeight: 500, color: "#9ca3af" }}> (read-only)</span>
+                        ) : (
+                          <span style={editRequiredMarkStyle} aria-hidden="true">*</span>
+                        )}
                       </label>
                       <input
                         value={editLastName}
@@ -1346,7 +1369,8 @@ export default function AdminUsersTable({ onOpenAddUser, refreshKey = 0, onReque
                           setEditLastName(e.target.value);
                           clearEditFieldErrors();
                         }}
-                        style={modalInputStyle}
+                        readOnly={editIsGoogleOAuth}
+                        style={editIsGoogleOAuth ? editReadOnlyProfileStyle : modalInputStyle}
                         placeholder="Last name"
                       />
                       <EditUserFieldError message={editFieldErrors.lastName} />
@@ -1356,8 +1380,11 @@ export default function AdminUsersTable({ onOpenAddUser, refreshKey = 0, onReque
                   <div>
                     <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
                       Work email
-                      <span style={editRequiredMarkStyle} aria-hidden="true">*</span>
-                      {String(selectedUser.provider || "") === "Google OAuth" ? <span style={{ fontWeight: 500, color: "#9ca3af" }}> (read-only)</span> : null}
+                      {editIsGoogleOAuth ? (
+                        <span style={{ fontWeight: 500, color: "#9ca3af" }}> (read-only)</span>
+                      ) : (
+                        <span style={editRequiredMarkStyle} aria-hidden="true">*</span>
+                      )}
                     </label>
                     <input
                       value={editEmail}
@@ -1365,12 +1392,8 @@ export default function AdminUsersTable({ onOpenAddUser, refreshKey = 0, onReque
                         setEditEmail(e.target.value);
                         clearEditFieldErrors();
                       }}
-                      readOnly={String(selectedUser.provider || "") === "Google OAuth"}
-                      style={{
-                        ...modalInputStyle,
-                        backgroundColor: String(selectedUser.provider || "") === "Google OAuth" ? "#f8fafc" : "#fff",
-                        color: String(selectedUser.provider || "") === "Google OAuth" ? "#475569" : "#0f172a",
-                      }}
+                      readOnly={editIsGoogleOAuth}
+                      style={editIsGoogleOAuth ? editReadOnlyProfileStyle : modalInputStyle}
                     />
                     <EditUserFieldError message={editFieldErrors.email} />
                   </div>
@@ -1379,6 +1402,7 @@ export default function AdminUsersTable({ onOpenAddUser, refreshKey = 0, onReque
                     <div>
                       <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
                         Role
+                        {editIsGoogleOAuth ? <span style={{ fontWeight: 500, color: "#9ca3af" }}> (read-only)</span> : null}
                       </label>
                       <select
                         value={editRole}
@@ -1386,8 +1410,12 @@ export default function AdminUsersTable({ onOpenAddUser, refreshKey = 0, onReque
                           setEditRole(e.target.value);
                           clearEditFieldErrors();
                         }}
-                        disabled={String(selectedUser.role || "").toUpperCase() === "ADMIN"}
-                        style={{ ...modalInputStyle, cursor: "pointer", backgroundColor: String(selectedUser.role || "").toUpperCase() === "ADMIN" ? "#f8fafc" : "#fff" }}
+                        disabled={editIsGoogleOAuth || String(selectedUser.role || "").toUpperCase() === "ADMIN"}
+                        style={{
+                          ...modalInputStyle,
+                          cursor: editIsGoogleOAuth || String(selectedUser.role || "").toUpperCase() === "ADMIN" ? "not-allowed" : "pointer",
+                          backgroundColor: editIsGoogleOAuth || String(selectedUser.role || "").toUpperCase() === "ADMIN" ? "#f8fafc" : "#fff",
+                        }}
                       >
                         <option value="USER">USER</option>
                         <option value="TECHNICIAN">TECHNICIAN</option>
@@ -1424,7 +1452,12 @@ export default function AdminUsersTable({ onOpenAddUser, refreshKey = 0, onReque
 
                   <div>
                     <label style={{ display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 }}>
-                      Phone number <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
+                      Phone number{" "}
+                      {editIsGoogleOAuth ? (
+                        <span style={{ fontWeight: 500, color: "#9ca3af" }}>(read-only)</span>
+                      ) : (
+                        <span style={{ fontWeight: 500, color: "#9ca3af" }}>(optional)</span>
+                      )}
                     </label>
                     <input
                       type="tel"
@@ -1435,12 +1468,15 @@ export default function AdminUsersTable({ onOpenAddUser, refreshKey = 0, onReque
                         setEditPhoneNumber(sanitizeProfilePhoneInput(e.target.value));
                         clearEditFieldErrors();
                       }}
-                      style={modalInputStyle}
+                      readOnly={editIsGoogleOAuth}
+                      style={editIsGoogleOAuth ? editReadOnlyProfileStyle : modalInputStyle}
                       placeholder="0771234567"
                     />
-                    <p style={{ margin: "6px 0 0 0", fontSize: "11px", color: "#64748b", fontWeight: 600 }}>
-                      Optional. {PROFILE_PHONE_DIGITS} digits only.
-                    </p>
+                    {!editIsGoogleOAuth ? (
+                      <p style={{ margin: "6px 0 0 0", fontSize: "11px", color: "#64748b", fontWeight: 600 }}>
+                        Optional. {PROFILE_PHONE_DIGITS} digits only.
+                      </p>
+                    ) : null}
                     <EditUserFieldError message={editFieldErrors.phoneNumber} />
                   </div>
 

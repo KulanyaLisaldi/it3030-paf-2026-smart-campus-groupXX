@@ -134,6 +134,13 @@ public class AdminUsersController {
         }
 
         User user = maybe.get();
+        if (isGoogleLinkedUser(user)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of(
+                "message",
+                "Google OAuth users can only have account status updated by an administrator."
+            ));
+        }
+
         user.setFirstName(request.getFirstName().trim());
         user.setLastName(request.getLastName().trim());
 
@@ -178,6 +185,13 @@ public class AdminUsersController {
         }
 
         User user = maybe.get();
+        if (isGoogleLinkedUser(user)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of(
+                "message",
+                "Role cannot be changed for Google OAuth users."
+            ));
+        }
+
         UserRole newRole = request.getRole();
         user.setRole(newRole);
         if (newRole != UserRole.TECHNICIAN) {
@@ -254,6 +268,11 @@ public class AdminUsersController {
         }
         authService.resetTechnicianPasswordByAdmin(userId, request.getNewPassword());
         return ResponseEntity.ok(java.util.Map.of("message", "Technician password reset successfully"));
+    }
+
+    private static boolean isGoogleLinkedUser(User user) {
+        String sub = user.getGoogleSubject();
+        return sub != null && !sub.isBlank();
     }
 }
 

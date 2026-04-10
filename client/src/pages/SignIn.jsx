@@ -605,11 +605,6 @@ const SignIn = () => {
           {authView === 'forgotRequest' && (
             <form onSubmit={handleSendForgotCode}>
               {error && <p style={errorTextStyle}>{error}</p>}
-              <p style={mutedHintStyle}>
-                For <strong style={{ color: '#fff' }}>admin</strong> and <strong style={{ color: '#fff' }}>technician</strong>{' '}
-                accounts that use email and password. If you use Google sign-in, use the button on the sign-in screen
-                instead.
-              </p>
               <div style={inputContainerStyle}>
                 <label style={labelStyle} htmlFor="forgot-email">
                   Work email
