@@ -43,6 +43,7 @@ const filterInputStyle = { ...inputStyle, border: "1px solid #FFDDB8" };
 
 const RESOURCE_TABLE_PAGE_SIZE = 10;
 const labelStyle = { display: "block", fontSize: "12px", fontWeight: 900, color: "#475569", marginBottom: 6 };
+const fieldErrorStyle = { marginTop: 6, marginBottom: 0, color: "#dc6b6b", fontSize: 12, fontWeight: 600 };
 const summaryGridStyle = { display: "grid", gridTemplateColumns: "repeat(5, minmax(140px, 1fr))", gap: "12px", marginBottom: "14px" };
 /** Matches admin ticket dashboard metric cards: light border + left accent strip. */
 const summaryCardBaseStyle = {
@@ -212,6 +213,7 @@ export default function AdminResourcesTable() {
   const [createBusy, setCreateBusy] = useState(false);
   const [editBusy, setEditBusy] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [createImageError, setCreateImageError] = useState("");
   const [editError, setEditError] = useState("");
   const [availabilityConflictDialog, setAvailabilityConflictDialog] = useState({
     open: false,
@@ -349,6 +351,7 @@ export default function AdminResourcesTable() {
 
   const updateForm = (key, value) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
+    if (key === "resourceImageFiles") setCreateImageError("");
     setCreateError("");
   };
 
@@ -366,6 +369,7 @@ export default function AdminResourcesTable() {
       resourceImageFiles: [],
       resourceImagePreviews: [],
     });
+    setCreateImageError("");
     setCreateError("");
     setAddModalOpen(true);
   };
@@ -439,6 +443,7 @@ export default function AdminResourcesTable() {
   }, [editFormData, editResourceId, load, navigate]);
 
   const handleCreateResource = async (e) => {
+    setCreateImageError("");
     if (formData.availabilityStart >= formData.availabilityEnd) {
       setCreateError("Availability end time must be later than start time.");
       return;
@@ -455,7 +460,8 @@ export default function AdminResourcesTable() {
       return;
     }
     if (!Array.isArray(formData.resourceImageFiles) || formData.resourceImageFiles.length === 0) {
-      setCreateError("At least one resource image is required.");
+      setCreateImageError("At least one resource image is required.");
+      setCreateError("");
       return;
     }
 
@@ -826,6 +832,7 @@ export default function AdminResourcesTable() {
                     e.target.value = "";
                   }}
                 />
+                {createImageError ? <p style={fieldErrorStyle}>{createImageError}</p> : null}
                 {formData.resourceImagePreviews.length > 0 ? (
                   <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(120px, 1fr))", gap: 8 }}>
                     {formData.resourceImagePreviews.map((src, idx) => (
@@ -866,7 +873,7 @@ export default function AdminResourcesTable() {
                 </div>
               </div>
 
-              {createError ? <p style={{ margin: 0, color: "#b91c1c", fontSize: "14px", fontWeight: 700 }}>{createError}</p> : null}
+              {createError ? <p style={{ margin: 0, color: "#dc6b6b", fontSize: "13px", fontWeight: 600 }}>{createError}</p> : null}
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button type="button" onClick={() => setAddModalOpen(false)} style={smallBtnStyle()}>Cancel</button>
