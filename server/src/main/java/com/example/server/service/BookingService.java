@@ -624,7 +624,7 @@ public class BookingService {
             LocalTime start = LocalTime.parse(safeTrim(booking.getStartTime()));
             LocalTime end = LocalTime.parse(safeTrim(booking.getEndTime()));
             LocalDateTime now = LocalDateTime.now();
-            LocalDateTime windowStart = LocalDateTime.of(bookingDate, start).minusMinutes(30);
+            LocalDateTime windowStart = LocalDateTime.of(bookingDate, start);
             LocalDateTime windowEnd = LocalDateTime.of(bookingDate, end).plusMinutes(30);
             return !now.isBefore(windowStart) && !now.isAfter(windowEnd);
         } catch (DateTimeParseException ex) {
