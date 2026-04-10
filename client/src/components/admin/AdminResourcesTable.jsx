@@ -104,35 +104,6 @@ const statusToggleKnobStyle = {
   boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
 };
 
-const iconOnlyBtnStyle = (variant = "neutral") => {
-  if (variant === "danger") {
-    return {
-      width: 32,
-      height: 32,
-      borderRadius: 8,
-      border: "none",
-      background: "transparent",
-      color: "#b91c1c",
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      cursor: "pointer",
-    };
-  }
-  return {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    border: "1px solid #e5e7eb",
-    background: "#fff",
-    color: "#0f172a",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-  };
-};
-
 function statusPill(status) {
   const isActive = status === "ACTIVE";
   return {
@@ -679,6 +650,16 @@ export default function AdminResourcesTable() {
                       <button type="button" style={smallBtnStyle()} onClick={() => openViewDrawer(r)}>View</button>
                       <button
                         type="button"
+                        style={{ ...smallBtnStyle("danger"), opacity: busyId === r.id ? 0.7 : 1 }}
+                        disabled={busyId === r.id}
+                        onClick={() => onDelete(r)}
+                        title="Delete"
+                        aria-label="Delete"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        type="button"
                         disabled={busyId === r.id}
                         onClick={() => onToggleStatus(r)}
                         style={{ border: "none", background: "transparent", padding: 0, margin: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: busyId === r.id ? "not-allowed" : "pointer" }}
@@ -688,14 +669,6 @@ export default function AdminResourcesTable() {
                         <span style={statusToggleStyle((r.status || "OUT_OF_SERVICE") === "ACTIVE", busyId === r.id)}>
                           <span style={statusToggleKnobStyle} />
                         </span>
-                      </button>
-                      <button type="button" style={{ ...iconOnlyBtnStyle("danger"), opacity: busyId === r.id ? 0.7 : 1 }} disabled={busyId === r.id} onClick={() => onDelete(r)} title="Delete" aria-label="Delete">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
-                          <path d="M3.5 7.5h17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                          <path d="M9 4.5h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                          <path d="M7.5 7.5l1 11a1.5 1.5 0 0 0 1.5 1.36h4a1.5 1.5 0 0 0 1.5-1.36l1-11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          <path d="M10 11v6M12 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
                       </button>
                     </div>
                   </td>
