@@ -807,7 +807,6 @@ export default function AdminResourcesTable() {
                   type="file"
                   accept="image/*"
                   multiple
-                  required={formData.resourceImageFiles.length === 0}
                   style={{ ...filterInputStyle, height: "auto", padding: "10px" }}
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
