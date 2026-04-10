@@ -4,6 +4,7 @@ import { getTechnicianAssignedTickets } from "../api/technicianTickets";
 import { changeMyPassword, fetchCurrentUser, removeProfileAvatar, updateProfilePhone, uploadProfileAvatar, verifyMyPasswordChange } from "../api/auth";
 import { getAuthToken } from "../api/http";
 import { persistCampusUser, readCampusUser } from "../utils/campusUserStorage";
+import { appSansSurfaceStyle } from "../utils/appFont";
 import { appFontFamily } from "../utils/appFont";
 import PasswordInput from "../components/PasswordInput.jsx";
 import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../utils/profilePhone";
@@ -130,6 +131,8 @@ function TechnicianAppShell({ children }) {
   const [passwordState, setPasswordState] = useState({ busy: false, message: "", error: "" });
   const [profileUser, setProfileUser] = useState(() => readCampusUser());
   const [phoneDraft, setPhoneDraft] = useState("");
+  const [firstNameDraft, setFirstNameDraft] = useState("");
+  const [lastNameDraft, setLastNameDraft] = useState("");
   const [saveState, setSaveState] = useState({ busy: false, message: "", error: "" });
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarRemoveBusy, setAvatarRemoveBusy] = useState(false);
@@ -264,6 +267,8 @@ function TechnicianAppShell({ children }) {
     const fromStorage = readCampusUser();
     setProfileUser(fromStorage);
     setPhoneDraft(phoneFromServer(fromStorage?.phoneNumber));
+    setFirstNameDraft((fromStorage?.firstName || "").trim());
+    setLastNameDraft((fromStorage?.lastName || "").trim());
     setSaveState({ busy: false, message: "", error: "" });
     setAvatarBusy(false);
     setAvatarRemoveBusy(false);
@@ -277,6 +282,8 @@ function TechnicianAppShell({ children }) {
         if (!cancelled && fresh) {
           setProfileUser(fresh);
           setPhoneDraft(phoneFromServer(fresh.phoneNumber));
+          setFirstNameDraft((fresh.firstName || "").trim());
+          setLastNameDraft((fresh.lastName || "").trim());
           persistCampusUser(fresh);
         }
       } catch {
@@ -294,17 +301,26 @@ function TechnicianAppShell({ children }) {
     navigate("/signin", { replace: true });
   };
 
-  const canSavePhone = (() => {
-    const basePhone = phoneFromServer(profileUser?.phoneNumber);
+  const canSaveProfile = (() => {
     if (!isValidProfilePhone(phoneDraft)) return false;
-    return phoneDraft !== basePhone;
+    const fn = firstNameDraft.trim();
+    const ln = lastNameDraft.trim();
+    if (!fn || !ln) return false;
+    const basePhone = phoneFromServer(profileUser?.phoneNumber);
+    const baseFirst = (profileUser?.firstName || "").trim();
+    const baseLast = (profileUser?.lastName || "").trim();
+    return phoneDraft !== basePhone || fn !== baseFirst || ln !== baseLast;
   })();
 
-  const handleSavePhone = async () => {
-    if (!canSavePhone) return;
+  const handleSaveProfile = async () => {
+    if (!canSaveProfile) return;
     setSaveState({ busy: true, message: "", error: "" });
     try {
-      const updated = await updateProfilePhone({ phoneNumber: phoneDraft });
+      const updated = await updateProfilePhone({
+        phoneNumber: phoneDraft,
+        firstName: firstNameDraft.trim(),
+        lastName: lastNameDraft.trim(),
+      });
       setProfileUser(updated);
       persistCampusUser(updated);
       setSaveState({ busy: false, message: "Changes saved.", error: "" });
@@ -835,15 +851,19 @@ function TechnicianAppShell({ children }) {
                     <div>
                       <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#374151", marginBottom: "6px" }}>First name</label>
                       <input
-                        readOnly
-                        disabled
-                        value={profileUser?.firstName || ""}
+                        type="text"
+                        autoComplete="given-name"
+                        value={firstNameDraft}
+                        onChange={(e) => {
+                          setFirstNameDraft(e.target.value);
+                          setSaveState((s) => ({ ...s, message: "", error: "" }));
+                        }}
                         style={{
                           width: "100%",
                           padding: "10px 12px",
                           borderRadius: "8px",
                           border: "1px solid #e5e7eb",
-                          background: "#f3f4f6",
+                          background: "#fff",
                           color: "#374151",
                           boxSizing: "border-box",
                         }}
@@ -852,15 +872,19 @@ function TechnicianAppShell({ children }) {
                     <div>
                       <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#374151", marginBottom: "6px" }}>Last name</label>
                       <input
-                        readOnly
-                        disabled
-                        value={profileUser?.lastName || ""}
+                        type="text"
+                        autoComplete="family-name"
+                        value={lastNameDraft}
+                        onChange={(e) => {
+                          setLastNameDraft(e.target.value);
+                          setSaveState((s) => ({ ...s, message: "", error: "" }));
+                        }}
                         style={{
                           width: "100%",
                           padding: "10px 12px",
                           borderRadius: "8px",
                           border: "1px solid #e5e7eb",
-                          background: "#f3f4f6",
+                          background: "#fff",
                           color: "#374151",
                           boxSizing: "border-box",
                         }}
@@ -870,8 +894,8 @@ function TechnicianAppShell({ children }) {
                   <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                     <button
                       type="button"
-                      onClick={handleSavePhone}
-                      disabled={!canSavePhone || saveState.busy}
+                      onClick={handleSaveProfile}
+                      disabled={!canSaveProfile || saveState.busy}
                       style={{
                         padding: "10px 14px",
                         borderRadius: "10px",
@@ -880,8 +904,8 @@ function TechnicianAppShell({ children }) {
                         color: "#fff",
                         fontWeight: 800,
                         fontSize: "14px",
-                        cursor: !canSavePhone || saveState.busy ? "not-allowed" : "pointer",
-                        opacity: !canSavePhone || saveState.busy ? 0.6 : 1,
+                        cursor: !canSaveProfile || saveState.busy ? "not-allowed" : "pointer",
+                        opacity: !canSaveProfile || saveState.busy ? 0.6 : 1,
                       }}
                     >
                       {saveState.busy ? "Saving..." : "Save changes"}
@@ -902,9 +926,20 @@ function TechnicianAppShell({ children }) {
           style={{ position: "fixed", inset: 0, zIndex: 10040, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px" }}
           onMouseDown={(e) => { if (e.target === e.currentTarget) setPasswordModalOpen(false); }}
         >
-          <div style={{ width: "100%", maxWidth: "520px", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden" }}>
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "520px",
+              backgroundColor: "#ffffff",
+              borderRadius: "14px",
+              border: "1px solid #e5e7eb",
+              boxShadow: "0 24px 90px rgba(0,0,0,0.25)",
+              overflow: "hidden",
+              ...appSansSurfaceStyle,
+            }}
+          >
             <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Change Password</div>
+              <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827", letterSpacing: "-0.02em" }}>Change Password</div>
               <button type="button" onClick={() => setPasswordModalOpen(false)} style={{ border: "none", background: "transparent", fontWeight: 800, cursor: "pointer", color: "#0f172a" }}>Close</button>
             </div>
             <div style={{ padding: "18px", display: "grid", gap: "12px" }}>
@@ -929,7 +964,7 @@ function TechnicianAppShell({ children }) {
                     value={passwordOtpCode}
                     onChange={(e) => setPasswordOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     placeholder="6-digit code"
-                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb" }}
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #e5e7eb", fontFamily: "inherit" }}
                   />
                 </div>
               )}
@@ -949,6 +984,7 @@ function TechnicianAppShell({ children }) {
                     backgroundColor: "#FA8112",
                     color: "#fff",
                     fontWeight: 800,
+                    fontFamily: "inherit",
                     cursor: passwordState.busy || (passwordOtpSent ? !/^[0-9]{6}$/.test(passwordOtpCode) : !canSubmitPassword) ? "not-allowed" : "pointer",
                     opacity: passwordState.busy || (passwordOtpSent ? !/^[0-9]{6}$/.test(passwordOtpCode) : !canSubmitPassword) ? 0.6 : 1,
                   }}

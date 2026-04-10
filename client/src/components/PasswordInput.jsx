@@ -31,6 +31,7 @@ export default function PasswordInput({ value, onChange, style = {}, toggleStyle
   const mergedInputStyle = {
     width: "100%",
     boxSizing: "border-box",
+    fontFamily: "inherit",
     ...style,
     paddingRight: "44px",
   };
