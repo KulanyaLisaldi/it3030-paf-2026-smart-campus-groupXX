@@ -50,7 +50,7 @@ public class SecurityConfig {
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/api/auth/signin").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/auth/verify-technician").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password", "/api/auth/forgot-password/complete").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password", "/api/auth/forgot-password/check", "/api/auth/forgot-password/complete").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/resources", "/api/resources/top-used").permitAll()

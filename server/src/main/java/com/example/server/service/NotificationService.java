@@ -5,6 +5,7 @@ import com.example.server.dto.notification.NotificationRealtimePayload;
 import com.example.server.model.Notification;
 import com.example.server.model.User;
 import com.example.server.model.UserRole;
+import com.example.server.notification.UserNotificationCategories;
 import com.example.server.repository.NotificationRepo;
 import com.example.server.repository.UserRepo;
 import org.springframework.data.domain.PageRequest;
@@ -45,6 +46,13 @@ public class NotificationService {
         User user = userRepo.findById(userId).orElse(null);
         if (user == null || user.isDisabled()) {
             return null;
+        }
+
+        if (user.getEffectiveRole() == UserRole.USER) {
+            String category = UserNotificationCategories.resolve(entityTypeRaw, typeRaw);
+            if (!category.isEmpty() && isCategoryDisabledForUser(user, category)) {
+                return null;
+            }
         }
 
         Notification n = new Notification();
@@ -143,5 +151,17 @@ public class NotificationService {
 
     private static String safeTrim(String raw) {
         return raw == null ? "" : raw.trim();
+    }
+
+    private static boolean isCategoryDisabledForUser(User user, String category) {
+        if (user.getNotificationDisabledCategories() == null || user.getNotificationDisabledCategories().isEmpty()) {
+            return false;
+        }
+        for (String c : user.getNotificationDisabledCategories()) {
+            if (category.equalsIgnoreCase(safeTrim(c))) {
+                return true;
+            }
+        }
+        return false;
     }
 }

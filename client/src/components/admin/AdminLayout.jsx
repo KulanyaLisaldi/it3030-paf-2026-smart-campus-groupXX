@@ -7,6 +7,7 @@ import PasswordInput from "../PasswordInput.jsx";
 import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizeProfilePhoneInput } from "../../utils/profilePhone";
 import campusSyncLogo from "../../assets/campus-sync-logo.png";
 import NotificationBell from "../notifications/NotificationBell.jsx";
+import { appSansSurfaceStyle } from "../../utils/appFont";
 
 const shellStyle = {
   height: "100vh",
@@ -31,7 +32,7 @@ const mainColumnStyle = { flex: 1, display: "flex", flexDirection: "column", hei
 const topBarStyle = { flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", padding: "12px 24px", backgroundColor: "#fff", borderBottom: "1px solid #e2e8f0" };
 const mainScrollStyle = { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "28px 28px 40px", boxSizing: "border-box" };
 const sectionLabelStyle = { fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", color: "#64748b", padding: "0 16px", marginTop: "20px", marginBottom: "8px" };
-const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "2px solid #F5E7C6", fontSize: "15px", outline: "none", boxSizing: "border-box", backgroundColor: "#FFFFFF", color: "#222222" };
+const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "2px solid #F5E7C6", fontSize: "15px", fontFamily: "inherit", outline: "none", boxSizing: "border-box", backgroundColor: "#FFFFFF", color: "#222222" };
 const labelStyle = { display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" };
 const PASSWORD_POLICY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
 const getPasswordChecks = (value) => {
@@ -715,9 +716,20 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
             style={{ position: "fixed", inset: 0, zIndex: 1100, backgroundColor: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: "18px" }}
             onMouseDown={(e) => { if (e.target === e.currentTarget) setPasswordModalOpen(false); }}
           >
-            <div style={{ width: "100%", maxWidth: "520px", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e5e7eb", boxShadow: "0 24px 90px rgba(0,0,0,0.25)", overflow: "hidden" }}>
+            <div
+              style={{
+                width: "100%",
+                maxWidth: "520px",
+                backgroundColor: "#ffffff",
+                borderRadius: "14px",
+                border: "1px solid #e5e7eb",
+                boxShadow: "0 24px 90px rgba(0,0,0,0.25)",
+                overflow: "hidden",
+                ...appSansSurfaceStyle,
+              }}
+            >
               <div style={{ padding: "14px 18px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827" }}>Change Password</div>
+                <div style={{ fontSize: "18px", fontWeight: 900, color: "#111827", letterSpacing: "-0.02em" }}>Change Password</div>
                 <button type="button" onClick={() => setPasswordModalOpen(false)} style={{ border: "none", background: "transparent", fontWeight: 800, cursor: "pointer", color: "#0f172a" }}>Close</button>
               </div>
               <div style={{ padding: "18px" }}>
@@ -764,6 +776,7 @@ export default function AdminLayout({ activeSection, pageTitle, description, chi
                       backgroundColor: "#FA8112",
                       color: "#fff",
                       fontWeight: 800,
+                      fontFamily: "inherit",
                       cursor: passwordState.busy || (passwordOtpSent ? !/^[0-9]{6}$/.test(passwordOtpCode) : !canSubmitPassword) ? "not-allowed" : "pointer",
                       opacity: passwordState.busy || (passwordOtpSent ? !/^[0-9]{6}$/.test(passwordOtpCode) : !canSubmitPassword) ? 0.6 : 1,
                     }}

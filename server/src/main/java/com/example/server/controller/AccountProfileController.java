@@ -2,6 +2,7 @@ package com.example.server.controller;
 
 import com.example.server.dto.auth.AuthUserResponse;
 import com.example.server.dto.auth.ChangePasswordRequest;
+import com.example.server.dto.auth.UpdateNotificationPreferencesRequest;
 import com.example.server.dto.auth.UpdateProfileRequest;
 import com.example.server.dto.auth.UpdateTechnicianAvailabilityRequest;
 import com.example.server.dto.auth.VerifyPasswordChangeRequest;
@@ -33,6 +34,21 @@ public class AccountProfileController {
 
     public AccountProfileController(AuthService authService) {
         this.authService = authService;
+    }
+
+    @PatchMapping(value = "/notification-preferences", consumes = "application/json")
+    public ResponseEntity<?> updateNotificationPreferences(
+        Authentication authentication,
+        @Valid @RequestBody UpdateNotificationPreferencesRequest request
+    ) {
+        String userId = authentication.getName();
+        try {
+            return authService.updateNotificationPreferences(userId, request)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found")));
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(Map.of("message", ex.getReason()));
+        }
     }
 
     @PatchMapping(consumes = "application/json")

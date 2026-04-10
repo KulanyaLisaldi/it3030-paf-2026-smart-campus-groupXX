@@ -22,6 +22,11 @@ public class AuthUserResponse {
     /** For technicians: true after email verification; null = legacy (treated as verified). */
     private Boolean technicianEmailVerified;
 
+    /**
+     * For {@code USER} role: in-app notification categories turned off (BOOKING, TICKET). Null for staff roles.
+     */
+    private List<String> notificationDisabledCategories;
+
     public AuthUserResponse() {
     }
 
@@ -115,5 +120,13 @@ public class AuthUserResponse {
 
     public void setTechnicianEmailVerified(Boolean technicianEmailVerified) {
         this.technicianEmailVerified = technicianEmailVerified;
+    }
+
+    public List<String> getNotificationDisabledCategories() {
+        return notificationDisabledCategories;
+    }
+
+    public void setNotificationDisabledCategories(List<String> notificationDisabledCategories) {
+        this.notificationDisabledCategories = notificationDisabledCategories;
     }
 }
