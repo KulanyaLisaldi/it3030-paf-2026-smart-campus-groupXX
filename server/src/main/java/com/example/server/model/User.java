@@ -53,6 +53,17 @@ public class User {
     /** Failed OTP attempts for current pending request. */
     private Integer passwordChangeOtpAttempts;
 
+    /**
+     * Technicians created by admin: {@code false} until they verify via email link.
+     * {@code null} on legacy documents — treated as verified for sign-in.
+     */
+    private Boolean technicianEmailVerified;
+
+    /** SHA-256 hex of one-time verification token (cleared after success). */
+    private String technicianVerificationTokenHash;
+
+    private Instant technicianVerificationExpiresAt;
+
     public User() {
     }
 
@@ -171,6 +182,30 @@ public class User {
 
     public void setPasswordChangeOtpAttempts(Integer passwordChangeOtpAttempts) {
         this.passwordChangeOtpAttempts = passwordChangeOtpAttempts;
+    }
+
+    public Boolean getTechnicianEmailVerified() {
+        return technicianEmailVerified;
+    }
+
+    public void setTechnicianEmailVerified(Boolean technicianEmailVerified) {
+        this.technicianEmailVerified = technicianEmailVerified;
+    }
+
+    public String getTechnicianVerificationTokenHash() {
+        return technicianVerificationTokenHash;
+    }
+
+    public void setTechnicianVerificationTokenHash(String technicianVerificationTokenHash) {
+        this.technicianVerificationTokenHash = technicianVerificationTokenHash;
+    }
+
+    public Instant getTechnicianVerificationExpiresAt() {
+        return technicianVerificationExpiresAt;
+    }
+
+    public void setTechnicianVerificationExpiresAt(Instant technicianVerificationExpiresAt) {
+        this.technicianVerificationExpiresAt = technicianVerificationExpiresAt;
     }
 
     public String getGoogleSubject() {

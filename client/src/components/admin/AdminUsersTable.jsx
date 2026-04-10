@@ -30,8 +30,11 @@ import { isValidProfilePhone, phoneFromServer, PROFILE_PHONE_DIGITS, sanitizePro
 /** Light orange frame lines (buttons keep their own border styles). */
 const BORDER_LIGHT_ORANGE = "#F5D4B0";
 
+const BOOKING_TABLE_BORDER = "#FFDDB8";
+
 const pageCardStyle = {
   maxWidth: "100%",
+  minWidth: 0,
   backgroundColor: "#FFFFFF",
   borderRadius: "16px",
   border: `1px solid ${BORDER_LIGHT_ORANGE}`,
@@ -40,26 +43,66 @@ const pageCardStyle = {
   boxSizing: "border-box",
 };
 
+/** Matches AdminBookingsPage booking-details table (horizontal scroll + min width). */
 const tableStyle = {
-  width: "100%",
-  borderCollapse: "separate",
-  borderSpacing: 0,
+  width: "max-content",
+  minWidth: 1160,
+  borderCollapse: "collapse",
   fontSize: "13px",
+};
+
+const userTableSectionStyle = {
+  border: `1px solid ${BOOKING_TABLE_BORDER}`,
+  borderRadius: 12,
+  padding: 0,
+  background: "#fff",
+  overflow: "hidden",
+};
+
+const userTableScrollWrapStyle = {
+  width: "100%",
+  overflowX: "auto",
+  overflowY: "hidden",
+  WebkitOverflowScrolling: "touch",
+};
+
+const userTablePaginationFooterStyle = {
+  borderTop: "1px solid #F5E7C6",
+  padding: "10px 12px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 10,
+  flexWrap: "wrap",
+};
+
+/** View action — same border treatment as AdminBookingsPage row actions. */
+const userTableViewBtnStyle = {
+  padding: "8px 10px",
+  borderRadius: "10px",
+  border: `1px solid ${BOOKING_TABLE_BORDER}`,
+  fontWeight: 800,
+  fontSize: "12px",
+  cursor: "pointer",
+  background: "#fff",
+  color: "#0f172a",
+  textAlign: "center",
 };
 
 const thStyle = {
   textAlign: "left",
-  padding: "10px 10px",
-  fontWeight: 900,
-  color: "#0f172a",
-  backgroundColor: "#FFF8ED",
-  borderBottom: `1px solid ${BORDER_LIGHT_ORANGE}`,
+  padding: "12px 10px",
+  fontWeight: 800,
+  color: "#374151",
+  backgroundColor: "#FAF3E1",
+  borderBottom: "1px solid #F5E7C6",
   whiteSpace: "nowrap",
+  fontSize: "13px",
 };
 
 const tdStyle = {
   padding: "10px 10px",
-  borderBottom: `1px solid ${BORDER_LIGHT_ORANGE}`,
+  borderBottom: `1px solid ${BOOKING_TABLE_BORDER}`,
   color: "#334155",
   verticalAlign: "top",
 };
@@ -110,33 +153,6 @@ const summaryCardBaseStyle = {
 const summaryLabelStyle = { fontSize: "11px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" };
 const summaryValueStyle = { fontSize: "26px", fontWeight: 800, color: "#14213D", marginTop: 4 };
 
-function EyeIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
-  );
-}
-
-function DisableIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M8 16l8-8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function EnableIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M8.5 12.5l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 function DeleteIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -165,6 +181,16 @@ function formatDate(value) {
   } catch {
     return "";
   }
+}
+
+/** Google accounts are verified by Google; email technicians use server field (Yes/No). */
+function emailVerifiedDisplay(u) {
+  if (!u) return "—";
+  const provider = String(u.provider || "").trim().toLowerCase();
+  if (provider.includes("google")) return "Yes";
+  const v = u.technicianEmailVerified;
+  if (v === "Yes" || v === "No") return v;
+  return "—";
 }
 
 function toDateSafe(value) {
@@ -943,13 +969,15 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
 
       <div style={{ marginBottom: 14 }} />
 
-          <div style={{ overflowX: "auto", borderRadius: 12, border: `1px solid ${BORDER_LIGHT_ORANGE}` }} role="tabpanel">
+          <section style={userTableSectionStyle} role="tabpanel">
+            <div style={userTableScrollWrapStyle}>
             <table style={tableStyle}>
               <thead>
                 <tr>
                   <th style={thStyle}>Name</th>
                   <th style={thStyle}>Email</th>
                   <th style={thStyle}>Role</th>
+                  <th style={thStyle}>Email verified</th>
                   <th style={thStyle}>Account Status</th>
                   <th style={thStyle}>Provider</th>
                   <th style={thStyle}>Created Date</th>
@@ -960,7 +988,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td style={tdStyle} colSpan={8}>
+                    <td style={tdStyle} colSpan={9}>
                       No users found.
                     </td>
                   </tr>
@@ -977,6 +1005,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                     <td style={tdStyle}>
                       <Badge text={u.role || "USER"} style={roleBadgeStyle(u.role)} />
                     </td>
+                    <td style={tdStyle}>{emailVerifiedDisplay(u)}</td>
                     <td style={tdStyle}>
                       <Badge
                         text={(u.accountStatus || "").toUpperCase() === "DISABLED" ? "Suspended" : "Active"}
@@ -987,55 +1016,61 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
                     <td style={tdStyle}>{formatDate(u.createdDate) || "—"}</td>
                     <td style={tdStyle}>{formatDate(u.lastLogin) || "—"}</td>
                     <td style={tdStyle}>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                         <button
                           type="button"
-                          style={iconBtnStyle("neutral")}
+                          style={{
+                            ...userTableViewBtnStyle,
+                            opacity: actionBusy ? 0.5 : 1,
+                            cursor: actionBusy ? "not-allowed" : "pointer",
+                          }}
                           disabled={actionBusy}
                           title="View details"
-                          aria-label="View details"
                           onClick={() => {
                             setDetailsUser(u);
                           }}
                         >
-                          <EyeIcon />
+                          View
                         </button>
-                        <button
-                          type="button"
-                          style={((u.accountStatus || "") === "Disabled") ? iconBtnStyle("primary") : iconBtnStyle("danger")}
-                          disabled={actionBusy || (u.role || "").toUpperCase() === "ADMIN" || (currentUserId && u.userId === currentUserId)}
-                          title={((u.role || "").toUpperCase() === "ADMIN")
+                        {(() => {
+                          const isAdminRow = (u.role || "").toUpperCase() === "ADMIN";
+                          const isSelf = currentUserId && u.userId === currentUserId;
+                          const canToggle = !isAdminRow && !isSelf;
+                          const isSuspended = (u.accountStatus || "") === "Disabled";
+                          const toggleTitle = isAdminRow
                             ? "Admin account cannot be deactivated"
-                            : (currentUserId && u.userId === currentUserId)
-                            ? "You cannot disable your own account"
-                            : ((u.accountStatus || "") === "Disabled" ? "Enable account" : "Disable account")}
-                          aria-label={((u.role || "").toUpperCase() === "ADMIN")
-                            ? "Admin deactivate not allowed"
-                            : (currentUserId && u.userId === currentUserId)
-                            ? "Self disable not allowed"
-                            : ((u.accountStatus || "") === "Disabled" ? "Enable account" : "Disable account")}
-                          onClick={() => handleToggleDisabled(u)}
-                        >
-                          {(u.accountStatus || "") === "Disabled" ? <EnableIcon /> : <DisableIcon />}
-                        </button>
+                            : isSelf
+                              ? "You cannot disable your own account"
+                              : isSuspended
+                                ? "Activate account"
+                                : "Deactivate account";
+                          return (
+                            <button
+                              type="button"
+                              style={
+                                !canToggle
+                                  ? { ...smallBtnStyle("neutral"), opacity: 0.55, cursor: "not-allowed" }
+                                  : isSuspended
+                                    ? smallBtnStyle("primary")
+                                    : smallBtnStyle("danger")
+                              }
+                              disabled={actionBusy || !canToggle}
+                              title={toggleTitle}
+                              onClick={() => handleToggleDisabled(u)}
+                            >
+                              {isSuspended ? "Activate" : "Deactivate"}
+                            </button>
+                          );
+                        })()}
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
           {filtered.length > 0 && (
-            <div
-              style={{
-                marginTop: 12,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                flexWrap: "wrap",
-              }}
-            >
+            <div style={userTablePaginationFooterStyle}>
               <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>
                 Showing {(safePage - 1) * PAGE_SIZE + 1}-
                 {Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length} users • {PAGE_SIZE} per page
@@ -1075,6 +1110,7 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               </div>
             </div>
           )}
+          </section>
       </>
       )}
 
@@ -1363,6 +1399,12 @@ export default function AdminUsersTable({ onAddTechnician, refreshKey = 0, onReq
               }}
             >
               <div><strong style={{ color: "#0f172a" }}>Email:</strong> {detailsUser.email || "—"}</div>
+              {String(detailsUser.role || "").toUpperCase() === "TECHNICIAN" ||
+              String(detailsUser.provider || "").toLowerCase().includes("google") ? (
+                <div>
+                  <strong style={{ color: "#0f172a" }}>Email verified:</strong> {emailVerifiedDisplay(detailsUser)}
+                </div>
+              ) : null}
               <div><strong style={{ color: "#0f172a" }}>Provider:</strong> {detailsUser.provider || "—"}</div>
               <div><strong style={{ color: "#0f172a" }}>Created date:</strong> {formatDate(detailsUser.createdDate) || "—"}</div>
               <div><strong style={{ color: "#0f172a" }}>Last login:</strong> {formatDate(detailsUser.lastLogin) || "—"}</div>

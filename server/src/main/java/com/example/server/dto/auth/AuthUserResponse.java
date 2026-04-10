@@ -19,6 +19,9 @@ public class AuthUserResponse {
     /** For technicians: true = available, false = unavailable; null for other roles or unspecified. */
     private Boolean technicianAvailable;
 
+    /** For technicians: true after email verification; null = legacy (treated as verified). */
+    private Boolean technicianEmailVerified;
+
     public AuthUserResponse() {
     }
 
@@ -33,7 +36,8 @@ public class AuthUserResponse {
         String profileImageUrl,
         String technicianCategory,
         List<String> technicianCategories,
-        Boolean technicianAvailable
+        Boolean technicianAvailable,
+        Boolean technicianEmailVerified
     ) {
         this.id = id;
         this.firstName = firstName;
@@ -46,6 +50,7 @@ public class AuthUserResponse {
         this.technicianCategory = technicianCategory;
         this.technicianCategories = technicianCategories;
         this.technicianAvailable = technicianAvailable;
+        this.technicianEmailVerified = technicianEmailVerified;
     }
 
     public String getId() {
@@ -102,5 +107,13 @@ public class AuthUserResponse {
 
     public void setTechnicianAvailable(Boolean technicianAvailable) {
         this.technicianAvailable = technicianAvailable;
+    }
+
+    public Boolean getTechnicianEmailVerified() {
+        return technicianEmailVerified;
+    }
+
+    public void setTechnicianEmailVerified(Boolean technicianEmailVerified) {
+        this.technicianEmailVerified = technicianEmailVerified;
     }
 }
