@@ -53,6 +53,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password", "/api/auth/forgot-password/complete").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/resources", "/api/resources/top-used").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/admin/technicians").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/admin/technicians").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/adminticket/tickets", "/api/admin/tickets").hasRole("ADMIN")
