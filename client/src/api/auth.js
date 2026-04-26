@@ -22,6 +22,11 @@ export function updateProfilePhone(payload) {
   return apiPatch("/api/auth/profile", payload);
 }
 
+/** Student accounts only: mute in-app notification categories (BOOKING, TICKET). */
+export function updateNotificationPreferences(payload) {
+  return apiPatch("/api/auth/profile/notification-preferences", payload);
+}
+
 export function changeMyPassword(payload) {
   return apiPatch("/api/auth/profile/password", payload);
 }
