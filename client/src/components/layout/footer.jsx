@@ -35,7 +35,7 @@ const Footer = () => {
           {/* About Section */}
           <div className="col-span-1 md:col-span-1">
             <h3 className="text-lg font-semibold mb-4" style={{ color: '#FFFFFF' }}>About</h3>
-            <h4 className="text-xl font-bold mb-2" style={{ color: '#FFFFFF' }}>CampusSync Operations Hub</h4>
+            <h4 className="text-xl font-bold mb-2" style={{ color: '#FFFFFF' }}>CampusSync Smart Campus Operations Hub</h4>
             <Link
               to="/about"
               style={{ ...footerLinkStyle, display: 'inline-block', marginTop: '12px' }}
